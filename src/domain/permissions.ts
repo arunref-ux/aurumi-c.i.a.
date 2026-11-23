@@ -32,7 +32,7 @@ export const ROLE_GRANTS: Record<RoleKey, Grants> = {
       "assign",
       "approve",
     ]),
-    ...all("solution", "organization", ["read", "create", "update", "delete"]),
+    ...all("solution", "organization", ["read", "create", "update", "delete", "assign", "approve"]),
     ...all("proposal", "organization", ["read", "create", "update", "delete", "approve", "share"]),
     ...all("engagement", "organization", ["read", "create", "update", "assign"]),
     ...all("professional", "organization", ["read", "create", "update", "assign"]),
@@ -41,7 +41,7 @@ export const ROLE_GRANTS: Record<RoleKey, Grants> = {
   },
   cia_manager: {
     ...all("assessment", "team", ["read", "create", "update", "assign", "approve"]),
-    ...all("solution", "team", ["read", "create", "update"]),
+    ...all("solution", "team", ["read", "create", "update", "assign", "approve"]),
     ...all("proposal", "team", ["read", "create", "update", "share"]),
     ...all("engagement", "team", ["read", "create", "update", "assign"]),
     ...all("professional", "organization", ["read", "assign"]),

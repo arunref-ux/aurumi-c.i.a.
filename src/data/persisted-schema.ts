@@ -190,6 +190,65 @@ const ROW = {
   engagements: z.looseObject({ id, organizationId: str }),
   /** Snapshots are immutable records: an invalid one is quarantined whole, never repaired. */
   snapshots: snapshot,
+  solutions: z.looseObject({
+    ...audited,
+    organizationId: str,
+    ownerId: str,
+    teamId: str,
+    assignedUserIds: ids,
+    assessmentId: id,
+    kind: z.enum(["tenant", "partner"]),
+    title: str,
+    optionLabel: str,
+    subjectName: str,
+    status: z.enum(["draft", "in_review", "approved", "returned"]),
+    revision: z.number().int().positive(),
+    baseline: z.looseObject({
+      snapshotId: id,
+      snapshotVersion: z.number(),
+      schema: str,
+      approvedAt: str,
+    }),
+  }),
+  solutionWorkspaces: z.looseObject({
+    ...audited,
+    organizationId: str,
+    solutionId: id,
+    overview: z.looseObject({
+      objectives: str,
+      executiveSummary: str,
+      constraints: str,
+      outstandingQuestions: str,
+      assumptions: str,
+      preferredRationale: str,
+    }),
+    partner: z.looseObject({}).optional(),
+    reviewerId: optStr,
+    revisions: z.array(
+      z.looseObject({ revision: z.number(), baseline: z.looseObject({ snapshotId: id }) }),
+    ),
+  }),
+  /** Immutable: invalid solution snapshots are quarantined whole. */
+  solutionSnapshots: z.looseObject({
+    id,
+    schema: str,
+    organizationId: str,
+    solutionId: id,
+    version: z.number().int().positive(),
+    revision: z.number(),
+    approval: z.looseObject({ approvedBy: id, approvedAt: str, comment: str }),
+    solution: z.looseObject({ id, title: str }),
+    baseline: z.looseObject({ snapshotId: id, snapshotVersion: z.number() }),
+    needs: z.array(z.looseObject({ id })),
+    recommendations: z.array(z.looseObject({ id, title: str, availability: str })),
+    integrations: z.array(z.looseObject({ id })),
+    aiDesigns: z.array(z.looseObject({ id })),
+    values: z.array(z.looseObject({ id })),
+    roadmap: z.array(z.looseObject({ id })),
+    alternatives: z.array(z.looseObject({ id })),
+    catalog: z.looseObject({ catalogVersion: str, items: z.array(z.looseObject({ id })) }),
+    evidence: z.array(z.looseObject({ id })),
+  }),
   workspaces: workspaceShell,
 } as const;
 export type PersistedTable = keyof typeof ROW;
@@ -200,6 +259,91 @@ export interface QuarantineEntry {
   reason: string;
   value: unknown;
 }
+
+const catRef = z.looseObject({ itemId: id, catalogVersion: str, nameAtSelection: str });
+/** Child records of a solution workspace, checked one by one so one bad record costs nothing else. */
+const SOLUTION_CHILD = {
+  needs: z.looseObject({
+    ...audited,
+    source: z.looseObject({ kind: str, id, label: str }),
+    priority: str,
+    impact: str,
+    outcome: str,
+    successCriterion: str,
+    disposition: z.enum(["addressed", "deferred", "excluded"]),
+    dispositionNote: str,
+    sourceStatus: z.enum(["current", "changed", "missing"]),
+  }),
+  recommendations: z.looseObject({
+    ...audited,
+    category: str,
+    title: str,
+    description: str,
+    needIds: ids,
+    rationale: str,
+    approach: str,
+    expectedOutcome: str,
+    status: str,
+    provenance: str,
+    evidenceRefs: z.array(z.looseObject({ evidenceId: id, materialKey: str })),
+    catalogRefs: z.array(catRef),
+    dependsOn: ids,
+    mandatory: z.boolean(),
+    dependencies: str,
+    assumptions: str,
+    risks: str,
+    fallback: str,
+    ownerId: str,
+    responsibilities: z.looseObject({ customer: str, aurumi: str, partner: str }),
+    justificationStale: z.boolean(),
+  }),
+  integrations: z.looseObject({
+    ...audited,
+    systemId: id,
+    systemName: str,
+    feasibility: str,
+    direction: str,
+    access: str,
+    dataRequired: str,
+    mechanism: str,
+    proposal: z.looseObject({ kind: str, catalogRef: catRef.optional() }),
+    evidenceIds: ids,
+    validationOwner: str,
+    openQuestions: str,
+  }),
+  aiDesigns: z.looseObject({
+    ...audited,
+    recommendationId: id,
+    exampleQuestions: z.array(z.string()),
+    intent: str,
+    capabilityRefs: z.array(catRef),
+    mode: z.enum(["read", "write"]),
+    humanConfirmation: z.boolean(),
+    rolesAndScopes: str,
+    sensitiveDataRisks: str,
+    fallback: str,
+  }),
+  values: z.looseObject({
+    ...audited,
+    kind: str,
+    description: str,
+    confidence: str,
+    assumptionSource: str,
+    estimate: z
+      .looseObject({ amount: z.number(), currency: str, assumptions: str, source: str })
+      .optional(),
+  }),
+  roadmap: z.looseObject({ ...audited, stage: str, status: z.literal("planning_assumption") }),
+  alternatives: z.looseObject({
+    ...audited,
+    approach: str,
+    summary: str,
+    criteria: z.looseObject({}),
+    limitations: str,
+    preferred: z.boolean(),
+  }),
+  comments: z.looseObject({ ...audited, kind: str, body: str }),
+} as const;
 
 const reasonOf = (e: z.ZodError) =>
   e.issues
@@ -223,6 +367,38 @@ export function sanitizeTable(
     if (!r.success) {
       quarantined.push({ table, path: `${table}[${i}]`, reason: reasonOf(r.error), value: row });
       return;
+    }
+    if (table === "solutionWorkspaces") {
+      const sw = { ...(row as Record<string, unknown>) };
+      for (const [kind, schema] of Object.entries(SOLUTION_CHILD)) {
+        const list = sw[kind];
+        if (list === undefined) {
+          sw[kind] = [];
+          continue;
+        }
+        if (!Array.isArray(list)) {
+          quarantined.push({
+            table,
+            path: `${table}[${i}].${kind}`,
+            reason: "expected a list",
+            value: list,
+          });
+          sw[kind] = [];
+          continue;
+        }
+        sw[kind] = list.filter((item, j) => {
+          const c = schema.safeParse(item);
+          if (!c.success)
+            quarantined.push({
+              table,
+              path: `${table}[${i}].${kind}[${j}]`,
+              reason: reasonOf(c.error),
+              value: item,
+            });
+          return c.success;
+        });
+      }
+      return void out.push(sw);
     }
     if (table !== "workspaces") return void out.push(row);
     // Keep a valid workspace, setting aside only its broken child records.
