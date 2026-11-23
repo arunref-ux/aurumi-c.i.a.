@@ -430,7 +430,8 @@ export function CommercialsSection({ view }: { view: ProposalView }) {
               quantity: num(s("quantity")) ?? 1,
               quoteReference: s("quoteReference"),
             };
-            if (s("catalogItemId")) out["catalogItemId"] = s("catalogItemId");
+            // An empty choice is an explicit removal, not "keep the previous capability".
+            out["catalogItemId"] = s("catalogItemId") || null;
             if (s("priceBookItemId")) out["priceBookItemId"] = s("priceBookItemId");
             if (s("priceBookItemId") && s("exceptionRationale"))
               out["priceException"] = {

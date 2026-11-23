@@ -778,14 +778,28 @@ export function priceRefOf(item: PriceBookItem, book: PriceBook): PriceRef {
  */
 export function validityEnd(v: unknown): number | null {
   if (typeof v !== "string") return null;
-  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(v);
-  const full = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
-  if (!dateOnly && !full.test(v)) return null;
-  const t = Date.parse(dateOnly ? `${v}T23:59:59.999Z` : v);
-  if (!Number.isFinite(t)) return null;
-  // Reject rolled-over calendar dates such as 2027-02-30.
-  if (dateOnly && new Date(t).toISOString().slice(0, 10) !== v) return null;
-  return t;
+  // Parsed component by component; Date.parse alone silently rolls 2027-02-30 into March.
+  const m =
+    /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(\.\d{1,9})?)?(Z|([+-])(\d{2}):(\d{2})))?$/.exec(
+      v,
+    );
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  if (mo < 1 || mo > 12 || d < 1) return null;
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const dim = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1]!;
+  if (d > dim) return null;
+  if (m[4] === undefined) return Date.UTC(y, mo - 1, d, 23, 59, 59, 999);
+  const [hh, mi, ss] = [Number(m[4]), Number(m[5]), Number(m[6] ?? 0)];
+  if (hh > 23 || mi > 59 || ss > 59) return null;
+  const ms = m[7] ? Math.floor(Number(`0${m[7]}`) * 1000) : 0;
+  let offset = 0;
+  if (m[8] !== "Z") {
+    const [oh, om] = [Number(m[10]), Number(m[11])];
+    if (oh > 14 || om > 59 || (oh === 14 && om > 0)) return null;
+    offset = (m[9] === "-" ? -1 : 1) * (oh * 60 + om);
+  }
+  return Date.UTC(y, mo - 1, d, hh, mi, ss, ms) - offset * 60_000;
 }
 /** Exception permits a priced line needs at `at` (empty = the published price applies as-is). */
 export function requiredPermits(
@@ -895,6 +909,8 @@ export function materialHash(
   p: Pick<Proposal, "title" | "track">,
   source: ProposalSource,
   ws: ProposalWorkspace,
+  /** The embedded solution hand-off; included for approval-bound version hashes. */
+  solution?: unknown,
 ): string {
   const strip = <T extends object>(xs: T[]) =>
     xs.map((x) => {
@@ -916,6 +932,7 @@ export function materialHash(
     risks: strip(ws.risks),
     milestones: strip(ws.milestones),
     options: strip(ws.options),
+    ...(solution === undefined ? {} : { solution }),
   });
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
@@ -1261,7 +1278,32 @@ export function documentHash(doc: ProposalDocument): string {
     milestones: doc.milestones,
     options: doc.options,
   } as unknown as ProposalWorkspace;
-  return materialHash(doc.proposal, doc.source as ProposalSource, ws);
+  return materialHash(doc.proposal, doc.source as ProposalSource, ws, doc.solution);
+}
+/** Embedded hand-off identity must match the version's pinned source exactly. */
+function embeddedSourceProblems(d: ProposalDocument, orgId: ID): string[] {
+  const out: string[] = [];
+  const s = d.source as ProposalSource;
+  const h = d.solution;
+  const a = h.sourceAssessment;
+  const eq = (what: string, x: unknown, y: unknown) => {
+    if (x !== y) out.push(`embedded ${what} does not match the pinned source`);
+  };
+  eq("solution snapshot id", h.id, s.solutionSnapshotId);
+  eq("solution id", h.solutionId, s.solutionId);
+  eq("solution record id", h.solution.id, s.solutionId);
+  eq("solution snapshot version", h.version, s.solutionSnapshotVersion);
+  eq("solution schema", h.schema, s.solutionSchema);
+  eq("solution organization", h.organizationId, orgId);
+  eq("assessment snapshot id", a.id, s.assessmentSnapshotId);
+  eq("assessment id", a.assessmentId, s.assessmentId);
+  eq("assessment id on solution", h.solution.assessmentId, s.assessmentId);
+  eq("assessment snapshot version", a.version, s.assessmentSnapshotVersion);
+  eq("assessment baseline", h.baseline.snapshotId, s.assessmentSnapshotId);
+  eq("approval time", h.approval.approvedAt, s.approvedAt);
+  for (const r of unresolvedHandoffRefs(h))
+    out.push(`embedded hand-off reference unresolved: ${r}`);
+  return out;
 }
 /**
  * Independent integrity check of a stored proposal version: identities, every
@@ -1275,6 +1317,7 @@ export function versionIntegrityProblems(v: ProposalVersionRecord): string[] {
     if (d.proposal.id !== v.proposalId) out.push("document belongs to a different proposal");
     if (d.proposal.organizationId !== v.organizationId)
       out.push("document belongs to a different organization");
+    out.push(...embeddedSourceProblems(d, v.organizationId));
     const lines: CommercialLine[] = [];
     for (const l of d.commercials.lines) {
       const { computed, ...raw } = l;

@@ -222,7 +222,8 @@ const CHILD = {
       })
       .optional(),
     quoteReference: str.default(""),
-    catalogItemId: z.string().trim().min(1).optional(),
+    // Omitted on an update = keep the stored capability; null = explicitly remove it.
+    catalogItemId: z.string().trim().min(1).nullable().optional(),
     priceException: z
       .strictObject({
         rationale: z.string().trim().min(1, "A price exception needs a rationale"),
@@ -937,7 +938,7 @@ export const proposalStudio: ProposalStudioService = {
       const itemId = data["priceBookItemId"] as string | undefined;
       const prev = existing as unknown as CommercialLine | undefined;
       const { priceBookItemId: _p, priceException: _x, catalogItemId: lineItem, ...rest } = data;
-      if (lineItem !== undefined && !h.catalog.items.some((c) => c.id === lineItem))
+      if (lineItem != null && !h.catalog.items.some((c) => c.id === lineItem))
         reject(ctx, `"${String(lineItem)}" is not a capability in the approved solution`, id);
       let priceRef = undefined as CommercialLine["priceRef"];
       if (itemId) {
@@ -967,8 +968,21 @@ export const proposalStudio: ProposalStudioService = {
         data["classification"] === "priced"
       )
         reject(ctx, "priced Aurumi items must reference a Pricing Studio price-book item", id);
-      // A general line priced from a capability-specific price takes that capability.
-      const catalogItemId = (lineItem as string | undefined) ?? priceRef?.catalogItemId;
+      // Capability identity: omitted keeps the stored binding (never re-derived from a new
+      // price), an explicit value replaces it, null removes it. Only a brand-new line with
+      // no stated capability takes the capability of a capability-specific price.
+      let catalogItemId: string | undefined;
+      if (lineItem === null) {
+        if (priceRef?.catalogItemId)
+          reject(
+            ctx,
+            `price ${priceRef.priceBookItemId} is specific to ${priceRef.catalogItemId}; a line without a capability needs a general price`,
+            id,
+          );
+        catalogItemId = undefined;
+      } else if (lineItem !== undefined) catalogItemId = lineItem as string;
+      else if (prev) catalogItemId = prev.catalogItemId;
+      else catalogItemId = priceRef?.catalogItemId;
       const px = data["priceException"] as
         { rationale: string; permits: ("applicability" | "expired")[] } | undefined;
       if (px && !priceRef) reject(ctx, "a price exception applies to a published price", id);
@@ -1054,6 +1068,8 @@ export const proposalStudio: ProposalStudioService = {
       if (o) record["override"] = o;
       if (dd) record["discount"] = dd;
       if ((ov && !sameOv) || (dc && !sameDc)) action = "proposal.override";
+      if (prev && (prev.catalogItemId ?? null) !== (catalogItemId ?? null))
+        action = "proposal.capability";
       if (px && !samePx) action = "proposal.price_exception";
     }
     if (kind === "taxes") action = "proposal.tax";
@@ -1274,7 +1290,7 @@ export const proposalStudio: ProposalStudioService = {
       revision: p.revision,
       createdAt: at,
       createdBy: ctx.user.id,
-      contentHash: materialHash(p, p.source, ws),
+      contentHash: materialHash(p, p.source, ws, h),
       document: deepFreeze(buildProposalDocument(p, ws, h!, book)),
     };
     store.replace("proposalVersions", [...store.table("proposalVersions"), v]);
@@ -1316,7 +1332,7 @@ export const proposalStudio: ProposalStudioService = {
     unchanged(ctx, id, before, "pricing was being checked");
     approver(ctx, id);
     const ws = workspaceOf(p);
-    if (materialHash(p, p.source, ws) !== v.contentHash)
+    if (materialHash(p, p.source, ws, handoffOf(p)) !== v.contentHash)
       reject(ctx, "the draft changed since this version was submitted", id);
     const failing = readinessFailures(p, ws, handoffOf(p), book);
     if (failing.length)
@@ -1407,7 +1423,7 @@ export const proposalStudio: ProposalStudioService = {
       if (!v || v.id !== versionId) return reject(ctx, "issue the current approved version", id);
       if (v.review?.decision !== "approved" || v.supersededAt || v.issue)
         reject(ctx, "this exact version is not approved", id);
-      if (materialHash(p, p.source, workspaceOf(p)) !== v.contentHash)
+      if (materialHash(p, p.source, workspaceOf(p), handoffOf(p)) !== v.contentHash)
         reject(ctx, "the draft changed after approval; resubmit for review", id);
       if (!handoffOf(p)) reject(ctx, "source solution snapshot is missing", id);
       return { p, v };
