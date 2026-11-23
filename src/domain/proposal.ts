@@ -111,7 +111,11 @@ export const TRACKS: Record<ProposalTrack, TrackRule> = {
     kind: "partner",
     pricing: "proposed_terms",
     partnerTerms: true,
-    sections: withAfter(withAfter(BASE, "proposed_solution", "collaboration_model"), "responsibilities", "commercials"),
+    sections: withAfter(
+      withAfter(BASE, "proposed_solution", "collaboration_model"),
+      "responsibilities",
+      "commercials",
+    ),
     required: ["executive_summary", "collaboration_model", "next_steps"],
     disclosure:
       "Commissions, revenue shares, exclusivity and territories are proposed terms only and are not binding until separately agreed.",
@@ -121,7 +125,11 @@ export const TRACKS: Record<ProposalTrack, TrackRule> = {
     kind: "partner",
     pricing: "negotiated",
     partnerTerms: true,
-    sections: withAfter(withAfter(BASE, "proposed_solution", "collaboration_model"), "responsibilities", "commercials"),
+    sections: withAfter(
+      withAfter(BASE, "proposed_solution", "collaboration_model"),
+      "responsibilities",
+      "commercials",
+    ),
     required: ["executive_summary", "collaboration_model", "integration_ai", "next_steps"],
     disclosure:
       "Exploratory collaboration proposal. Economics are open for negotiation; nothing here is an agreed partnership.",
@@ -206,7 +214,11 @@ export function draftSections(
   at: ISODate,
 ): ContentSection[] {
   const a = h.sourceAssessment;
-  const bullets = (xs: string[]) => xs.filter(Boolean).map((x) => `• ${x}`).join("\n");
+  const bullets = (xs: string[]) =>
+    xs
+      .filter(Boolean)
+      .map((x) => `• ${x}`)
+      .join("\n");
   const imported: Partial<Record<ContentKey, string>> = {
     cover: `${title}\nPrepared for ${h.solution.subjectName}`,
     executive_summary: h.overview.executiveSummary,
@@ -221,14 +233,19 @@ export function draftSections(
     challenges: bullets(h.needs.map((n) => n.source.label)),
     proposed_solution: bullets(recLive(h).map((r) => `${r.title} — ${r.rationale}`)),
     benefits: bullets(
-      h.values.map((v) => (v.estimate ? `${v.description} (estimate, ${v.estimate.source})` : v.description)),
+      h.values.map((v) =>
+        v.estimate ? `${v.description} (estimate, ${v.estimate.source})` : v.description,
+      ),
     ),
     integration_ai: bullets([
       ...h.integrations.map((i) => `${i.systemName}: ${FEASIBILITY[i.feasibility]}`),
       ...h.aiDesigns.map((d) => `AI: ${d.intent || "conversational design"} (${d.mode})`),
     ]),
     implementation: bullets(
-      h.roadmap.map((r) => `${r.stage}: ${r.deliverables} (indicative${r.indicativeDuration ? `, ${r.indicativeDuration}` : ""})`),
+      h.roadmap.map(
+        (r) =>
+          `${r.stage}: ${r.deliverables} (indicative${r.indicativeDuration ? `, ${r.indicativeDuration}` : ""})`,
+      ),
     ),
     assumptions: bullets([h.overview.assumptions, h.overview.constraints]),
   };
@@ -260,7 +277,10 @@ export function simulatedDraft(h: SolutionHandoffSnapshot, key: ContentKey): str
       return `DRAFT — review before use.\n${recs.map((r) => `• ${r.title}: ${r.expectedOutcome || "acceptance criterion to be agreed"}`).join("\n")}`;
     case "responsibilities":
       return `DRAFT — review before use.\n${recs
-        .map((r) => `• ${r.title}: Aurumi — ${r.responsibilities.aurumi || "TBD"}; customer — ${r.responsibilities.customer || "TBD"}`)
+        .map(
+          (r) =>
+            `• ${r.title}: Aurumi — ${r.responsibilities.aurumi || "TBD"}; customer — ${r.responsibilities.customer || "TBD"}`,
+        )
         .join("\n")}`;
     default:
       return `DRAFT — review before use. Summarise ${CONTENT_TITLES[key].toLowerCase()} from the approved solution.`;
@@ -277,7 +297,11 @@ export const DELIVERABLE_CLASSES = {
   not_included: "Not included",
 } as const;
 export type DeliverableClass = keyof typeof DELIVERABLE_CLASSES;
-export const INCLUSION = { included: "Included", optional: "Optional", excluded: "Excluded" } as const;
+export const INCLUSION = {
+  included: "Included",
+  optional: "Optional",
+  excluded: "Excluded",
+} as const;
 export const PARTIES = {
   aurumi: "Aurumi",
   customer: "Customer",
@@ -321,7 +345,9 @@ export function classifyDeliverable(
       reasons: ["Source recommendation is not in the approved solution snapshot"],
     };
   const reasons: string[] = [];
-  const ev = r.evidenceRefs.map((e) => h.sourceAssessment.evidence.find((x) => x.id === e.evidenceId));
+  const ev = r.evidenceRefs.map((e) =>
+    h.sourceAssessment.evidence.find((x) => x.id === e.evidenceId),
+  );
   const evidence = !ev.length
     ? "none"
     : ev.some((e) => e?.verification.state === "verified")
@@ -334,14 +360,22 @@ export function classifyDeliverable(
   else if (r.availability === "available") classification = "available_verified";
   else if (r.availability === "conditional") classification = "conditional";
   else classification = "planned_custom";
-  if (r.availability === "conditional") reasons.push("Catalog readiness is conditional (beta / not fully validated)");
+  if (r.availability === "conditional")
+    reasons.push("Catalog readiness is conditional (beta / not fully validated)");
   if (r.availability === "unsupported") reasons.push("Catalog does not support this capability");
-  if (r.availability === "proposed") reasons.push("Proposed / future development — not available today");
+  if (r.availability === "proposed")
+    reasons.push("Proposed / future development — not available today");
   const items = new Set(r.catalogRefs.map((c) => c.itemId));
   for (const i of h.integrations) {
     const c = i.proposal.catalogRef?.itemId;
-    if (c && items.has(c) && (SPECULATIVE.includes(i.feasibility) || i.feasibility === "not_supported")) {
-      reasons.push(`Integration with ${i.systemName} is ${FEASIBILITY[i.feasibility].toLowerCase()}`);
+    if (
+      c &&
+      items.has(c) &&
+      (SPECULATIVE.includes(i.feasibility) || i.feasibility === "not_supported")
+    ) {
+      reasons.push(
+        `Integration with ${i.systemName} is ${FEASIBILITY[i.feasibility].toLowerCase()}`,
+      );
       if (classification === "available_verified") classification = "conditional";
     }
   }
@@ -350,7 +384,8 @@ export function classifyDeliverable(
   if (evidence === "unverified") reasons.push("Supporting evidence is unverified");
   const needsQualification =
     d.inclusion !== "excluded" &&
-    (["conditional", "planned_custom", "third_party"].includes(classification) || reasons.length > 0);
+    (["conditional", "planned_custom", "third_party"].includes(classification) ||
+      reasons.length > 0);
   return {
     recommendationTitle: r.title,
     classification,
@@ -388,7 +423,11 @@ export interface RiskItem extends BaseRecord {
   resolution: keyof typeof RISK_RESOLUTION;
   qualification: string;
   /** Present when imported from the approved solution; such risks can't be deleted or downgraded. */
-  source?: { kind: "integration" | "dependency" | "outstanding_question" | "unverified_evidence"; id: string; label: string };
+  source?: {
+    kind: "integration" | "dependency" | "outstanding_question" | "unverified_evidence";
+    id: string;
+    label: string;
+  };
 }
 export const SEVERITY_RANK: Record<Severity, number> = { low: 0, medium: 1, high: 2 };
 export function sourcedRisks(
@@ -616,7 +655,10 @@ export function lineAmount(l: CommercialLine): LineAmount {
     counted: basis !== "none",
   };
 }
-export function calculateCommercials(lines: CommercialLine[], taxes: TaxConfig[]): CommercialSummary {
+export function calculateCommercials(
+  lines: CommercialLine[],
+  taxes: TaxConfig[],
+): CommercialSummary {
   const out: Record<ID, LineAmount> = {};
   const by = new Map<string, CurrencyTotals & { c: Record<Recurrence, number> }>();
   const warnings: string[] = [];
@@ -661,17 +703,25 @@ export function calculateCommercials(lines: CommercialLine[], taxes: TaxConfig[]
         monthly: fromCents(t.discounts.monthly),
         annual: fromCents(t.discounts.annual),
       },
-      tax: { one_time: fromCents(t.tax.one_time), monthly: fromCents(t.tax.monthly), annual: fromCents(t.tax.annual) },
+      tax: {
+        one_time: fromCents(t.tax.one_time),
+        monthly: fromCents(t.tax.monthly),
+        annual: fromCents(t.tax.annual),
+      },
       initialCost: fromCents(c.one_time + t.tax.one_time),
     };
     return res;
   });
   const mixedCurrencies = totals.length > 1;
   if (mixedCurrencies)
-    warnings.push(`Amounts are in ${totals.map((t) => t.currency).join(" and ")}; totals are shown per currency and never converted.`);
+    warnings.push(
+      `Amounts are in ${totals.map((t) => t.currency).join(" and ")}; totals are shown per currency and never converted.`,
+    );
   totals.forEach((t) => {
     if (t.monthly && t.annual)
-      warnings.push(`${t.currency}: monthly and annual charges are shown separately, not combined.`);
+      warnings.push(
+        `${t.currency}: monthly and annual charges are shown separately, not combined.`,
+      );
   });
   taxes
     .filter((x) => !totals.some((t) => t.currency === x.currency))
@@ -716,7 +766,15 @@ export function priceRefProblem(ref: PriceRef, book: PriceBook): string | null {
 
 // ---------- Workspace ----------
 export interface ProposalComment extends BaseRecord {
-  kind: "comment" | "submitted" | "changes_requested" | "approved" | "issued" | "revised" | "rebased" | "invalidated";
+  kind:
+    | "comment"
+    | "submitted"
+    | "changes_requested"
+    | "approved"
+    | "issued"
+    | "revised"
+    | "rebased"
+    | "invalidated";
   body: string;
 }
 export interface ProposalRecipient {
@@ -738,14 +796,26 @@ export interface ProposalWorkspace extends BaseRecord {
   milestones: Milestone[];
   options: ProposalOption[];
   comments: ProposalComment[];
-  revisions: { revision: number; source: ProposalSource; archivedAt: ISODate; archivedBy: ID; reason: string; workspace: Omit<ProposalWorkspace, "revisions" | "comments"> }[];
+  revisions: {
+    revision: number;
+    source: ProposalSource;
+    archivedAt: ISODate;
+    archivedBy: ID;
+    reason: string;
+    workspace: Omit<ProposalWorkspace, "revisions" | "comments">;
+  }[];
   reviewerId?: ID;
 }
 export type StudioProposal = Proposal & { source: ProposalSource; revision: number };
-export const isStudio = (p: Proposal): p is StudioProposal => !!(p as Partial<StudioProposal>).source;
+export const isStudio = (p: Proposal): p is StudioProposal =>
+  !!(p as Partial<StudioProposal>).source;
 
 /** Content that a review vouches for; any change invalidates an approval. */
-export function materialHash(p: Pick<Proposal, "title" | "track">, source: ProposalSource, ws: ProposalWorkspace): string {
+export function materialHash(
+  p: Pick<Proposal, "title" | "track">,
+  source: ProposalSource,
+  ws: ProposalWorkspace,
+): string {
   const strip = <T extends object>(xs: T[]) =>
     xs.map((x) => {
       const { updatedAt: _a, updatedBy: _b, ...rest } = x as Record<string, unknown>;
@@ -805,7 +875,13 @@ export function proposalReadiness(
   ]);
   const claimTexts: [string, string][] = [
     ...ws.sections.map((s) => [s.title, s.body] as [string, string]),
-    ...ws.deliverables.map((d) => [`Deliverable ${d.description.slice(0, 30)}`, `${d.description} ${d.qualification}`] as [string, string]),
+    ...ws.deliverables.map(
+      (d) =>
+        [`Deliverable ${d.description.slice(0, 30)}`, `${d.description} ${d.qualification}`] as [
+          string,
+          string,
+        ],
+    ),
     ...ws.options.map((o) => [`Option ${o.label}`, o.summary] as [string, string]),
   ];
   add(
@@ -823,11 +899,18 @@ export function proposalReadiness(
       const info = classifyDeliverable(d, h);
       const out: string[] = [];
       if (d.inclusion !== "excluded" && info.availability === "missing")
-        out.push(`${d.description || d.recommendationId}: source recommendation missing — exclude or remove it`);
-      if (d.inclusion !== "excluded" && h?.recommendations.find((r) => r.id === d.recommendationId)?.status === "not_recommended")
+        out.push(
+          `${d.description || d.recommendationId}: source recommendation missing — exclude or remove it`,
+        );
+      if (
+        d.inclusion !== "excluded" &&
+        h?.recommendations.find((r) => r.id === d.recommendationId)?.status === "not_recommended"
+      )
         out.push(`${d.description}: not recommended in the approved solution`);
       if (info.needsQualification && !d.qualification.trim())
-        out.push(`${d.description || info.recommendationTitle}: add a visible qualification (${info.reasons[0] ?? DELIVERABLE_CLASSES[info.classification]})`);
+        out.push(
+          `${d.description || info.recommendationTitle}: add a visible qualification (${info.reasons[0] ?? DELIVERABLE_CLASSES[info.classification]})`,
+        );
       if (d.inclusion !== "excluded" && !d.acceptanceCriterion.trim())
         out.push(`${d.description || info.recommendationTitle}: add an acceptance criterion`);
       return out;
@@ -850,17 +933,23 @@ export function proposalReadiness(
       ["third_party", "custom_development"].includes(l.category) &&
       (!l.quoted || !l.quoteReference.trim())
     )
-      comm.push(`${name}: priced third-party/custom items need a quoted amount and quote reference`);
+      comm.push(
+        `${name}: priced third-party/custom items need a quoted amount and quote reference`,
+      );
     if (l.classification === "estimated" && !l.priceRef && !l.estimate)
       comm.push(`${name}: estimated lines need an amount and its basis`);
     if (l.priceRef) {
       const prob = priceRefProblem(l.priceRef, book);
       if (prob) comm.push(prob);
     }
-    if (l.override && !l.override.authorization) comm.push(`${name}: manual price override awaits approval`);
-    if (l.category === "discount" && !l.discount?.authorization) comm.push(`${name}: discount awaits approval`);
+    if (l.override && !l.override.authorization)
+      comm.push(`${name}: manual price override awaits approval`);
+    if (l.category === "discount" && !l.discount?.authorization)
+      comm.push(`${name}: discount awaits approval`);
   }
-  ws.taxes.filter((t) => !t.source.trim()).forEach((t) => comm.push(`Tax ${t.label}: state its source`));
+  ws.taxes
+    .filter((t) => !t.source.trim())
+    .forEach((t) => comm.push(`Tax ${t.label}: state its source`));
   add("commercials", "Commercials consistent and authorized", comm);
   add("risks", "Material risks resolved or accepted with qualification", [
     ...ws.risks
@@ -871,7 +960,12 @@ export function proposalReadiness(
       .map((r) => `${r.description.slice(0, 60)}: accepted risks need a qualification`),
     ...(h
       ? sourcedRisks(h)
-          .filter((s) => !ws.risks.some((r) => r.source?.kind === s.source?.kind && r.source?.id === s.source?.id))
+          .filter(
+            (s) =>
+              !ws.risks.some(
+                (r) => r.source?.kind === s.source?.kind && r.source?.id === s.source?.id,
+              ),
+          )
           .map((s) => `Source risk missing from proposal: ${s.description.slice(0, 60)}`)
       : []),
   ]);
@@ -890,11 +984,26 @@ export function proposalReadiness(
     if (ws.options.filter((o) => o.kind === "recommended").length !== 1)
       opt.push("Mark exactly one recommended option");
     for (const o of ws.options) {
-      if (o.deliverableIds.some((d) => !ws.deliverables.some((x) => x.id === d && x.inclusion !== "excluded")))
+      if (
+        o.deliverableIds.some(
+          (d) => !ws.deliverables.some((x) => x.id === d && x.inclusion !== "excluded"),
+        )
+      )
         opt.push(`${o.label}: references a deliverable that is missing or excluded`);
       if (o.lineIds.some((l) => !ws.lines.some((x) => x.id === l)))
         opt.push(`${o.label}: references a removed commercial line`);
-      if (o.deliverableIds.some((d) => classifyDeliverable(ws.deliverables.find((x) => x.id === d) ?? { recommendationId: "", inclusion: "excluded" }, h).availability === "missing"))
+      if (
+        o.deliverableIds.some(
+          (d) =>
+            classifyDeliverable(
+              ws.deliverables.find((x) => x.id === d) ?? {
+                recommendationId: "",
+                inclusion: "excluded",
+              },
+              h,
+            ).availability === "missing",
+        )
+      )
         opt.push(`${o.label}: references functionality not in the approved solution`);
     }
   }
@@ -909,7 +1018,9 @@ export const PROPOSAL_VERSION_SCHEMA = "aurumi.cia.proposal-version/1" as const;
 export const PROPOSAL_TEMPLATE_VERSION = "cia-proposal-template/1" as const;
 export interface ProposalDocument {
   readonly templateVersion: typeof PROPOSAL_TEMPLATE_VERSION;
-  readonly proposal: Readonly<Pick<Proposal, "id" | "title" | "track" | "ownerId" | "assignedUserIds" | "organizationId">>;
+  readonly proposal: Readonly<
+    Pick<Proposal, "id" | "title" | "track" | "ownerId" | "assignedUserIds" | "organizationId">
+  >;
   readonly trackLabel: string;
   readonly disclosure: string;
   readonly recipient: Readonly<ProposalRecipient>;
@@ -945,7 +1056,13 @@ export interface ProposalVersionRecord {
   readonly contentHash: string;
   readonly document: ProposalDocument;
   /** Write-once review decision for this exact version. */
-  review?: { decision: "approved" | "changes_requested"; by: ID; at: ISODate; comment: string; acknowledged: ID[] };
+  review?: {
+    decision: "approved" | "changes_requested";
+    by: ID;
+    at: ISODate;
+    comment: string;
+    acknowledged: ID[];
+  };
   /** Write-once issue record. */
   issue?: { issuedAt: ISODate; issuedBy: ID; effectiveAt: ISODate; expiresAt: ISODate };
   /** Set when a later change makes this version no longer current. */
@@ -953,7 +1070,7 @@ export interface ProposalVersionRecord {
 }
 export type VersionState = "submitted" | "approved" | "changes_requested" | "issued" | "superseded";
 export const versionState = (v: ProposalVersionRecord): VersionState =>
-  v.issue ? "issued" : v.supersededAt ? "superseded" : v.review?.decision ?? "submitted";
+  v.issue ? "issued" : v.supersededAt ? "superseded" : (v.review?.decision ?? "submitted");
 
 // ---------- Shares ----------
 export const RESPONSES = {
@@ -983,5 +1100,54 @@ export interface ProposalShareRecord {
   channelReference: string;
   simulated: true;
 }
-export const effectiveResponse = (s: ProposalShareRecord, now = new Date().toISOString()): ShareResponse =>
-  (s.response === "pending" || s.response === "viewed") && s.expiresAt < now ? "expired" : s.response;
+export const effectiveResponse = (
+  s: ProposalShareRecord,
+  now = new Date().toISOString(),
+): ShareResponse =>
+  (s.response === "pending" || s.response === "viewed") && s.expiresAt < now
+    ? "expired"
+    : s.response;
+
+export function buildProposalDocument(
+  p: StudioProposal,
+  ws: ProposalWorkspace,
+  h: SolutionHandoffSnapshot,
+  book: PriceBook,
+): ProposalDocument {
+  const summary = calculateCommercials(ws.lines, ws.taxes);
+  return {
+    templateVersion: PROPOSAL_TEMPLATE_VERSION,
+    proposal: {
+      id: p.id,
+      title: p.title,
+      track: p.track,
+      ownerId: p.ownerId,
+      assignedUserIds: p.assignedUserIds,
+      organizationId: p.organizationId,
+    },
+    trackLabel: TRACKS[p.track].label,
+    disclosure: TRACKS[p.track].disclosure,
+    recipient: structuredClone(ws.recipient),
+    validityDays: ws.validityDays,
+    commercialNotes: ws.commercialNotes,
+    source: structuredClone(p.source),
+    solution: structuredClone(h),
+    sections: structuredClone(ws.sections),
+    deliverables: ws.deliverables.map((d) => ({
+      ...structuredClone(d),
+      info: classifyDeliverable(d, h),
+    })),
+    commercials: {
+      priceBookVersion: book.priceBookVersion,
+      priceBookRetrievedAt: book.retrievedAt,
+      illustrative: true,
+      lines: ws.lines.map((l) => ({ ...structuredClone(l), computed: summary.lines[l.id]! })),
+      taxes: structuredClone(ws.taxes),
+      summary,
+      partnerTerms: structuredClone(ws.partnerTerms),
+    },
+    risks: structuredClone(ws.risks),
+    milestones: structuredClone(ws.milestones),
+    options: structuredClone(ws.options),
+  };
+}

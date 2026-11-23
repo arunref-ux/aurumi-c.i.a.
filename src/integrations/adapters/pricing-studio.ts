@@ -8,11 +8,7 @@ import type { AdapterResult } from "./types";
 
 export type PriceRecurrence = "one_time" | "monthly" | "annual";
 export type PriceCategory =
-  | "aurumi_subscription"
-  | "connector_addon"
-  | "implementation"
-  | "training"
-  | "advisory";
+  "aurumi_subscription" | "connector_addon" | "implementation" | "training" | "advisory";
 export interface PriceBookItem {
   id: string;
   name: string;

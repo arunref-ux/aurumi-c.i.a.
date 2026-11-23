@@ -28,7 +28,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           >
             <item.icon className={cn("size-4", active ? "text-sidebar-primary" : "opacity-70")} />
             <span className="flex-1">{item.label}</span>
-            {item.phase > 3 && (
+            {item.phase > 4 && (
               <span className="text-[10px] uppercase tracking-wider opacity-50">P{item.phase}</span>
             )}
           </Link>

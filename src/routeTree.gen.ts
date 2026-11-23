@@ -12,10 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EngagementsRouteImport } from './routes/engagements'
 import { Route as NetworkRouteImport } from './routes/network'
-import { Route as ProposalsRouteImport } from './routes/proposals'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AssessmentsIndexRouteImport } from './routes/assessments.index'
 import { Route as AssessmentsAssessmentIdRouteImport } from './routes/assessments.$assessmentId'
+import { Route as ProposalsIndexRouteImport } from './routes/proposals.index'
+import { Route as ProposalsProposalIdRouteImport } from './routes/proposals.$proposalId'
 import { Route as SolutionsIndexRouteImport } from './routes/solutions.index'
 import { Route as SolutionsSolutionIdRouteImport } from './routes/solutions.$solutionId'
 
@@ -34,11 +35,6 @@ const NetworkRoute = NetworkRouteImport.update({
   path: '/network',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProposalsRoute = ProposalsRouteImport.update({
-  id: '/proposals',
-  path: '/proposals',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -52,6 +48,16 @@ const AssessmentsIndexRoute = AssessmentsIndexRouteImport.update({
 const AssessmentsAssessmentIdRoute = AssessmentsAssessmentIdRouteImport.update({
   id: '/assessments/$assessmentId',
   path: '/assessments/$assessmentId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProposalsIndexRoute = ProposalsIndexRouteImport.update({
+  id: '/proposals/',
+  path: '/proposals/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProposalsProposalIdRoute = ProposalsProposalIdRouteImport.update({
+  id: '/proposals/$proposalId',
+  path: '/proposals/$proposalId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SolutionsIndexRoute = SolutionsIndexRouteImport.update({
@@ -69,22 +75,24 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/engagements': typeof EngagementsRoute
   '/network': typeof NetworkRoute
-  '/proposals': typeof ProposalsRoute
   '/settings': typeof SettingsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
+  '/proposals/$proposalId': typeof ProposalsProposalIdRoute
   '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments/': typeof AssessmentsIndexRoute
+  '/proposals/': typeof ProposalsIndexRoute
   '/solutions/': typeof SolutionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/engagements': typeof EngagementsRoute
   '/network': typeof NetworkRoute
-  '/proposals': typeof ProposalsRoute
   '/settings': typeof SettingsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
+  '/proposals/$proposalId': typeof ProposalsProposalIdRoute
   '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments': typeof AssessmentsIndexRoute
+  '/proposals': typeof ProposalsIndexRoute
   '/solutions': typeof SolutionsIndexRoute
 }
 export interface FileRoutesById {
@@ -92,11 +100,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/engagements': typeof EngagementsRoute
   '/network': typeof NetworkRoute
-  '/proposals': typeof ProposalsRoute
   '/settings': typeof SettingsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
+  '/proposals/$proposalId': typeof ProposalsProposalIdRoute
   '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments/': typeof AssessmentsIndexRoute
+  '/proposals/': typeof ProposalsIndexRoute
   '/solutions/': typeof SolutionsIndexRoute
 }
 export interface FileRouteTypes {
@@ -105,33 +114,36 @@ export interface FileRouteTypes {
     | '/'
     | '/engagements'
     | '/network'
-    | '/proposals'
     | '/settings'
     | '/assessments/$assessmentId'
+    | '/proposals/$proposalId'
     | '/solutions/$solutionId'
     | '/assessments/'
+    | '/proposals/'
     | '/solutions/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/engagements'
     | '/network'
-    | '/proposals'
     | '/settings'
     | '/assessments/$assessmentId'
+    | '/proposals/$proposalId'
     | '/solutions/$solutionId'
     | '/assessments'
+    | '/proposals'
     | '/solutions'
   id:
     | '__root__'
     | '/'
     | '/engagements'
     | '/network'
-    | '/proposals'
     | '/settings'
     | '/assessments/$assessmentId'
+    | '/proposals/$proposalId'
     | '/solutions/$solutionId'
     | '/assessments/'
+    | '/proposals/'
     | '/solutions/'
   fileRoutesById: FileRoutesById
 }
@@ -139,11 +151,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EngagementsRoute: typeof EngagementsRoute
   NetworkRoute: typeof NetworkRoute
-  ProposalsRoute: typeof ProposalsRoute
   SettingsRoute: typeof SettingsRoute
   AssessmentsAssessmentIdRoute: typeof AssessmentsAssessmentIdRoute
+  ProposalsProposalIdRoute: typeof ProposalsProposalIdRoute
   SolutionsSolutionIdRoute: typeof SolutionsSolutionIdRoute
   AssessmentsIndexRoute: typeof AssessmentsIndexRoute
+  ProposalsIndexRoute: typeof ProposalsIndexRoute
   SolutionsIndexRoute: typeof SolutionsIndexRoute
 }
 
@@ -170,13 +183,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NetworkRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/proposals': {
-      id: '/proposals'
-      path: '/proposals'
-      fullPath: '/proposals'
-      preLoaderRoute: typeof ProposalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -196,6 +202,20 @@ declare module '@tanstack/react-router' {
       path: '/assessments/$assessmentId'
       fullPath: '/assessments/$assessmentId'
       preLoaderRoute: typeof AssessmentsAssessmentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proposals/': {
+      id: '/proposals/'
+      path: '/proposals'
+      fullPath: '/proposals/'
+      preLoaderRoute: typeof ProposalsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proposals/$proposalId': {
+      id: '/proposals/$proposalId'
+      path: '/proposals/$proposalId'
+      fullPath: '/proposals/$proposalId'
+      preLoaderRoute: typeof ProposalsProposalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/solutions/': {
@@ -219,11 +239,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EngagementsRoute: EngagementsRoute,
   NetworkRoute: NetworkRoute,
-  ProposalsRoute: ProposalsRoute,
   SettingsRoute: SettingsRoute,
   AssessmentsAssessmentIdRoute: AssessmentsAssessmentIdRoute,
+  ProposalsProposalIdRoute: ProposalsProposalIdRoute,
   SolutionsSolutionIdRoute: SolutionsSolutionIdRoute,
   AssessmentsIndexRoute: AssessmentsIndexRoute,
+  ProposalsIndexRoute: ProposalsIndexRoute,
   SolutionsIndexRoute: SolutionsIndexRoute,
 }
 export const routeTree = rootRouteImport

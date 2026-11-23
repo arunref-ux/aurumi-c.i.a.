@@ -20,7 +20,11 @@ export async function approvedSolution() {
 /** A proposal that passes every readiness check for its track. */
 export async function readyProposal(track: ProposalTrack = "tenant_commercial") {
   const base = await approvedSolution();
-  const p = await P.create(PRO, { solutionSnapshotId: base.handoff.id, track, title: "Collections proposal" });
+  const p = await P.create(PRO, {
+    solutionSnapshotId: base.handoff.id,
+    track,
+    title: "Collections proposal",
+  });
   let v = await P.get(PRO, p.id);
   const d = v.workspace.deliverables[0]!;
   await P.upsertChild(PRO, p.id, "deliverables", {
@@ -32,7 +36,14 @@ export async function readyProposal(track: ProposalTrack = "tenant_commercial") 
     responsibleParty: "aurumi",
     qualification: "Depends on validating the Tally connector for this edition",
   });
-  for (const key of ["executive_summary", "next_steps", "commercials", "assumptions", "collaboration_model", "integration_ai"] as const)
+  for (const key of [
+    "executive_summary",
+    "next_steps",
+    "commercials",
+    "assumptions",
+    "collaboration_model",
+    "integration_ai",
+  ] as const)
     if (v.workspace.sections.some((s) => s.key === key))
       await P.saveSection(PRO, p.id, key, { body: `${key} written by the professional` });
   for (const r of v.workspace.risks)

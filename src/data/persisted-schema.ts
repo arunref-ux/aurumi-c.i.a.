@@ -191,7 +191,16 @@ const ROW = {
     id,
     organizationId: str,
     status: z
-      .enum(["draft", "in_review", "changes_requested", "approved", "shared", "accepted", "declined", "expired"])
+      .enum([
+        "draft",
+        "in_review",
+        "changes_requested",
+        "approved",
+        "shared",
+        "accepted",
+        "declined",
+        "expired",
+      ])
       .optional(),
     /** Proposal Studio records carry a pinned approved-solution source. */
     source: z
@@ -214,7 +223,13 @@ const ROW = {
     validityDays: z.number().int().positive(),
     commercialNotes: str,
     reviewerId: optStr,
-    revisions: z.array(z.looseObject({ revision: z.number(), source: z.looseObject({ solutionSnapshotId: id }), workspace: z.looseObject({}) })),
+    revisions: z.array(
+      z.looseObject({
+        revision: z.number(),
+        source: z.looseObject({ solutionSnapshotId: id }),
+        workspace: z.looseObject({}),
+      }),
+    ),
   }),
   /** Immutable: invalid proposal versions are quarantined whole. */
   proposalVersions: z.looseObject({
@@ -237,13 +252,23 @@ const ROW = {
       commercials: z.looseObject({
         priceBookVersion: str,
         lines: z.array(z.looseObject({ id, currency: str, quantity: z.number().finite() })),
-        summary: z.looseObject({ totals: z.array(z.looseObject({ currency: str, oneTime: z.number().finite() })) }),
+        summary: z.looseObject({
+          totals: z.array(z.looseObject({ currency: str, oneTime: z.number().finite() })),
+        }),
       }),
     }),
     review: z
-      .looseObject({ decision: z.enum(["approved", "changes_requested"]), by: id, at: str, comment: str, acknowledged: ids })
+      .looseObject({
+        decision: z.enum(["approved", "changes_requested"]),
+        by: id,
+        at: str,
+        comment: str,
+        acknowledged: ids,
+      })
       .optional(),
-    issue: z.looseObject({ issuedAt: str, issuedBy: id, effectiveAt: str, expiresAt: str }).optional(),
+    issue: z
+      .looseObject({ issuedAt: str, issuedBy: id, effectiveAt: str, expiresAt: str })
+      .optional(),
     supersededAt: optStr,
   }),
   proposalShares: z.looseObject({
@@ -252,7 +277,11 @@ const ROW = {
     proposalId: id,
     versionId: id,
     versionNumber: z.number().int().positive(),
-    recipient: z.looseObject({ name: str, email: z.string().regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/), organization: str }),
+    recipient: z.looseObject({
+      name: str,
+      email: z.string().regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/),
+      organization: str,
+    }),
     sharedAt: str,
     sharedBy: id,
     expiresAt: str,
@@ -423,7 +452,13 @@ const SOLUTION_CHILD = {
 const auth = z.looseObject({ approvedBy: id, approvedAt: str }).optional();
 const amount = z.number().finite().nonnegative();
 const PROPOSAL_CHILD = {
-  sections: z.looseObject({ key: str, title: str, body: str, origin: z.enum(["imported", "authored", "ai_draft"]), reviewed: z.boolean() }),
+  sections: z.looseObject({
+    key: str,
+    title: str,
+    body: str,
+    origin: z.enum(["imported", "authored", "ai_draft"]),
+    reviewed: z.boolean(),
+  }),
   deliverables: z.looseObject({
     ...audited,
     recommendationId: id,
@@ -445,7 +480,13 @@ const PROPOSAL_CHILD = {
     recurrence: z.enum(["one_time", "monthly", "annual"]),
     currency: z.string().regex(/^[A-Z]{3}$/),
     priceRef: z
-      .looseObject({ priceBookItemId: id, priceBookVersion: str, currency: str, recurrence: str, publishedAmount: amount })
+      .looseObject({
+        priceBookItemId: id,
+        priceBookVersion: str,
+        currency: str,
+        recurrence: str,
+        publishedAmount: amount,
+      })
       .optional(),
     estimate: z.looseObject({ unitAmount: amount, basis: str }).optional(),
     quoted: z.looseObject({ unitAmount: amount }).optional(),
@@ -453,11 +494,44 @@ const PROPOSAL_CHILD = {
     discount: z.looseObject({ amount, rationale: str, authorization: auth }).optional(),
     quoteReference: str,
   }),
-  taxes: z.looseObject({ ...audited, label: str, ratePercent: z.number().finite().min(0).max(100), appliesTo: str, currency: str, source: str }),
-  partnerTerms: z.looseObject({ ...audited, kind: str, description: str, status: z.enum(["proposed", "approved"]), authorization: auth }),
-  risks: z.looseObject({ ...audited, category: str, description: str, severity: z.enum(["high", "medium", "low"]), resolution: z.enum(["open", "resolved", "accepted"]), qualification: str }),
-  milestones: z.looseObject({ ...audited, title: str, deliverableIds: ids, paymentTrigger: str, commitment: z.literal("indicative") }),
-  options: z.looseObject({ ...audited, kind: str, label: str, summary: str, deliverableIds: ids, lineIds: ids }),
+  taxes: z.looseObject({
+    ...audited,
+    label: str,
+    ratePercent: z.number().finite().min(0).max(100),
+    appliesTo: str,
+    currency: str,
+    source: str,
+  }),
+  partnerTerms: z.looseObject({
+    ...audited,
+    kind: str,
+    description: str,
+    status: z.enum(["proposed", "approved"]),
+    authorization: auth,
+  }),
+  risks: z.looseObject({
+    ...audited,
+    category: str,
+    description: str,
+    severity: z.enum(["high", "medium", "low"]),
+    resolution: z.enum(["open", "resolved", "accepted"]),
+    qualification: str,
+  }),
+  milestones: z.looseObject({
+    ...audited,
+    title: str,
+    deliverableIds: ids,
+    paymentTrigger: str,
+    commitment: z.literal("indicative"),
+  }),
+  options: z.looseObject({
+    ...audited,
+    kind: str,
+    label: str,
+    summary: str,
+    deliverableIds: ids,
+    lineIds: ids,
+  }),
   comments: z.looseObject({ ...audited, kind: str, body: str }),
 } as const;
 
@@ -477,13 +551,24 @@ function sanitizeChildren(
       continue;
     }
     if (!Array.isArray(list)) {
-      quarantined.push({ table, path: `${table}[${i}].${kind}`, reason: "expected a list", value: list });
+      quarantined.push({
+        table,
+        path: `${table}[${i}].${kind}`,
+        reason: "expected a list",
+        value: list,
+      });
       out[kind] = [];
       continue;
     }
     out[kind] = list.filter((item, j) => {
       const c = schema.safeParse(item);
-      if (!c.success) quarantined.push({ table, path: `${table}[${i}].${kind}[${j}]`, reason: reasonOf(c.error), value: item });
+      if (!c.success)
+        quarantined.push({
+          table,
+          path: `${table}[${i}].${kind}[${j}]`,
+          reason: reasonOf(c.error),
+          value: item,
+        });
       return c.success;
     });
   }
@@ -546,7 +631,9 @@ export function sanitizeTable(
       return void out.push(sw);
     }
     if (table === "proposalWorkspaces")
-      return void out.push(sanitizeChildren(table, i, row as Record<string, unknown>, PROPOSAL_CHILD, quarantined));
+      return void out.push(
+        sanitizeChildren(table, i, row as Record<string, unknown>, PROPOSAL_CHILD, quarantined),
+      );
     if (table !== "workspaces") return void out.push(row);
     // Keep a valid workspace, setting aside only its broken child records.
     const ws = { ...(row as Record<string, unknown>) };

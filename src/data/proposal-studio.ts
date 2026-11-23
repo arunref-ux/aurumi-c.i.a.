@@ -9,6 +9,7 @@ import { z } from "zod";
 import { deepFreeze } from "@/domain/assessment";
 import { AccessDeniedError, can, type Permission } from "@/domain/permissions";
 import {
+  buildProposalDocument,
   calculateCommercials,
   classifyDeliverable,
   draftSections,
@@ -19,7 +20,6 @@ import {
   PRICE_BOOK_CATEGORIES,
   priceRefOf,
   priceRefProblem,
-  PROPOSAL_TEMPLATE_VERSION,
   PROPOSAL_VERSION_SCHEMA,
   proposalReadiness,
   readinessPercent,
@@ -118,6 +118,8 @@ export interface ProposalView {
   versions: ProposalVersionRecord[];
   shares: (ProposalShareRecord & { effective: ShareResponse })[];
   draftHash: string;
+  /** Preview of the working draft as it would be issued. */
+  preview: ProposalDocument | undefined;
   permissions: ProposalPermissions;
   names: Record<ID, string>;
 }
@@ -149,10 +151,17 @@ const MetaInput = z.strictObject({
   validityDays: z.number().int().min(1).max(365).optional(),
   commercialNotes: str.optional(),
   recipient: z
-    .strictObject({ name: z.string().max(200), organization: z.string().max(200), contact: z.string().max(300) })
+    .strictObject({
+      name: z.string().max(200),
+      organization: z.string().max(200),
+      contact: z.string().max(300),
+    })
     .optional(),
 });
-const SectionInput = z.strictObject({ body: z.string().max(20000), reviewed: z.boolean().optional() });
+const SectionInput = z.strictObject({
+  body: z.string().max(20000),
+  reviewed: z.boolean().optional(),
+});
 
 const CHILD = {
   deliverables: z.strictObject({
@@ -183,11 +192,30 @@ const CHILD = {
     quantity: z.number().finite().positive().max(1e6).default(1),
     priceBookItemId: z.string().optional(),
     recurrence: z.enum(["one_time", "monthly", "annual"]).optional(),
-    currency: z.string().trim().regex(/^[A-Z]{3}$/, "Use a 3-letter currency code").optional(),
-    estimate: z.strictObject({ unitAmount: money, basis: z.string().trim().min(1, "State the estimate's basis") }).optional(),
+    currency: z
+      .string()
+      .trim()
+      .regex(/^[A-Z]{3}$/, "Use a 3-letter currency code")
+      .optional(),
+    estimate: z
+      .strictObject({
+        unitAmount: money,
+        basis: z.string().trim().min(1, "State the estimate's basis"),
+      })
+      .optional(),
     quoted: z.strictObject({ unitAmount: money }).optional(),
-    override: z.strictObject({ unitAmount: money, rationale: z.string().trim().min(1, "A price override needs a rationale") }).optional(),
-    discount: z.strictObject({ amount: money.positive(), rationale: z.string().trim().min(1, "A discount needs a rationale") }).optional(),
+    override: z
+      .strictObject({
+        unitAmount: money,
+        rationale: z.string().trim().min(1, "A price override needs a rationale"),
+      })
+      .optional(),
+    discount: z
+      .strictObject({
+        amount: money.positive(),
+        rationale: z.string().trim().min(1, "A discount needs a rationale"),
+      })
+      .optional(),
     quoteReference: str.default(""),
   }),
   taxes: z.strictObject({
@@ -195,7 +223,10 @@ const CHILD = {
     label: z.string().trim().min(1).max(100),
     ratePercent: z.number().finite().min(0).max(100),
     appliesTo: z.enum(["one_time", "recurring", "all"]).default("all"),
-    currency: z.string().trim().regex(/^[A-Z]{3}$/),
+    currency: z
+      .string()
+      .trim()
+      .regex(/^[A-Z]{3}$/),
     source: z.string().trim().min(1, "State where this tax rate comes from (never invented)"),
   }),
   partnerTerms: z.strictObject({
@@ -276,7 +307,9 @@ function parse<S extends z.ZodType>(ctx: Ctx, schema: S, input: unknown, id?: ID
   if (!r.success)
     return reject(
       ctx,
-      r.error.issues.map((i) => (i.path.length ? `${i.path.join(".")}: ` : "") + i.message).join("; "),
+      r.error.issues
+        .map((i) => (i.path.length ? `${i.path.join(".")}: ` : "") + i.message)
+        .join("; "),
       id,
     );
   return r.data;
@@ -285,11 +318,13 @@ const deny = (ctx: Ctx, p: Permission, id?: ID): never => denyWith(ctx, "proposa
 /** Unknown and unauthorized ids look the same. */
 function parent(ctx: Ctx, id: ID, p: Permission): StudioProposal {
   const row = store.table("proposals").find((x) => x.id === id);
-  if (!row || !can(ctx.user, "proposal.read", row) || !can(ctx.user, p, row)) return deny(ctx, p, id);
+  if (!row || !can(ctx.user, "proposal.read", row) || !can(ctx.user, p, row))
+    return deny(ctx, p, id);
   if (!isStudio(row)) throw new LegacyProposalError();
   return row;
 }
-const involved = (ctx: Ctx, p: Proposal) => p.ownerId === ctx.user.id || p.assignedUserIds.includes(ctx.user.id);
+const involved = (ctx: Ctx, p: Proposal) =>
+  p.ownerId === ctx.user.id || p.assignedUserIds.includes(ctx.user.id);
 /** Reviewers may not approve their own work. */
 function approver(ctx: Ctx, id: ID): StudioProposal {
   const p = parent(ctx, id, "proposal.approve");
@@ -298,7 +333,11 @@ function approver(ctx: Ctx, id: ID): StudioProposal {
 }
 function editable(ctx: Ctx, p: StudioProposal) {
   if (!EDITABLE.includes(p.status))
-    reject(ctx, `proposal is ${p.status.replace("_", " ")}; revise it to create a new working draft`, p.id);
+    reject(
+      ctx,
+      `proposal is ${p.status.replace("_", " ")}; revise it to create a new working draft`,
+      p.id,
+    );
 }
 function workspaceOf(p: StudioProposal): ProposalWorkspace {
   const ws = store.table("proposalWorkspaces").find((w) => w.proposalId === p.id);
@@ -318,14 +357,22 @@ const versionsOf = (id: ID) =>
     .filter((v) => v.proposalId === id)
     .sort((a, b) => b.versionNumber - a.versionNumber);
 const currentVersion = (p: Proposal) =>
-  p.currentVersionId ? store.table("proposalVersions").find((v) => v.id === p.currentVersionId) : undefined;
+  p.currentVersionId
+    ? store.table("proposalVersions").find((v) => v.id === p.currentVersionId)
+    : undefined;
 function patchVersion(id: ID, patch: Partial<ProposalVersionRecord>) {
   store.replace(
     "proposalVersions",
     store.table("proposalVersions").map((v) => (v.id === id ? { ...v, ...patch } : v)),
   );
 }
-function stamp<T extends object>(ctx: Ctx, p: Proposal, prefix: string, data: T, existing?: { id: ID; createdAt: string; createdBy: ID }) {
+function stamp<T extends object>(
+  ctx: Ctx,
+  p: Proposal,
+  prefix: string,
+  data: T,
+  existing?: { id: ID; createdAt: string; createdBy: ID },
+) {
   const at = now();
   return {
     ...data,
@@ -337,13 +384,29 @@ function stamp<T extends object>(ctx: Ctx, p: Proposal, prefix: string, data: T,
     updatedBy: ctx.user.id,
   };
 }
-function persistMeta(ctx: Ctx, p: StudioProposal, patch: Partial<StudioProposal>, action: string, summary: string) {
+function persistMeta(
+  ctx: Ctx,
+  p: StudioProposal,
+  patch: Partial<StudioProposal>,
+  action: string,
+  summary: string,
+) {
   const at = now();
   store.replace(
     "proposals",
-    store.table("proposals").map((r) => (r.id === p.id ? { ...r, ...patch, updatedAt: at, updatedBy: ctx.user.id } : r)),
+    store
+      .table("proposals")
+      .map((r) => (r.id === p.id ? { ...r, ...patch, updatedAt: at, updatedBy: ctx.user.id } : r)),
   );
-  audit(ctx, { action, resourceType: "proposal", resourceId: p.id, teamId: p.teamId, ownerId: p.ownerId, summary, outcome: "allowed" });
+  audit(ctx, {
+    action,
+    resourceType: "proposal",
+    resourceId: p.id,
+    teamId: p.teamId,
+    ownerId: p.ownerId,
+    summary,
+    outcome: "allowed",
+  });
 }
 /**
  * Saves a working-draft change. A change to an approved draft invalidates that
@@ -359,21 +422,40 @@ function persist(
 ) {
   const at = now();
   const next = { ...p, ...patch };
-  if (p.status === "approved" && materialHash(next, next.source, ws) !== materialHash(p, p.source, workspaceOf(p))) {
+  if (
+    p.status === "approved" &&
+    materialHash(next, next.source, ws) !== materialHash(p, p.source, workspaceOf(p))
+  ) {
     const v = currentVersion(p);
     if (v && !v.issue) patchVersion(v.id, { supersededAt: at });
     ws = {
       ...ws,
-      comments: [...ws.comments, stamp(ctx, p, "pc", { kind: "invalidated" as const, body: `Approval of v${v?.versionNumber ?? "?"} invalidated by a change: ${summary}` })],
+      comments: [
+        ...ws.comments,
+        stamp(ctx, p, "pc", {
+          kind: "invalidated" as const,
+          body: `Approval of v${v?.versionNumber ?? "?"} invalidated by a change: ${summary}`,
+        }),
+      ],
     };
     patch = { ...patch, status: "draft" };
-    audit(ctx, { action: "proposal.approval_invalidated", resourceType: "proposal", resourceId: p.id, teamId: p.teamId, ownerId: p.ownerId, summary: `Approval invalidated by: ${summary}`, outcome: "allowed" });
+    audit(ctx, {
+      action: "proposal.approval_invalidated",
+      resourceType: "proposal",
+      resourceId: p.id,
+      teamId: p.teamId,
+      ownerId: p.ownerId,
+      summary: `Approval invalidated by: ${summary}`,
+      outcome: "allowed",
+    });
   }
   store.replace("proposalWorkspaces", [
     ...store.table("proposalWorkspaces").filter((w) => w.proposalId !== p.id),
     { ...ws, updatedAt: at, updatedBy: ctx.user.id },
   ]);
-  const includesPricing = ws.lines.some((l) => l.classification === "priced" || l.classification === "estimated");
+  const includesPricing = ws.lines.some(
+    (l) => l.classification === "priced" || l.classification === "estimated",
+  );
   persistMeta(ctx, p, { ...patch, includesPricing }, action, summary);
 }
 function permissionsFor(ctx: Ctx, p: StudioProposal): ProposalPermissions {
@@ -387,7 +469,8 @@ function permissionsFor(ctx: Ctx, p: StudioProposal): ProposalPermissions {
     canAuthorizeCommercials: appr && (p.status === "draft" || p.status === "changes_requested"),
     canIssue: share && p.status === "approved",
     canShare: share && p.status === "shared",
-    canRevise: upd && ["approved", "shared", "declined", "expired", "changes_requested"].includes(p.status),
+    canRevise:
+      upd && ["approved", "shared", "declined", "expired", "changes_requested"].includes(p.status),
     canRebase: upd && EDITABLE.includes(p.status),
   };
 }
@@ -411,36 +494,12 @@ function valueLabel(sum: CommercialSummary) {
     )
     .join(" | ");
 }
-function buildDocument(p: StudioProposal, ws: ProposalWorkspace, h: SolutionHandoffSnapshot, book: PriceBook): ProposalDocument {
-  const summary = calculateCommercials(ws.lines, ws.taxes);
-  return {
-    templateVersion: PROPOSAL_TEMPLATE_VERSION,
-    proposal: { id: p.id, title: p.title, track: p.track, ownerId: p.ownerId, assignedUserIds: p.assignedUserIds, organizationId: p.organizationId },
-    trackLabel: TRACKS[p.track].label,
-    disclosure: TRACKS[p.track].disclosure,
-    recipient: clone(ws.recipient),
-    validityDays: ws.validityDays,
-    commercialNotes: ws.commercialNotes,
-    source: clone(p.source),
-    solution: clone(h),
-    sections: clone(ws.sections),
-    deliverables: ws.deliverables.map((d) => ({ ...clone(d), info: classifyDeliverable(d, h) })),
-    commercials: {
-      priceBookVersion: book.priceBookVersion,
-      priceBookRetrievedAt: book.retrievedAt,
-      illustrative: true,
-      lines: ws.lines.map((l) => ({ ...clone(l), computed: summary.lines[l.id]! })),
-      taxes: clone(ws.taxes),
-      summary,
-      partnerTerms: clone(ws.partnerTerms),
-    },
-    risks: clone(ws.risks),
-    milestones: clone(ws.milestones),
-    options: clone(ws.options),
-  };
-}
-const readinessFailures = (p: StudioProposal, ws: ProposalWorkspace, h: SolutionHandoffSnapshot | undefined, book: PriceBook) =>
-  proposalReadiness(p, ws, h, book).filter((i) => !i.ok);
+const readinessFailures = (
+  p: StudioProposal,
+  ws: ProposalWorkspace,
+  h: SolutionHandoffSnapshot | undefined,
+  book: PriceBook,
+) => proposalReadiness(p, ws, h, book).filter((i) => !i.ok);
 function qualificationIds(doc: ProposalDocument) {
   return [
     ...doc.deliverables.filter((d) => d.info.needsQualification).map((d) => d.id),
@@ -455,19 +514,50 @@ export interface ProposalStudioService {
   get(ctx: Ctx, id: ID): Promise<ProposalView>;
   create(ctx: Ctx, input: CreateProposalInput): Promise<StudioProposal>;
   saveMeta(ctx: Ctx, id: ID, input: z.input<typeof MetaInput>): Promise<void>;
-  saveSection(ctx: Ctx, id: ID, key: ContentKey, input: z.input<typeof SectionInput>): Promise<void>;
+  saveSection(
+    ctx: Ctx,
+    id: ID,
+    key: ContentKey,
+    input: z.input<typeof SectionInput>,
+  ): Promise<void>;
   draftSection(ctx: Ctx, id: ID, key: ContentKey): Promise<void>;
-  upsertChild<K extends ProposalChildKind>(ctx: Ctx, id: ID, kind: K, input: ProposalChildInput<K>): Promise<ID>;
+  upsertChild<K extends ProposalChildKind>(
+    ctx: Ctx,
+    id: ID,
+    kind: K,
+    input: ProposalChildInput<K>,
+  ): Promise<ID>;
   removeChild(ctx: Ctx, id: ID, kind: ProposalChildKind, childId: ID): Promise<void>;
   refreshPrices(ctx: Ctx, id: ID): Promise<void>;
-  authorizeCommercial(ctx: Ctx, id: ID, input: { kind: "override" | "discount" | "term"; itemId: ID }): Promise<void>;
+  authorizeCommercial(
+    ctx: Ctx,
+    id: ID,
+    input: { kind: "override" | "discount" | "term"; itemId: ID },
+  ): Promise<void>;
   addComment(ctx: Ctx, id: ID, body: string): Promise<void>;
   submitForReview(ctx: Ctx, id: ID, note?: string): Promise<ProposalVersionRecord>;
-  approve(ctx: Ctx, id: ID, versionId: ID, input?: { comment?: string; acknowledged?: ID[] }): Promise<void>;
+  approve(
+    ctx: Ctx,
+    id: ID,
+    versionId: ID,
+    input?: { comment?: string; acknowledged?: ID[] },
+  ): Promise<void>;
   requestChanges(ctx: Ctx, id: ID, versionId: ID, comment: string): Promise<void>;
   issue(ctx: Ctx, id: ID, versionId: ID): Promise<ProposalVersionRecord>;
-  share(ctx: Ctx, id: ID, input: { versionId: ID; recipient: { name: string; email: string; organization?: string }; expiresAt?: string }): Promise<ProposalShareRecord>;
-  recordResponse(ctx: Ctx, shareId: ID, input: { response: Exclude<ShareResponse, "pending">; note?: string }): Promise<void>;
+  share(
+    ctx: Ctx,
+    id: ID,
+    input: {
+      versionId: ID;
+      recipient: { name: string; email: string; organization?: string };
+      expiresAt?: string;
+    },
+  ): Promise<ProposalShareRecord>;
+  recordResponse(
+    ctx: Ctx,
+    shareId: ID,
+    input: { response: Exclude<ShareResponse, "pending">; note?: string },
+  ): Promise<void>;
   revokeShare(ctx: Ctx, shareId: ID): Promise<void>;
   revise(ctx: Ctx, id: ID, reason: string): Promise<void>;
   previewRebase(ctx: Ctx, id: ID, targetSnapshotId?: ID): Promise<ProposalRebaseDiff>;
@@ -509,7 +599,9 @@ export const proposalStudio: ProposalStudioService = {
   async candidates(ctx) {
     await tick();
     if (!can(ctx.user, "proposal.create")) return [];
-    const props = store.table("proposals").filter((p) => can(ctx.user, "proposal.read", p) && isStudio(p)) as StudioProposal[];
+    const props = store
+      .table("proposals")
+      .filter((p) => can(ctx.user, "proposal.read", p) && isStudio(p)) as StudioProposal[];
     return store
       .table("solutions")
       .filter((s) => can(ctx.user, "solution.read", s))
@@ -571,11 +663,14 @@ export const proposalStudio: ProposalStudioService = {
       priceBook: book,
       readiness,
       readinessPercent: readinessPercent(readiness),
-      deliverables: Object.fromEntries(ws.deliverables.map((d) => [d.id, classifyDeliverable(d, h)])),
+      deliverables: Object.fromEntries(
+        ws.deliverables.map((d) => [d.id, classifyDeliverable(d, h)]),
+      ),
       commercials: calculateCommercials(ws.lines, ws.taxes),
       versions,
       shares,
       draftHash: materialHash(p, p.source, ws),
+      preview: h ? buildProposalDocument(p, ws, h, book) : undefined,
       permissions: permissionsFor(ctx, p),
       names: Object.fromEntries([...people].map((u) => [u, directory.displayName(ctx, u)])),
     };
@@ -587,11 +682,15 @@ export const proposalStudio: ProposalStudioService = {
     const d = parse(ctx, CreateInput, input);
     const h = handoffById(d.solutionSnapshotId);
     const sol = h && store.table("solutions").find((s) => s.id === h.solutionId);
-    if (!h || !sol || !can(ctx.user, "solution.read", sol)) return deny(ctx, "solution.read", d.solutionSnapshotId);
+    if (!h || !sol || !can(ctx.user, "solution.read", sol))
+      return deny(ctx, "solution.read", d.solutionSnapshotId);
     const c = handoffCompatibility(h);
     if (!c.ok) return reject(ctx, c.reason);
     if (TRACKS[d.track].kind !== h.solution.kind)
-      reject(ctx, `${TRACKS[d.track].label} needs a ${TRACKS[d.track].kind} solution; this solution is ${h.solution.kind}`);
+      reject(
+        ctx,
+        `${TRACKS[d.track].label} needs a ${TRACKS[d.track].kind} solution; this solution is ${h.solution.kind}`,
+      );
     const at = now();
     const p: StudioProposal = {
       id: newId("prp"),
@@ -611,13 +710,18 @@ export const proposalStudio: ProposalStudioService = {
       source: sourceOf(h),
       revision: 1,
     };
-    if (!can(ctx.user, "proposal.create", p) || p.organizationId !== h.organizationId) deny(ctx, "proposal.create");
+    if (!can(ctx.user, "proposal.create", p) || p.organizationId !== h.organizationId)
+      deny(ctx, "proposal.create");
     const st = <T extends object>(prefix: string, data: T) => stamp(ctx, p, prefix, data);
     const ws: ProposalWorkspace = {
       ...st("pws", {}),
       id: `pws_${p.id}`,
       proposalId: p.id,
-      recipient: { name: h.solution.subjectName, organization: h.solution.subjectName, contact: "" },
+      recipient: {
+        name: h.solution.subjectName,
+        organization: h.solution.subjectName,
+        contact: "",
+      },
       validityDays: 30,
       commercialNotes: "",
       sections: draftSections(h, d.track, d.title, ctx.user.id, at),
@@ -629,7 +733,8 @@ export const proposalStudio: ProposalStudioService = {
             description: r.title,
             inclusion: r.status === "optional" ? ("optional" as const) : ("included" as const),
             acceptanceCriterion: r.expectedOutcome,
-            responsibleParty: r.category === "third_party" ? ("third_party" as const) : ("aurumi" as const),
+            responsibleParty:
+              r.category === "third_party" ? ("third_party" as const) : ("aurumi" as const),
             customerDependencies: r.responsibilities.customer,
             deliveryAssumptions: r.assumptions,
             qualification: "",
@@ -639,7 +744,9 @@ export const proposalStudio: ProposalStudioService = {
       lines: [],
       taxes: [],
       partnerTerms: [],
-      risks: sourcedRisks(h).map((r) => st("rsk", { ...r, resolution: "open" as const, qualification: "" })),
+      risks: sourcedRisks(h).map((r) =>
+        st("rsk", { ...r, resolution: "open" as const, qualification: "" }),
+      ),
       milestones: h.roadmap.map((r) =>
         st("ms", {
           title: ROADMAP_LABEL[r.stage] ?? r.stage,
@@ -681,7 +788,14 @@ export const proposalStudio: ProposalStudioService = {
     if (d.recipient) ws.recipient = d.recipient;
     if (d.validityDays !== undefined) ws.validityDays = d.validityDays;
     if (d.commercialNotes !== undefined) ws.commercialNotes = d.commercialNotes;
-    persist(ctx, p, ws, "Saved proposal details", "proposal.update", d.title ? { title: d.title } : {});
+    persist(
+      ctx,
+      p,
+      ws,
+      "Saved proposal details",
+      "proposal.update",
+      d.title ? { title: d.title } : {},
+    );
   },
 
   async saveSection(ctx, id, key, input) {
@@ -710,7 +824,13 @@ export const proposalStudio: ProposalStudioService = {
     const ws = clone(workspaceOf(p));
     const sec = ws.sections.find((s) => s.key === key);
     if (!sec) return reject(ctx, `section "${key}" is not part of this track`, id);
-    Object.assign(sec, { body: simulatedDraft(h, key), origin: "ai_draft", reviewed: false, updatedAt: now(), updatedBy: ctx.user.id });
+    Object.assign(sec, {
+      body: simulatedDraft(h, key),
+      origin: "ai_draft",
+      reviewed: false,
+      updatedAt: now(),
+      updatedBy: ctx.user.id,
+    });
     persist(ctx, p, ws, `Simulated AI draft for ${sec.title} (needs review)`, "proposal.ai_draft");
   },
 
@@ -724,7 +844,10 @@ export const proposalStudio: ProposalStudioService = {
     const ws = clone(workspaceOf(p));
     const h = handoffOf(p);
     if (!h) return reject(ctx, "source solution snapshot is missing", id);
-    const list = ws[kind] as unknown as ({ id: ID; createdAt: string; createdBy: ID } & Record<string, unknown>)[];
+    const list = ws[kind] as unknown as ({ id: ID; createdAt: string; createdBy: ID } & Record<
+      string,
+      unknown
+    >)[];
     const existing = d.id ? list.find((x) => x.id === d.id) : undefined;
     if (d.id && !existing) reject(ctx, `unknown ${kind} record`, id);
     const { id: _ignored, ...data } = d;
@@ -736,8 +859,16 @@ export const proposalStudio: ProposalStudioService = {
       const r = h.recommendations.find((x) => x.id === data["recommendationId"]);
       if (!r) reject(ctx, "that recommendation is not in the approved solution snapshot", id);
       if (r!.status === "not_recommended" && data["inclusion"] !== "excluded")
-        reject(ctx, "a recommendation the approved solution does not recommend can only be listed as excluded", id);
-      record = { ...data, description: (data["description"] as string) || r!.title, sourceStatus: "current" };
+        reject(
+          ctx,
+          "a recommendation the approved solution does not recommend can only be listed as excluded",
+          id,
+        );
+      record = {
+        ...data,
+        description: (data["description"] as string) || r!.title,
+        sourceStatus: "current",
+      };
     }
     if (kind === "lines") {
       const book = await priceBookNow();
@@ -747,34 +878,70 @@ export const proposalStudio: ProposalStudioService = {
       const { priceBookItemId: _p, ...rest } = data;
       let priceRef = undefined as CommercialLine["priceRef"];
       if (itemId) {
-        if (!PRICE_BOOK_CATEGORIES.includes(cat)) reject(ctx, `${cat} lines are not priced from the price book`, id);
+        if (!PRICE_BOOK_CATEGORIES.includes(cat))
+          reject(ctx, `${cat} lines are not priced from the price book`, id);
         // Keep the original pin (and its version) until prices are explicitly refreshed.
         if (prev?.priceRef?.priceBookItemId === itemId) priceRef = prev.priceRef;
         else {
           const item = book.items.find((i) => i.id === itemId);
           if (!item) return reject(ctx, `unknown price-book item "${itemId}"`, id);
-          if (item.category !== cat) reject(ctx, `price-book item "${itemId}" is ${item.category}, not ${cat}`, id);
+          if (item.category !== cat)
+            reject(ctx, `price-book item "${itemId}" is ${item.category}, not ${cat}`, id);
           priceRef = priceRefOf(item, book);
         }
-        if ((data["recurrence"] && data["recurrence"] !== priceRef!.recurrence) || (data["currency"] && data["currency"] !== priceRef!.currency))
-          reject(ctx, "currency and billing period come from the price book and cannot be changed", id);
-      } else if (cat !== "discount" && PRICE_BOOK_CATEGORIES.includes(cat) && data["classification"] === "priced")
+        if (
+          (data["recurrence"] && data["recurrence"] !== priceRef!.recurrence) ||
+          (data["currency"] && data["currency"] !== priceRef!.currency)
+        )
+          reject(
+            ctx,
+            "currency and billing period come from the price book and cannot be changed",
+            id,
+          );
+      } else if (
+        cat !== "discount" &&
+        PRICE_BOOK_CATEGORIES.includes(cat) &&
+        data["classification"] === "priced"
+      )
         reject(ctx, "priced Aurumi items must reference a Pricing Studio price-book item", id);
       const recurrence = priceRef?.recurrence ?? (data["recurrence"] as string | undefined);
       const currency = priceRef?.currency ?? (data["currency"] as string | undefined);
       if (!recurrence || !currency) reject(ctx, "state the currency and billing period", id);
       if (cat === "discount") {
         if (!data["discount"]) reject(ctx, "discount lines need an amount and rationale", id);
-        if (priceRef || data["override"] || data["quoted"] || data["estimate"]) reject(ctx, "discount lines carry only a discount", id);
+        if (priceRef || data["override"] || data["quoted"] || data["estimate"])
+          reject(ctx, "discount lines carry only a discount", id);
       } else if (data["discount"]) reject(ctx, "use a separate discount line", id);
-      if (data["override"] && !priceRef) reject(ctx, "an override applies to a published price; reference a price-book item", id);
-      if (data["quoted"] && !["third_party", "custom_development"].includes(cat)) reject(ctx, "quoted amounts apply to third-party or custom items", id);
-      const keepAuth = <T extends { authorization?: unknown }>(next: unknown, before: T | undefined, same: boolean) =>
-        next ? { ...(next as object), ...(same && before?.authorization ? { authorization: before.authorization } : {}) } : undefined;
+      if (data["override"] && !priceRef)
+        reject(ctx, "an override applies to a published price; reference a price-book item", id);
+      if (data["quoted"] && !["third_party", "custom_development"].includes(cat))
+        reject(ctx, "quoted amounts apply to third-party or custom items", id);
+      const keepAuth = <T extends { authorization?: unknown }>(
+        next: unknown,
+        before: T | undefined,
+        same: boolean,
+      ) =>
+        next
+          ? {
+              ...(next as object),
+              ...(same && before?.authorization ? { authorization: before.authorization } : {}),
+            }
+          : undefined;
       const ov = data["override"] as { unitAmount: number; rationale: string } | undefined;
-      const sameOv = !!ov && !!prev?.override && prev.override.unitAmount === ov.unitAmount && prev.override.rationale === ov.rationale && prev.priceRef?.publishedAmount === priceRef?.publishedAmount;
+      const sameOv =
+        !!ov &&
+        !!prev?.override &&
+        prev.override.unitAmount === ov.unitAmount &&
+        prev.override.rationale === ov.rationale &&
+        prev.priceRef?.publishedAmount === priceRef?.publishedAmount;
       const dc = data["discount"] as { amount: number; rationale: string } | undefined;
-      const sameDc = !!dc && !!prev?.discount && prev.discount.amount === dc.amount && prev.discount.rationale === dc.rationale && prev.currency === currency && prev.recurrence === recurrence;
+      const sameDc =
+        !!dc &&
+        !!prev?.discount &&
+        prev.discount.amount === dc.amount &&
+        prev.discount.rationale === dc.rationale &&
+        prev.currency === currency &&
+        prev.recurrence === recurrence;
       record = {
         ...rest,
         recurrence,
@@ -792,16 +959,33 @@ export const proposalStudio: ProposalStudioService = {
     if (kind === "taxes") action = "proposal.tax";
     if (kind === "partnerTerms") {
       if (!rule.partnerTerms) reject(ctx, "partner terms apply only to partner proposals", id);
-      const prev = existing as unknown as { description?: string; kind?: string; status?: string; authorization?: unknown } | undefined;
+      const prev = existing as unknown as
+        | { description?: string; kind?: string; status?: string; authorization?: unknown }
+        | undefined;
       const same = prev && prev.description === data["description"] && prev.kind === data["kind"];
-      record = { ...data, status: same && prev?.status === "approved" ? "approved" : "proposed", ...(same && prev?.authorization ? { authorization: prev.authorization } : {}) };
+      record = {
+        ...data,
+        status: same && prev?.status === "approved" ? "approved" : "proposed",
+        ...(same && prev?.authorization ? { authorization: prev.authorization } : {}),
+      };
       action = "proposal.partner_term";
     }
     if (kind === "risks") {
-      const prev = existing as unknown as { source?: { kind: string }; category?: string; description?: string; severity?: "high" | "medium" | "low" } | undefined;
+      const prev = existing as unknown as
+        | {
+            source?: { kind: string };
+            category?: string;
+            description?: string;
+            severity?: "high" | "medium" | "low";
+          }
+        | undefined;
       if (prev?.source) {
         if (data["description"] !== prev.description || data["category"] !== prev.category)
-          reject(ctx, "risks imported from the approved solution keep their description and category", id);
+          reject(
+            ctx,
+            "risks imported from the approved solution keep their description and category",
+            id,
+          );
         if (SEVERITY_RANK[data["severity"] as "high"] < SEVERITY_RANK[prev.severity!])
           reject(ctx, "a risk imported from the approved solution cannot be downgraded", id);
         record = { ...data, source: prev.source };
@@ -820,11 +1004,23 @@ export const proposalStudio: ProposalStudioService = {
       const dl = data["deliverableIds"] as ID[];
       for (const x of dl) {
         const found = ws.deliverables.find((y) => y.id === x);
-        if (!found || found.inclusion === "excluded" || classifyDeliverable(found, h).availability === "missing")
-          reject(ctx, "options may only use current, non-excluded deliverables from the approved solution", id);
+        if (
+          !found ||
+          found.inclusion === "excluded" ||
+          classifyDeliverable(found, h).availability === "missing"
+        )
+          reject(
+            ctx,
+            "options may only use current, non-excluded deliverables from the approved solution",
+            id,
+          );
       }
-      if (!(data["lineIds"] as ID[]).every((x) => ws.lines.some((l) => l.id === x))) reject(ctx, "unknown commercial line", id);
-      if (data["kind"] === "recommended" && ws.options.some((o) => o.kind === "recommended" && o.id !== existing?.id))
+      if (!(data["lineIds"] as ID[]).every((x) => ws.lines.some((l) => l.id === x)))
+        reject(ctx, "unknown commercial line", id);
+      if (
+        data["kind"] === "recommended" &&
+        ws.options.some((o) => o.kind === "recommended" && o.id !== existing?.id)
+      )
         reject(ctx, "another option is already recommended", id);
     }
 
@@ -846,9 +1042,15 @@ export const proposalStudio: ProposalStudioService = {
     const item = list.find((x) => x.id === childId);
     if (!item) return reject(ctx, `unknown ${kind} record`, id);
     if (kind === "risks" && item.source)
-      reject(ctx, "risks imported from the approved solution can be resolved or accepted, not deleted", id);
+      reject(
+        ctx,
+        "risks imported from the approved solution can be resolved or accepted, not deleted",
+        id,
+      );
     (ws as unknown as Record<string, unknown>)[kind] = list.filter((x) => x.id !== childId);
-    ws.milestones.forEach((m) => (m.deliverableIds = m.deliverableIds.filter((x) => x !== childId)));
+    ws.milestones.forEach(
+      (m) => (m.deliverableIds = m.deliverableIds.filter((x) => x !== childId)),
+    );
     ws.options.forEach((o) => {
       o.deliverableIds = o.deliverableIds.filter((x) => x !== childId);
       o.lineIds = o.lineIds.filter((x) => x !== childId);
@@ -868,13 +1070,21 @@ export const proposalStudio: ProposalStudioService = {
       const item = book.items.find((i) => i.id === l.priceRef!.priceBookItemId);
       if (!item) return void changes.push(`${l.priceRef.name}: no longer published`);
       const next = priceRefOf(item, book);
-      if (next.publishedAmount !== l.priceRef.publishedAmount && l.override) delete l.override.authorization;
-      if (next.publishedAmount !== l.priceRef.publishedAmount) changes.push(`${item.name}: ${l.priceRef.publishedAmount} → ${next.publishedAmount}`);
+      if (next.publishedAmount !== l.priceRef.publishedAmount && l.override)
+        delete l.override.authorization;
+      if (next.publishedAmount !== l.priceRef.publishedAmount)
+        changes.push(`${item.name}: ${l.priceRef.publishedAmount} → ${next.publishedAmount}`);
       l.priceRef = next;
       l.currency = next.currency;
       l.recurrence = next.recurrence;
     });
-    persist(ctx, p, ws, `Refreshed prices to ${book.priceBookVersion}${changes.length ? ` (${changes.join("; ")})` : ""}`, "proposal.pricing_refresh");
+    persist(
+      ctx,
+      p,
+      ws,
+      `Refreshed prices to ${book.priceBookVersion}${changes.length ? ` (${changes.join("; ")})` : ""}`,
+      "proposal.pricing_refresh",
+    );
   },
 
   async authorizeCommercial(ctx, id, input) {
@@ -894,19 +1104,37 @@ export const proposalStudio: ProposalStudioService = {
       if (!l || !target) return reject(ctx, `no ${input.kind} on that line`, id);
       target.authorization = auth;
     }
-    persist(ctx, p, ws, `Authorized ${input.kind} ${input.itemId}`, `proposal.${input.kind}.approve`);
+    persist(
+      ctx,
+      p,
+      ws,
+      `Authorized ${input.kind} ${input.itemId}`,
+      `proposal.${input.kind}.approve`,
+    );
   },
 
   async addComment(ctx, id, body) {
     await tick();
     const p = parent(ctx, id, "proposal.read");
-    if (!can(ctx.user, "proposal.update", p) && !can(ctx.user, "proposal.approve", p)) deny(ctx, "proposal.update", id);
+    if (!can(ctx.user, "proposal.update", p) && !can(ctx.user, "proposal.approve", p))
+      deny(ctx, "proposal.update", id);
     if (!body.trim()) reject(ctx, "comment is empty", id);
     const ws = clone(workspaceOf(p));
     ws.comments.push(stamp(ctx, p, "pc", { kind: "comment" as const, body: body.trim() }));
     // Comments are not material: store directly so an approval is not invalidated.
-    store.replace("proposalWorkspaces", [...store.table("proposalWorkspaces").filter((w) => w.proposalId !== p.id), ws]);
-    audit(ctx, { action: "proposal.comment", resourceType: "proposal", resourceId: p.id, teamId: p.teamId, ownerId: p.ownerId, summary: "Comment added", outcome: "allowed" });
+    store.replace("proposalWorkspaces", [
+      ...store.table("proposalWorkspaces").filter((w) => w.proposalId !== p.id),
+      ws,
+    ]);
+    audit(ctx, {
+      action: "proposal.comment",
+      resourceType: "proposal",
+      resourceId: p.id,
+      teamId: p.teamId,
+      ownerId: p.ownerId,
+      summary: "Comment added",
+      outcome: "allowed",
+    });
   },
 
   async submitForReview(ctx, id, note = "") {
@@ -931,37 +1159,86 @@ export const proposalStudio: ProposalStudioService = {
       createdAt: at,
       createdBy: ctx.user.id,
       contentHash: materialHash(p, p.source, ws),
-      document: deepFreeze(buildDocument(p, ws, h!, book)),
+      document: deepFreeze(buildProposalDocument(p, ws, h!, book)),
     };
     store.replace("proposalVersions", [...store.table("proposalVersions"), v]);
-    ws.comments.push(stamp(ctx, p, "pc", { kind: "submitted" as const, body: note.trim() || `Submitted v${versionNumber} for review.` }));
-    store.replace("proposalWorkspaces", [...store.table("proposalWorkspaces").filter((w) => w.proposalId !== p.id), ws]);
-    persistMeta(ctx, p, { status: "in_review", currentVersionId: v.id }, "proposal.status.in_review", `Submitted version ${versionNumber} for review`);
+    ws.comments.push(
+      stamp(ctx, p, "pc", {
+        kind: "submitted" as const,
+        body: note.trim() || `Submitted v${versionNumber} for review.`,
+      }),
+    );
+    store.replace("proposalWorkspaces", [
+      ...store.table("proposalWorkspaces").filter((w) => w.proposalId !== p.id),
+      ws,
+    ]);
+    persistMeta(
+      ctx,
+      p,
+      { status: "in_review", currentVersionId: v.id },
+      "proposal.status.in_review",
+      `Submitted version ${versionNumber} for review`,
+    );
     return deepFreeze(clone(v));
   },
 
   async approve(ctx, id, versionId, input = {}) {
     await tick();
     const p = approver(ctx, id);
-    if (p.status !== "in_review") reject(ctx, `only proposals in review can be approved (is ${p.status})`, id);
+    if (p.status !== "in_review")
+      reject(ctx, `only proposals in review can be approved (is ${p.status})`, id);
     const v = currentVersion(p);
-    if (!v || v.id !== versionId) return reject(ctx, "approve the current submitted version; this version is not the one under review", id);
+    if (!v || v.id !== versionId)
+      return reject(
+        ctx,
+        "approve the current submitted version; this version is not the one under review",
+        id,
+      );
     if (v.review) reject(ctx, "this version already has a review decision", id);
     const ws = workspaceOf(p);
-    if (materialHash(p, p.source, ws) !== v.contentHash) reject(ctx, "the draft changed since this version was submitted", id);
+    if (materialHash(p, p.source, ws) !== v.contentHash)
+      reject(ctx, "the draft changed since this version was submitted", id);
     const book = await priceBookNow();
     const failing = readinessFailures(p, ws, handoffOf(p), book);
-    if (failing.length) reject(ctx, `not ready: ${failing.map((f) => `${f.label} (${f.detail[0]})`).join(", ")}`, id);
+    if (failing.length)
+      reject(ctx, `not ready: ${failing.map((f) => `${f.label} (${f.detail[0]})`).join(", ")}`, id);
     const need = qualificationIds(v.document);
     const ack = new Set(input.acknowledged ?? []);
     const missing = need.filter((x) => !ack.has(x));
-    if (missing.length) reject(ctx, `acknowledge each qualification before approving (${missing.length} outstanding)`, id);
+    if (missing.length)
+      reject(
+        ctx,
+        `acknowledge each qualification before approving (${missing.length} outstanding)`,
+        id,
+      );
     const at = now();
-    patchVersion(v.id, { review: { decision: "approved", by: ctx.user.id, at, comment: input.comment?.trim() ?? "", acknowledged: need } });
+    patchVersion(v.id, {
+      review: {
+        decision: "approved",
+        by: ctx.user.id,
+        at,
+        comment: input.comment?.trim() ?? "",
+        acknowledged: need,
+      },
+    });
     const w = clone(ws);
-    w.comments.push(stamp(ctx, p, "pc", { kind: "approved" as const, body: input.comment?.trim() || `Approved v${v.versionNumber}.` }));
-    store.replace("proposalWorkspaces", [...store.table("proposalWorkspaces").filter((x) => x.proposalId !== p.id), w]);
-    persistMeta(ctx, p, { status: "approved" }, "proposal.approve", `Approved version ${v.versionNumber} (${v.contentHash})`);
+    w.comments.push(
+      stamp(ctx, p, "pc", {
+        kind: "approved" as const,
+        body: input.comment?.trim() || `Approved v${v.versionNumber}.`,
+      }),
+    );
+    store.replace("proposalWorkspaces", [
+      ...store.table("proposalWorkspaces").filter((x) => x.proposalId !== p.id),
+      w,
+    ]);
+    persistMeta(
+      ctx,
+      p,
+      { status: "approved" },
+      "proposal.approve",
+      `Approved version ${v.versionNumber} (${v.contentHash})`,
+    );
   },
 
   async requestChanges(ctx, id, versionId, comment) {
@@ -969,48 +1246,104 @@ export const proposalStudio: ProposalStudioService = {
     const p = approver(ctx, id);
     if (p.status !== "in_review") reject(ctx, "only proposals in review can be returned", id);
     const v = currentVersion(p);
-    if (!v || v.id !== versionId || v.review) return reject(ctx, "that version is not awaiting review", id);
+    if (!v || v.id !== versionId || v.review)
+      return reject(ctx, "that version is not awaiting review", id);
     if (!comment.trim()) reject(ctx, "say what needs changing", id);
-    patchVersion(v.id, { review: { decision: "changes_requested", by: ctx.user.id, at: now(), comment: comment.trim(), acknowledged: [] } });
+    patchVersion(v.id, {
+      review: {
+        decision: "changes_requested",
+        by: ctx.user.id,
+        at: now(),
+        comment: comment.trim(),
+        acknowledged: [],
+      },
+    });
     const w = clone(workspaceOf(p));
-    w.comments.push(stamp(ctx, p, "pc", { kind: "changes_requested" as const, body: comment.trim() }));
-    store.replace("proposalWorkspaces", [...store.table("proposalWorkspaces").filter((x) => x.proposalId !== p.id), w]);
-    persistMeta(ctx, p, { status: "changes_requested" }, "proposal.status.changes_requested", `Changes requested on version ${v.versionNumber}`);
+    w.comments.push(
+      stamp(ctx, p, "pc", { kind: "changes_requested" as const, body: comment.trim() }),
+    );
+    store.replace("proposalWorkspaces", [
+      ...store.table("proposalWorkspaces").filter((x) => x.proposalId !== p.id),
+      w,
+    ]);
+    persistMeta(
+      ctx,
+      p,
+      { status: "changes_requested" },
+      "proposal.status.changes_requested",
+      `Changes requested on version ${v.versionNumber}`,
+    );
   },
 
   async issue(ctx, id, versionId) {
     await tick();
     const p = parent(ctx, id, "proposal.share");
-    if (p.status !== "approved") reject(ctx, `only approved proposals can be issued (is ${p.status})`, id);
+    if (p.status !== "approved")
+      reject(ctx, `only approved proposals can be issued (is ${p.status})`, id);
     const v = currentVersion(p);
     if (!v || v.id !== versionId) return reject(ctx, "issue the current approved version", id);
-    if (v.review?.decision !== "approved" || v.supersededAt) reject(ctx, "this exact version is not approved", id);
-    if (materialHash(p, p.source, workspaceOf(p)) !== v.contentHash) reject(ctx, "the draft changed after approval; resubmit for review", id);
+    if (v.review?.decision !== "approved" || v.supersededAt)
+      reject(ctx, "this exact version is not approved", id);
+    if (materialHash(p, p.source, workspaceOf(p)) !== v.contentHash)
+      reject(ctx, "the draft changed after approval; resubmit for review", id);
     const book = await priceBookNow();
-    const stale = v.document.commercials.lines.flatMap((l) => (l.priceRef ? [priceRefProblem(l.priceRef, book)] : [])).filter(Boolean);
-    if (stale.length) reject(ctx, `price book changed since approval — revise and resubmit (${stale.join("; ")})`, id);
+    const stale = v.document.commercials.lines
+      .flatMap((l) => (l.priceRef ? [priceRefProblem(l.priceRef, book)] : []))
+      .filter(Boolean);
+    if (stale.length)
+      reject(
+        ctx,
+        `price book changed since approval — revise and resubmit (${stale.join("; ")})`,
+        id,
+      );
     const at = new Date();
     const exp = new Date(at.getTime() + v.document.validityDays * 86400000).toISOString();
-    patchVersion(v.id, { issue: { issuedAt: at.toISOString(), issuedBy: ctx.user.id, effectiveAt: at.toISOString(), expiresAt: exp } });
+    patchVersion(v.id, {
+      issue: {
+        issuedAt: at.toISOString(),
+        issuedBy: ctx.user.id,
+        effectiveAt: at.toISOString(),
+        expiresAt: exp,
+      },
+    });
     const w = clone(workspaceOf(p));
-    w.comments.push(stamp(ctx, p, "pc", { kind: "issued" as const, body: `Issued v${v.versionNumber}; valid until ${exp.slice(0, 10)}.` }));
-    store.replace("proposalWorkspaces", [...store.table("proposalWorkspaces").filter((x) => x.proposalId !== p.id), w]);
-    persistMeta(ctx, p, { status: "shared" }, "proposal.issue", `Issued version ${v.versionNumber}`);
+    w.comments.push(
+      stamp(ctx, p, "pc", {
+        kind: "issued" as const,
+        body: `Issued v${v.versionNumber}; valid until ${exp.slice(0, 10)}.`,
+      }),
+    );
+    store.replace("proposalWorkspaces", [
+      ...store.table("proposalWorkspaces").filter((x) => x.proposalId !== p.id),
+      w,
+    ]);
+    persistMeta(
+      ctx,
+      p,
+      { status: "shared" },
+      "proposal.issue",
+      `Issued version ${v.versionNumber}`,
+    );
     return deepFreeze(clone(store.table("proposalVersions").find((x) => x.id === v.id)!));
   },
 
   async share(ctx, id, input) {
     await tick();
     const p = parent(ctx, id, "proposal.share");
-    const v = store.table("proposalVersions").find((x) => x.id === input.versionId && x.proposalId === p.id);
+    const v = store
+      .table("proposalVersions")
+      .find((x) => x.id === input.versionId && x.proposalId === p.id);
     if (!v || !v.issue) return reject(ctx, "only an issued version can be shared", id);
-    if (p.status !== "shared") reject(ctx, `proposal is ${p.status}; only issued proposals can be shared`, id);
+    if (p.status !== "shared")
+      reject(ctx, `proposal is ${p.status}; only issued proposals can be shared`, id);
     const email = input.recipient.email.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) reject(ctx, "enter a valid recipient email", id);
     if (!input.recipient.name.trim()) reject(ctx, "name the recipient", id);
     const expiresAt = input.expiresAt ?? v.issue.expiresAt;
-    if (expiresAt > v.issue.expiresAt) reject(ctx, "a share cannot outlive the issued version's validity", id);
-    if (expiresAt < now()) reject(ctx, "this version has expired; revise to issue a new version", id);
+    if (expiresAt > v.issue.expiresAt)
+      reject(ctx, "a share cannot outlive the issued version's validity", id);
+    if (expiresAt < now())
+      reject(ctx, "this version has expired; revise to issue a new version", id);
     const r = await proposalShareAdapter.share({ versionId: v.id, recipientEmail: email });
     if (!r.ok) return reject(ctx, `sharing unavailable: ${r.error}`, id);
     const rec: ProposalShareRecord = {
@@ -1019,7 +1352,11 @@ export const proposalStudio: ProposalStudioService = {
       proposalId: p.id,
       versionId: v.id,
       versionNumber: v.versionNumber,
-      recipient: { name: input.recipient.name.trim(), email, organization: input.recipient.organization?.trim() ?? "" },
+      recipient: {
+        name: input.recipient.name.trim(),
+        email,
+        organization: input.recipient.organization?.trim() ?? "",
+      },
       sharedAt: now(),
       sharedBy: ctx.user.id,
       expiresAt,
@@ -1030,7 +1367,15 @@ export const proposalStudio: ProposalStudioService = {
       simulated: true,
     };
     store.replace("proposalShares", [...store.table("proposalShares"), rec]);
-    audit(ctx, { action: "proposal.share", resourceType: "proposal", resourceId: p.id, teamId: p.teamId, ownerId: p.ownerId, summary: `Simulated share of v${v.versionNumber} with ${rec.recipient.name}`, outcome: "allowed" });
+    audit(ctx, {
+      action: "proposal.share",
+      resourceType: "proposal",
+      resourceId: p.id,
+      teamId: p.teamId,
+      ownerId: p.ownerId,
+      summary: `Simulated share of v${v.versionNumber} with ${rec.recipient.name}`,
+      outcome: "allowed",
+    });
     return clone(rec);
   },
 
@@ -1041,21 +1386,45 @@ export const proposalStudio: ProposalStudioService = {
     const p = parent(ctx, s.proposalId, "proposal.share");
     if (s.access !== "active") reject(ctx, "this share was revoked", p.id);
     const cur = effectiveResponse(s);
-    if (["accepted", "declined", "expired"].includes(cur)) reject(ctx, `response already final (${cur})`, p.id);
+    if (["accepted", "declined", "expired"].includes(cur))
+      reject(ctx, `response already final (${cur})`, p.id);
     const decisive = ["accepted", "declined", "expired"].includes(input.response);
-    if (decisive && p.status !== "shared") reject(ctx, `proposal is ${p.status}; responses apply to the issued version`, p.id);
+    if (decisive && p.status !== "shared")
+      reject(ctx, `proposal is ${p.status}; responses apply to the issued version`, p.id);
     if (input.response === "accepted" && p.currentVersionId !== s.versionId)
       reject(ctx, "acceptance must be for the current issued version", p.id);
     store.replace(
       "proposalShares",
       store.table("proposalShares").map((x) =>
-        x.id === s.id ? { ...x, response: input.response, respondedAt: now(), responseNote: input.note?.trim() ?? "", recordedBy: ctx.user.id } : x,
+        x.id === s.id
+          ? {
+              ...x,
+              response: input.response,
+              respondedAt: now(),
+              responseNote: input.note?.trim() ?? "",
+              recordedBy: ctx.user.id,
+            }
+          : x,
       ),
     );
     if (decisive)
-      persistMeta(ctx, p, { status: input.response as ProposalStatus }, `proposal.response.${input.response}`, `Recorded simulated response "${input.response}" from ${s.recipient.name} (not a signed contract)`);
+      persistMeta(
+        ctx,
+        p,
+        { status: input.response as ProposalStatus },
+        `proposal.response.${input.response}`,
+        `Recorded simulated response "${input.response}" from ${s.recipient.name} (not a signed contract)`,
+      );
     else
-      audit(ctx, { action: `proposal.response.${input.response}`, resourceType: "proposal", resourceId: p.id, teamId: p.teamId, ownerId: p.ownerId, summary: `Recorded simulated response "${input.response}"`, outcome: "allowed" });
+      audit(ctx, {
+        action: `proposal.response.${input.response}`,
+        resourceType: "proposal",
+        resourceId: p.id,
+        teamId: p.teamId,
+        ownerId: p.ownerId,
+        summary: `Recorded simulated response "${input.response}"`,
+        outcome: "allowed",
+      });
   },
 
   async revokeShare(ctx, shareId) {
@@ -1063,8 +1432,21 @@ export const proposalStudio: ProposalStudioService = {
     const s = store.table("proposalShares").find((x) => x.id === shareId);
     if (!s) return deny(ctx, "proposal.share", shareId);
     const p = parent(ctx, s.proposalId, "proposal.share");
-    store.replace("proposalShares", store.table("proposalShares").map((x) => (x.id === s.id ? { ...x, access: "revoked" as const } : x)));
-    audit(ctx, { action: "proposal.share.revoke", resourceType: "proposal", resourceId: p.id, teamId: p.teamId, ownerId: p.ownerId, summary: `Revoked simulated share with ${s.recipient.name}`, outcome: "allowed" });
+    store.replace(
+      "proposalShares",
+      store
+        .table("proposalShares")
+        .map((x) => (x.id === s.id ? { ...x, access: "revoked" as const } : x)),
+    );
+    audit(ctx, {
+      action: "proposal.share.revoke",
+      resourceType: "proposal",
+      resourceId: p.id,
+      teamId: p.teamId,
+      ownerId: p.ownerId,
+      summary: `Revoked simulated share with ${s.recipient.name}`,
+      outcome: "allowed",
+    });
   },
 
   async revise(ctx, id, reason) {
@@ -1077,16 +1459,28 @@ export const proposalStudio: ProposalStudioService = {
     if (v && !v.issue && !v.supersededAt) patchVersion(v.id, { supersededAt: now() });
     const w = clone(workspaceOf(p));
     w.comments.push(stamp(ctx, p, "pc", { kind: "revised" as const, body: reason.trim() }));
-    store.replace("proposalWorkspaces", [...store.table("proposalWorkspaces").filter((x) => x.proposalId !== p.id), w]);
-    persistMeta(ctx, p, { status: "draft" }, "proposal.status.draft", `Revision started: ${reason.trim()}`);
+    store.replace("proposalWorkspaces", [
+      ...store.table("proposalWorkspaces").filter((x) => x.proposalId !== p.id),
+      w,
+    ]);
+    persistMeta(
+      ctx,
+      p,
+      { status: "draft" },
+      "proposal.status.draft",
+      `Revision started: ${reason.trim()}`,
+    );
   },
 
   async previewRebase(ctx, id, targetSnapshotId) {
     await tick();
     const p = parent(ctx, id, "proposal.read");
     const from = handoffOf(p);
-    const to = targetSnapshotId ? handoffById(targetSnapshotId) : latestHandoff(p.source.solutionId);
-    if (!from || !to || to.solutionId !== p.source.solutionId) return reject(ctx, "no solution snapshot to compare with", id);
+    const to = targetSnapshotId
+      ? handoffById(targetSnapshotId)
+      : latestHandoff(p.source.solutionId);
+    if (!from || !to || to.solutionId !== p.source.solutionId)
+      return reject(ctx, "no solution snapshot to compare with", id);
     return diffHandoffs(from, to, workspaceOf(p));
   },
 
@@ -1097,44 +1491,87 @@ export const proposalStudio: ProposalStudioService = {
     if (!reason.trim()) reject(ctx, "give a reason for rebasing", id);
     const from = handoffOf(p);
     const to = handoffById(targetSnapshotId);
-    if (!from || !to || to.solutionId !== p.source.solutionId) return reject(ctx, "choose an approved snapshot of the same solution", id);
+    if (!from || !to || to.solutionId !== p.source.solutionId)
+      return reject(ctx, "choose an approved snapshot of the same solution", id);
     const c = handoffCompatibility(to);
     if (!c.ok) return reject(ctx, c.reason, id);
     if (to.id === from.id) reject(ctx, "the proposal is already on that snapshot", id);
     const ws = clone(workspaceOf(p));
     const { revisions, comments, ...current } = ws;
-    ws.revisions = [...revisions, { revision: p.revision, source: p.source, archivedAt: now(), archivedBy: ctx.user.id, reason: reason.trim(), workspace: clone(current) }];
+    ws.revisions = [
+      ...revisions,
+      {
+        revision: p.revision,
+        source: p.source,
+        archivedAt: now(),
+        archivedBy: ctx.user.id,
+        reason: reason.trim(),
+        workspace: clone(current),
+      },
+    ];
     ws.comments = comments;
     ws.deliverables.forEach((d) => {
-      d.sourceStatus = to.recommendations.some((r) => r.id === d.recommendationId) ? "current" : "missing";
+      d.sourceStatus = to.recommendations.some((r) => r.id === d.recommendationId)
+        ? "current"
+        : "missing";
     });
     for (const r of sourcedRisks(to))
       if (!ws.risks.some((x) => x.source?.kind === r.source?.kind && x.source?.id === r.source?.id))
-        ws.risks.push(stamp(ctx, p, "rsk", { ...r, resolution: "open" as const, qualification: "" }));
-    ws.comments.push(stamp(ctx, p, "pc", { kind: "rebased" as const, body: `Rebased from solution v${from.version} to v${to.version}: ${reason.trim()}` }));
-    persist(ctx, p, ws, `Rebased solution source v${from.version} → v${to.version}`, "proposal.rebase", { source: sourceOf(to), revision: p.revision + 1 });
+        ws.risks.push(
+          stamp(ctx, p, "rsk", { ...r, resolution: "open" as const, qualification: "" }),
+        );
+    ws.comments.push(
+      stamp(ctx, p, "pc", {
+        kind: "rebased" as const,
+        body: `Rebased from solution v${from.version} to v${to.version}: ${reason.trim()}`,
+      }),
+    );
+    persist(
+      ctx,
+      p,
+      ws,
+      `Rebased solution source v${from.version} → v${to.version}`,
+      "proposal.rebase",
+      { source: sourceOf(to), revision: p.revision + 1 },
+    );
   },
 };
 
-function diffHandoffs(from: SolutionHandoffSnapshot, to: SolutionHandoffSnapshot, ws: ProposalWorkspace): ProposalRebaseDiff {
-  const added = to.recommendations.filter((r) => !from.recommendations.some((x) => x.id === r.id)).map((r) => ({ id: r.id, title: r.title }));
-  const removed = from.recommendations.filter((r) => !to.recommendations.some((x) => x.id === r.id)).map((r) => ({ id: r.id, title: r.title }));
+function diffHandoffs(
+  from: SolutionHandoffSnapshot,
+  to: SolutionHandoffSnapshot,
+  ws: ProposalWorkspace,
+): ProposalRebaseDiff {
+  const added = to.recommendations
+    .filter((r) => !from.recommendations.some((x) => x.id === r.id))
+    .map((r) => ({ id: r.id, title: r.title }));
+  const removed = from.recommendations
+    .filter((r) => !to.recommendations.some((x) => x.id === r.id))
+    .map((r) => ({ id: r.id, title: r.title }));
   const changed = from.recommendations.flatMap((r) => {
     const n = to.recommendations.find((x) => x.id === r.id);
     if (!n) return [];
     const ch: string[] = [];
     if (n.title !== r.title) ch.push(`title “${r.title}” → “${n.title}”`);
-    if (n.availability !== r.availability) ch.push(`availability ${r.availability} → ${n.availability}`);
+    if (n.availability !== r.availability)
+      ch.push(`availability ${r.availability} → ${n.availability}`);
     if (n.provenance !== r.provenance) ch.push(`basis ${r.provenance} → ${n.provenance}`);
     if (n.status !== r.status) ch.push(`status ${r.status} → ${n.status}`);
     return ch.length ? [{ id: r.id, title: n.title, changes: ch }] : [];
   });
   const integrationChanges = to.integrations.flatMap((i) => {
     const o = from.integrations.find((x) => x.id === i.id);
-    return !o ? [`${i.systemName}: added (${i.feasibility})`] : o.feasibility !== i.feasibility ? [`${i.systemName}: ${o.feasibility} → ${i.feasibility}`] : [];
+    return !o
+      ? [`${i.systemName}: added (${i.feasibility})`]
+      : o.feasibility !== i.feasibility
+        ? [`${i.systemName}: ${o.feasibility} → ${i.feasibility}`]
+        : [];
   });
   const newRisks = sourcedRisks(to)
-    .filter((r) => !ws.risks.some((x) => x.source?.kind === r.source?.kind && x.source?.id === r.source?.id))
+    .filter(
+      (r) =>
+        !ws.risks.some((x) => x.source?.kind === r.source?.kind && x.source?.id === r.source?.id),
+    )
     .map((r) => r.description);
   const touched = new Set([...removed, ...changed].map((x) => x.id));
   return {
@@ -1145,7 +1582,9 @@ function diffHandoffs(from: SolutionHandoffSnapshot, to: SolutionHandoffSnapshot
     changed,
     integrationChanges,
     newRisks,
-    affectedDeliverables: ws.deliverables.filter((d) => touched.has(d.recommendationId)).map((d) => d.id),
+    affectedDeliverables: ws.deliverables
+      .filter((d) => touched.has(d.recommendationId))
+      .map((d) => d.id),
   };
 }
 
