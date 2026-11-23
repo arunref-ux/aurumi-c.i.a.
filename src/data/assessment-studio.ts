@@ -20,6 +20,9 @@ import {
   readiness,
   sectionStatuses,
   type AssessmentHandoffSnapshot,
+  type FindingField,
+  type PartnerField,
+  type ProfileField,
   type AssessmentWorkspace,
   type EvidenceRecord,
   type Readiness,
@@ -502,9 +505,13 @@ export interface AssessmentStudioService {
   get(ctx: Ctx, id: ID): Promise<WorkspaceView>;
   create(ctx: Ctx, input: CreateAssessmentInput): Promise<Assessment>;
   saveOverview(ctx: Ctx, id: ID, input: z.input<typeof OverviewInput>): Promise<void>;
-  saveProfile(ctx: Ctx, id: ID, input: z.input<typeof ProfileInput>): Promise<void>;
-  savePartner(ctx: Ctx, id: ID, input: z.input<typeof PartnerInput>): Promise<void>;
-  saveFindings(ctx: Ctx, id: ID, input: z.input<typeof FindingsInput>): Promise<void>;
+  saveProfile(
+    ctx: Ctx,
+    id: ID,
+    input: Partial<Record<ProfileField, string>> & { unknown?: ProfileField[] },
+  ): Promise<void>;
+  savePartner(ctx: Ctx, id: ID, input: Partial<Record<PartnerField, string>>): Promise<void>;
+  saveFindings(ctx: Ctx, id: ID, input: Partial<Record<FindingField, string>>): Promise<void>;
   upsertChild<K extends ChildKind>(ctx: Ctx, id: ID, kind: K, input: ChildInput<K>): Promise<ID>;
   removeChild(ctx: Ctx, id: ID, kind: ChildKind, childId: ID): Promise<void>;
   saveAnswer(ctx: Ctx, id: ID, input: z.input<typeof AnswerInput>): Promise<void>;
