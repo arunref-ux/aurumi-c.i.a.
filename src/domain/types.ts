@@ -93,14 +93,41 @@ export interface ExternalSoftwareReference extends BaseRecord {
   integrationReadiness: ReadinessLevel;
   evidenceIds: ID[];
 }
-export interface ResearchEvidence extends BaseRecord {
-  subjectId: ID;
+// ---------- Research provenance (shared by evidence records and the research adapter) ----------
+export type SourceType = "vendor_site" | "vendor_documentation" | "third_party" | "curated_catalog" | "interview" | "ai_model";
+export interface SourceProvenance {
+  title: string;
+  url?: string;
+  publisher?: string;
+  sourceType: SourceType;
+  /** When the source was fetched/consulted (research time, not record time). */
+  retrievedAt: ISODate;
+  /** When the stated fact was observed or published at the source, if known. */
+  observedAt?: ISODate;
+}
+/** Confidence with explicit unknown semantics — never a silent default. */
+export type Confidence =
+  | { level: "high" | "medium" | "low"; score?: number; rationale?: string }
+  | { level: "unknown"; reason: string };
+export type Verification =
+  | { state: "unverified" }
+  | { state: "verified"; verifiedBy: ID; verifiedAt: ISODate; method: string }
+  | { state: "disputed"; reviewedBy: ID; reviewedAt: ISODate; note: string };
+export interface ResearchFinding {
+  /** Which attribute the finding is about, e.g. "vendor" or "integration_readiness". */
+  attribute: string;
   statement: string;
   status: EvidenceStatus;
-  sourceUrl?: string;
-  sourceTitle?: string;
-  verifiedBy?: ID;
-  verifiedAt?: ISODate;
+  sources: SourceProvenance[];
+  /** When the research was performed — distinct from BaseRecord.createdAt. */
+  researchedAt: ISODate;
+  confidence: Confidence;
+  verification: Verification;
+  /** Required for ai_inference: the model/system that produced it. */
+  generatedBy?: string;
+}
+export interface ResearchEvidence extends BaseRecord, ResearchFinding {
+  subjectId: ID;
 }
 export interface BusinessChallenge extends BaseRecord {
   assessmentId: ID;
@@ -313,6 +340,10 @@ export type RoleKey =
 export interface AuditEvent {
   id: ID;
   at: ISODate;
+  /** Scope metadata so audit reads can be filtered by organization/team/owner. */
+  organizationId: ID;
+  teamId?: ID;
+  ownerId?: ID;
   actorId: ID;
   action: string;
   resourceType: ResourceType | "system";
@@ -320,3 +351,13 @@ export interface AuditEvent {
   summary: string;
   outcome: "allowed" | "denied";
 }
+
+// ---------- Write inputs (runtime allowlists live in src/data/repositories.ts) ----------
+type Assignable = { ownerId?: ID; teamId?: ID; assignedUserIds?: ID[] };
+export type AssessmentCreateInput = Assignable & Pick<Assessment, "type" | "title" | "subjectName" | "channel"> &
+  Partial<Pick<Assessment, "status" | "crmReferenceId" | "tenantReferenceId" | "scenarioCode">>;
+export type AssessmentUpdateInput = Assignable & Partial<Pick<Assessment, "title" | "subjectName" | "status" | "channel" | "crmReferenceId" | "tenantReferenceId">>;
+export type ProposalCreateInput = Assignable & Pick<Proposal, "assessmentId" | "title" | "track"> & Partial<Pick<Proposal, "status" | "includesPricing">>;
+export type ProposalUpdateInput = Assignable & Partial<Pick<Proposal, "title" | "status" | "includesPricing">>;
+export type EngagementCreateInput = Assignable & Pick<Engagement, "proposalId" | "title"> & Partial<Pick<Engagement, "status" | "tenantSuccessReferenceId">>;
+export type EngagementUpdateInput = Assignable & Partial<Pick<Engagement, "title" | "status" | "tenantSuccessReferenceId">>;

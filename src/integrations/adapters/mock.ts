@@ -1,4 +1,6 @@
 /** Mock implementations with simulated latency and switchable failure mode. */
+import { assertValidFinding } from "@/domain/research";
+import type { ResearchFinding } from "@/domain/types";
 import type {
   AdapterDescriptor, AdapterResult, CapabilityCatalogAdapter, CRMAdapter, DemandSignalAdapter,
   DocumentAdapter, PricingSubscriptionAdapter, ResearchAdapter, TenantHealthAdapter, TenantSuccessAdapter, Capability,
@@ -53,8 +55,28 @@ export const tenantHealth: TenantHealthAdapter = {
 export const tenantSuccess: TenantSuccessAdapter = {
   getReferences: () => respond("tenant_success", [{ id: "ts_1042", stage: "Onboarding complete" }], []),
 };
+function mockResearch(name: string, website?: string) {
+  const at = new Date().toISOString();
+  const findings: ResearchFinding[] = [
+    website
+      ? { attribute: "vendor", statement: `${name} is published by the vendor named on its product page (curated mock)`, status: "research_finding", researchedAt: at,
+          sources: [{ title: `${name} product page`, url: website, sourceType: "vendor_site", retrievedAt: at }],
+          confidence: { level: "medium", rationale: "Single vendor-published source" }, verification: { state: "unverified" } }
+      : { attribute: "vendor", statement: `Vendor of ${name} not yet identified`, status: "ai_inference", researchedAt: at, generatedBy: "mock-research-model",
+          sources: [{ title: "Mock research model output", sourceType: "ai_model", retrievedAt: at }],
+          confidence: { level: "unknown", reason: "No website supplied and no source found" }, verification: { state: "unverified" } },
+    { attribute: "category", statement: `${name} appears to be attendance/HR software`, status: "ai_inference", researchedAt: at, generatedBy: "mock-research-model",
+      sources: [{ title: "Mock research model output", sourceType: "ai_model", retrievedAt: at }],
+      confidence: { level: "low", score: 0.4, rationale: "Inferred from product name only" }, verification: { state: "unverified" } },
+    { attribute: "integration_readiness", statement: `No Aurumi connector readiness evidence for ${name}`, status: "research_finding", researchedAt: at,
+      sources: [{ title: "Connector catalog (mock)", sourceType: "curated_catalog", retrievedAt: at }],
+      confidence: { level: "unknown", reason: "Catalog has no entry for this product" }, verification: { state: "unverified" } },
+  ];
+  findings.forEach(assertValidFinding);
+  return { query: website ? { name, website } : { name }, researchedAt: at, readiness: "unknown" as const, findings };
+}
 export const research: ResearchAdapter = {
-  lookupSoftware: (name, website) => respond("research", { vendor: `${name} vendor (curated mock)`, category: "Unclassified", readiness: "unknown" as const, sources: website ? [{ title: `${name} product page`, url: website }] : [] }),
+  lookupSoftware: (name, website) => respond("research", mockResearch(name, website)),
 };
 export const documents: DocumentAdapter = {
   generate: (v, f) => respond("documents", { fileName: `${v}.${f}`, bytes: 184_320 }),

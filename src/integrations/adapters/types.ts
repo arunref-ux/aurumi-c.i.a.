@@ -2,7 +2,7 @@
  * Integration contracts (§14). Existing Aurumi apps stay authoritative; C.I.A.
  * talks to them only through these interfaces. No production endpoints are assumed.
  */
-import type { ReadinessLevel } from "@/domain/types";
+import type { ISODate, ReadinessLevel, ResearchFinding } from "@/domain/types";
 
 export type IntegrationStatus = "mock" | "connected" | "degraded" | "unavailable";
 export type AdapterResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -40,8 +40,16 @@ export interface TenantHealthAdapter {
 export interface TenantSuccessAdapter {
   getReferences(tenantId: string): Promise<AdapterResult<{ id: string; stage: string }[]>>;
 }
+/** Every research attribute is a ResearchFinding carrying provenance, confidence and verification. */
+export interface SoftwareResearchResult {
+  query: { name: string; website?: string };
+  researchedAt: ISODate;
+  /** Best current readiness; "unknown" unless a finding supports otherwise. */
+  readiness: ReadinessLevel;
+  findings: ResearchFinding[];
+}
 export interface ResearchAdapter {
-  lookupSoftware(name: string, website?: string): Promise<AdapterResult<{ vendor: string; category: string; readiness: ReadinessLevel; sources: { title: string; url: string }[] }>>;
+  lookupSoftware(name: string, website?: string): Promise<AdapterResult<SoftwareResearchResult>>;
 }
 export interface DocumentAdapter {
   generate(proposalVersionId: string, format: "pdf" | "docx"): Promise<AdapterResult<{ fileName: string; bytes: number }>>;

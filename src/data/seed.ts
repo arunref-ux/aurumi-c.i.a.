@@ -55,8 +55,8 @@ export const seedEngagements: Engagement[] = [
 ];
 
 export const seedAudit: AuditEvent[] = [
-  { id: "aud_1", at: daysAgo(2), actorId: "u_manager", action: "proposal.create", resourceType: "proposal", resourceId: "prp_b", summary: "Created draft proposal for Coral Bay Resort", outcome: "allowed" },
-  { id: "aud_2", at: daysAgo(3), actorId: "u_manager", action: "assessment.create", resourceType: "assessment", resourceId: "asm_d", summary: "Website Business Fit session handed off (consented)", outcome: "allowed" },
-  { id: "aud_3", at: daysAgo(6), actorId: "u_pm", action: "proposal.create", resourceType: "proposal", resourceId: "prp_c", summary: "Generated partnership proposal for Maple Books", outcome: "allowed" },
-  { id: "aud_4", at: daysAgo(12), actorId: "u_pro", action: "proposal.share", resourceType: "proposal", resourceId: "prp_a", summary: "Shared proposal v2 with Shreeji leadership", outcome: "allowed" },
+  { id: "aud_1", at: daysAgo(2), organizationId: ORG, actorId: "u_manager", teamId: "team_advisory", ownerId: "u_manager", action: "proposal.create", resourceType: "proposal", resourceId: "prp_b", summary: "Created draft proposal for Coral Bay Resort", outcome: "allowed" },
+  { id: "aud_2", at: daysAgo(3), organizationId: ORG, actorId: "u_manager", teamId: "team_advisory", ownerId: "u_manager", action: "assessment.create", resourceType: "assessment", resourceId: "asm_d", summary: "Website Business Fit session handed off (consented)", outcome: "allowed" },
+  { id: "aud_3", at: daysAgo(6), organizationId: ORG, actorId: "u_pm", teamId: "team_partners", ownerId: "u_pm", action: "proposal.create", resourceType: "proposal", resourceId: "prp_c", summary: "Generated partnership proposal for Maple Books", outcome: "allowed" },
+  { id: "aud_4", at: daysAgo(12), organizationId: ORG, actorId: "u_pro", teamId: "team_advisory", ownerId: "u_pro", action: "proposal.share", resourceType: "proposal", resourceId: "prp_a", summary: "Shared proposal v2 with Shreeji leadership", outcome: "allowed" },
 ];

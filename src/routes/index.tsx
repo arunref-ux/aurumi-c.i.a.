@@ -2,10 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "@/components/app/icons";
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel, StatusPill, type Tone } from "@/components/app/ui-bits";
-import { directory, repos } from "@/data/repositories";
-import { seedUsers } from "@/data/seed";
-import { store } from "@/data/store";
-import { can } from "@/domain/permissions";
+import { auditLog, directory, repos } from "@/data/repositories";
 import { computeMetrics, type DashboardFilters } from "@/domain/metrics";
 import type { AssessmentStatus } from "@/domain/types";
 import { useSession, useStoreVersion } from "@/lib/session";
@@ -24,7 +21,6 @@ export const Route = createFileRoute("/")({
 
 const STATUS_TONE: Record<AssessmentStatus, Tone> = { draft: "neutral", in_progress: "info", under_review: "warning", completed: "success", archived: "neutral" };
 const CHANNELS = { all: "All channels", direct: "Direct", website_self: "Website — self", website_boss: "Website — for boss", partner_referral: "Partner referral", existing_tenant: "Existing tenant" } as const;
-const userName = (id: string) => seedUsers.find((u) => u.id === id)?.name ?? id;
 const select = "rounded-md border bg-card px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
 
 function Overview() {
@@ -33,7 +29,8 @@ function Overview() {
   const [f, setF] = useState<Omit<DashboardFilters, "now">>({ type: "all", ownerId: "all", channel: "all", sinceDays: null });
   const ctx = { user };
   const m = computeMetrics(repos.assessments.list(ctx), repos.proposals.list(ctx), repos.engagements.list(ctx), { ...f, now: new Date("2026-11-23T12:00:00Z") });
-  const activity = can(user, "audit.read") ? store.audit().slice(0, 6) : store.audit().filter((e) => e.actorId === user.id).slice(0, 6);
+  const activity = auditLog.list(ctx).slice(0, 6);
+  const userName = (id: string) => directory.displayName(ctx, id);
   const mine = m.assessments.filter((a) => a.ownerId === user.id || a.assignedUserIds.includes(user.id));
 
   const kpis = [
@@ -61,7 +58,7 @@ function Overview() {
         </select>
         <select aria-label="Professional" className={select} value={f.ownerId} onChange={(e) => setF({ ...f, ownerId: e.target.value })}>
           <option value="all">All professionals</option>
-          {directory.professionals().map((p) => <option key={p.id} value={p.userId}>{p.displayName}</option>)}
+          {directory.professionals(ctx).map((p) => <option key={p.id} value={p.userId}>{p.displayName}</option>)}
         </select>
         <select aria-label="Channel" className={select} value={f.channel} onChange={(e) => setF({ ...f, channel: e.target.value as DashboardFilters["channel"] })}>
           {Object.entries(CHANNELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

@@ -3,9 +3,7 @@ import { Loader2 } from "@/components/app/icons";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState, PageHeader, Panel, StatusPill } from "@/components/app/ui-bits";
-import { repos } from "@/data/repositories";
-import { seedUsers } from "@/data/seed";
-import { store } from "@/data/store";
+import { adminActions, auditLog, directory, repos } from "@/data/repositories";
 import { AccessDeniedError, can, ROLE_GRANTS, ROLE_LABELS, type Permission } from "@/domain/permissions";
 import type { RoleKey } from "@/domain/types";
 import { adapterRegistry, mockControls } from "@/integrations/adapters/mock";
@@ -47,19 +45,29 @@ type RunState = { kind: "idle" } | { kind: "loading" } | { kind: "done"; result:
 function AdapterCard({ a }: { a: AdapterDescriptor }) {
   const [mode, setMode] = useState<"normal" | "empty" | "failing">("normal");
   const [runs, setRuns] = useState<Record<string, RunState>>({});
-  const apply = (m: typeof mode) => {
+  const [denied, setDenied] = useState<string | null>(null);
+  const { user } = useSession();
+  const ctx = { user };
+  const allowed = adminActions.canManage(ctx);
+  const guard = async <T,>(label: string, op: () => T | Promise<T>): Promise<T | undefined> => {
+    try { setDenied(null); return await adminActions.run(ctx, label, op); }
+    catch (e) { setDenied(e instanceof AccessDeniedError ? "Denied: settings.manage is required. This attempt was logged." : String(e)); return undefined; }
+  };
+  const apply = (m: typeof mode) => guard(`Set ${a.key} mock to ${m}`, () => {
     setMode(m);
     mockControls.failing.delete(a.key); mockControls.empty.delete(a.key);
     if (m === "failing") mockControls.failing.add(a.key);
     if (m === "empty") mockControls.empty.add(a.key);
-  };
+  });
   return (
     <Panel title={a.name} action={<StatusPill tone="warning">Mock — not connected</StatusPill>}>
       <p className="text-sm">{a.responsibility}</p>
       <p className="mt-1 text-xs text-muted-foreground">Authoritative source: {a.sourceApp}</p>
+      {!allowed && <p className="mt-2 text-xs text-muted-foreground">View only — running diagnostics needs the settings.manage permission.</p>}
+      {denied && <p role="alert" className="mt-2 text-xs text-destructive">{denied}</p>}
       <div className="mt-4 flex gap-1 text-xs" role="radiogroup" aria-label="Simulation mode">
         {(["normal", "empty", "failing"] as const).map((m) => (
-          <button key={m} role="radio" aria-checked={mode === m} onClick={() => apply(m)}
+          <button key={m} role="radio" aria-checked={mode === m} aria-disabled={!allowed} onClick={() => void apply(m)}
             className={`rounded-md border px-2 py-1 ${mode === m ? "bg-primary text-primary-foreground" : "bg-card"}`}>{m}</button>
         ))}
       </div>
@@ -70,8 +78,13 @@ function AdapterCard({ a }: { a: AdapterDescriptor }) {
             <div key={op.name} className="rounded-md border bg-background p-3">
               <div className="flex items-center justify-between gap-2">
                 <code className="font-mono text-xs">{op.name}({JSON.stringify(op.exampleRequest)})</code>
-                <button className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-xs text-primary-foreground disabled:opacity-60" disabled={s.kind === "loading"}
-                  onClick={async () => { setRuns((r) => ({ ...r, [op.name]: { kind: "loading" } })); const result = await op.run(); setRuns((r) => ({ ...r, [op.name]: { kind: "done", result } })); }}>
+                <button className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-xs text-primary-foreground disabled:opacity-60" disabled={s.kind === "loading"} aria-disabled={!allowed}
+                  onClick={async () => {
+                    if (!allowed) { await guard(`Run ${a.key}.${op.name}`, op.run); return; }
+                    setRuns((r) => ({ ...r, [op.name]: { kind: "loading" } }));
+                    const result = await guard(`Run ${a.key}.${op.name}`, op.run);
+                    setRuns((r) => ({ ...r, [op.name]: result ? { kind: "done", result } : { kind: "idle" } }));
+                  }}>
                   Run
                 </button>
               </div>
@@ -92,13 +105,16 @@ function Integrations() {
   return <div className="grid gap-4 md:grid-cols-2">{adapterRegistry.map((a) => <AdapterCard key={a.key} a={a} />)}</div>;
 }
 
+const DEMO_REFS = ["prp_a", "prp_b", "prp_c", "prp_e"];
 const MATRIX: Permission[] = ["assessment.read", "assessment.create", "proposal.read", "proposal.approve", "proposal.share", "engagement.assign", "settings.manage"];
 
 function Access() {
   const { user } = useSession();
   const [result, setResult] = useState<string | null>(null);
   const roles = Object.keys(ROLE_GRANTS) as RoleKey[];
-  const proposals = store.table("proposals");
+  useStoreVersion();
+  const ctx = { user };
+  const visible = repos.proposals.list(ctx);
   return (
     <div className="space-y-6">
       <Panel title="Role permissions (illustrative — DevHarmony is authoritative)">
@@ -117,12 +133,16 @@ function Access() {
       <Panel title="Access check (enforced in the data layer)">
         <p className="mb-3 text-sm text-muted-foreground">Open a proposal as <strong className="text-foreground">{user.name}</strong>. Switch identity at the top to compare.</p>
         <div className="flex flex-wrap gap-2">
-          {proposals.map((p) => (
-            <button key={p.id} className="rounded-md border bg-card px-3 py-1.5 text-sm hover:bg-muted" onClick={() => {
-              try { const r = repos.proposals.get({ user }, p.id); setResult(`Allowed: "${r.title}"`); }
-              catch (e) { setResult(e instanceof AccessDeniedError ? `Denied: you are not assigned to "${p.title}". This attempt was logged.` : String(e)); }
-            }}>{p.title}{can(user, "proposal.read", p) ? "" : " 🔒"}</button>
-          ))}
+          {/* Opaque fixture references only — titles appear solely after the service allows the read. */}
+          {DEMO_REFS.map((ref) => {
+            const ok = visible.some((p) => p.id === ref);
+            return (
+              <button key={ref} className="rounded-md border bg-card px-3 py-1.5 font-mono text-xs hover:bg-muted" onClick={() => {
+                try { const r = repos.proposals.get(ctx, ref); setResult(`Allowed: "${r.title}"`); }
+                catch (e) { setResult(e instanceof AccessDeniedError ? `Denied: you may not open ${ref}. This attempt was logged.` : String(e)); }
+              }}>{ref}{ok ? "" : " 🔒"}</button>
+            );
+          })}
         </div>
         {result && <p className={`mt-3 text-sm ${result.startsWith("Denied") ? "text-destructive" : "text-success"}`}>{result}</p>}
       </Panel>
@@ -134,11 +154,12 @@ function Audit() {
   useStoreVersion();
   const { user } = useSession();
   if (!can(user, "audit.read")) return <EmptyState title="Audit log restricted" body="Your role does not include audit access." />;
-  const name = (id: string) => seedUsers.find((u) => u.id === id)?.name ?? id;
+  const ctx = { user };
+  const name = (id: string) => directory.displayName(ctx, id);
   return (
     <Panel>
       <ul className="divide-y text-sm">
-        {store.audit().map((e) => (
+        {auditLog.list(ctx).map((e) => (
           <li key={e.id} className="flex flex-wrap items-center gap-3 py-2.5">
             <StatusPill tone={e.outcome === "denied" ? "danger" : "success"}>{e.outcome}</StatusPill>
             <code className="font-mono text-xs">{e.action}</code>
