@@ -178,11 +178,39 @@ function protect(raw: string, reason: string, entries: QuarantineEntry[], restor
   }
 }
 
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" &&
+  v !== null &&
+  !Array.isArray(v) &&
+  Object.getPrototypeOf(v) === Object.prototype;
+/**
+ * A saved-work envelope is a plain object with a plain-object `tables`
+ * container and, when present, valid metadata. Arrays, primitives, null and
+ * objects without tables are malformed — never treated as "nothing saved".
+ */
+function isEnvelope(
+  v: unknown,
+): v is { savedAt?: string; tables: Record<string, unknown>; audit?: unknown } {
+  if (!isPlainObject(v) || !isPlainObject(v["tables"])) return false;
+  if (v["savedAt"] !== undefined && typeof v["savedAt"] !== "string") return false;
+  if (v["audit"] !== undefined && !Array.isArray(v["audit"])) return false;
+  return true;
+}
+
 /** Loads saved work over seed data; saved drafts always win over seed, after validation. */
 function load() {
   db = fresh();
   pending = null;
   readFailed = false;
+  // Start from a clean recovery state; any condition found below sets it again.
+  persistState = {
+    ...persistState,
+    error: null,
+    recovery: null,
+    quarantined: 0,
+    backupSaved: false,
+    protected: false,
+  };
   if (!backend) return;
   let raw: string | null;
   try {
@@ -202,11 +230,11 @@ function load() {
   let parsed: { savedAt?: string; tables?: Record<string, unknown>; audit?: unknown };
   try {
     parsed = JSON.parse(raw) as typeof parsed;
-    if (!parsed || typeof parsed !== "object") throw new Error("not an object");
+    if (!isEnvelope(parsed)) throw new Error("not a saved-work envelope");
   } catch {
     protect(
       raw,
-      "unreadable saved data",
+      "unreadable or malformed saved data",
       [{ table: "*", path: STORAGE_KEY, reason: "unreadable saved data", value: raw }],
       "Saved work was damaged and could not be opened; sample data is shown.",
     );
@@ -286,7 +314,9 @@ export const store = {
       );
     }
     const ok = !isProtected();
-    if (ok) save();
+    // Saved data may have replaced the in-memory dataset: refresh queries. No write-back —
+    // the stored copy is already the saved work (or is now backed up) and is left as is.
+    dataVersion++;
     version++;
     listeners.forEach((l) => l());
     return { ok, message: store.persistence().recovery ?? "Saved work is available." };

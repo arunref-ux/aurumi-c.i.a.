@@ -618,3 +618,100 @@ describe("P1 final — verification bound to its target system", () => {
     expect((await getEv(a.id, id)).verification).toEqual(orig);
   });
 });
+
+describe("Phase 2 exit — saved-work envelope", () => {
+  it("A. a top-level array triggers full-payload protection and is never overwritten", async () => {
+    const original = JSON.stringify([{ id: "asm_x", title: "Saved assessment" }]);
+    const { b, m, ctl } = flakyBackend();
+    m.set(STORAGE_KEY, original);
+    store.attach(b);
+    expect(store.persistence()).toMatchObject({ protected: true, backupSaved: false });
+    expect(m.get(STORAGE_KEY)).toBe(original);
+    await expect(newAssessment()).rejects.toThrow(StorageProtectedError);
+    expect(m.get(STORAGE_KEY)).toBe(original);
+    await expect(S.get(u("u_partner_pro"), "asm_a")).rejects.toThrow();
+    expect(m.get(STORAGE_KEY)).toBe(original);
+    expect(() => store.reset()).toThrow(StorageProtectedError);
+    expect(m.get(STORAGE_KEY)).toBe(original);
+
+    ctl.failQuarantine = false;
+    expect(store.retryRecovery().ok).toBe(true);
+    expect(store.persistence()).toMatchObject({ protected: false, backupSaved: true });
+    expect(JSON.parse(m.get(QUARANTINE_KEY)!)[0].originalPayload).toBe(original);
+    expect(m.get(STORAGE_KEY)).toBe(original); // no write-back on recovery itself
+    await newAssessment(); // normal saving resumes
+    expect(m.get(STORAGE_KEY)).not.toBe(original);
+  });
+
+  it.each([
+    ["null", "null"],
+    ["array", "[]"],
+    ["number", "42"],
+    ["string", '"hello"'],
+    ["boolean", "true"],
+    ["missing tables", '{"savedAt":"2026-11-01T00:00:00Z"}'],
+    ["tables is an array", '{"tables":[]}'],
+    ["tables is a string", '{"tables":"x"}'],
+    ["tables is null", '{"tables":null}'],
+    ["audit is not a list", '{"tables":{},"audit":{}}'],
+  ])("B. rejects an invalid envelope (%s) through full-payload protection", (_name, raw) => {
+    const { b, m } = flakyBackend();
+    m.set(STORAGE_KEY, raw);
+    store.attach(b);
+    expect(store.persistence()).toMatchObject({ protected: true, backupSaved: false });
+    expect(m.get(STORAGE_KEY)).toBe(raw);
+  });
+
+  it("C. a successful read retry restores saved work, clears stale state and refreshes cached lists", async () => {
+    // Saved work containing one extra assessment.
+    const ok = memoryBackend();
+    store.attach(ok);
+    const created = await newAssessment();
+    const savedPayload = ok.read(STORAGE_KEY)!;
+
+    let readable = false;
+    const writes: string[] = [];
+    const b: PersistenceBackend = {
+      kind: "browser",
+      read: (k) => {
+        if (!readable) throw new Error("SecurityError");
+        return k === STORAGE_KEY ? savedPayload : null;
+      },
+      write: (k) => void writes.push(k),
+    };
+    store.attach(b);
+    expect(store.persistence()).toMatchObject({ protected: true });
+    expect(store.persistence().recovery).toMatch(/could not be read/);
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    );
+    // Mount without SessionProvider's storage attach: use the default fallback-free session hook path.
+    const { useAssessmentList } = await import("@/lib/assessment-queries");
+    const { SessionProvider: SP } = await import("@/lib/session");
+    const attach = vi.spyOn(store, "attach").mockImplementation(() => {});
+    const { result } = renderHook(() => useAssessmentList(), {
+      wrapper: ({ children }) => wrapper({ children: <SP>{children}</SP> }),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data!.some((x) => x.assessment.id === created.id)).toBe(false);
+    attach.mockRestore();
+
+    const before = store.dataVersion();
+    readable = true;
+    const r = store.retryRecovery();
+    expect(r.ok).toBe(true);
+    expect(store.persistence()).toMatchObject({
+      protected: false,
+      recovery: null,
+      error: null,
+      quarantined: 0,
+    });
+    expect(store.dataVersion()).toBeGreaterThan(before);
+    expect(writes).toEqual([]); // no write-back
+    await waitFor(() =>
+      expect(result.current.data!.some((x) => x.assessment.id === created.id)).toBe(true),
+    );
+  });
+});
