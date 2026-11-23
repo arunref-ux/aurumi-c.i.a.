@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu } from "lucide-react";
+import { Menu, X } from "./icons";
 import { useState, type ReactNode } from "react";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { seedUsers } from "@/data/seed";
 import { ROLE_LABELS } from "@/domain/permissions";
 import { useSession } from "@/lib/session";
@@ -66,13 +65,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           v1.0 prototype · simulated backend
         </div>
       </aside>
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-72 border-sidebar-border bg-sidebar p-0">
-          <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <Brand />
-          <NavList onNavigate={() => setOpen(false)} />
-        </SheetContent>
-      </Sheet>
+      {open && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
+          <button className="absolute inset-0 bg-foreground/40" aria-label="Close navigation" onClick={() => setOpen(false)} />
+          <aside className="relative h-full w-72 bg-sidebar">
+            <button className="absolute right-3 top-3 rounded-md p-1.5 text-sidebar-foreground hover:bg-sidebar-accent" aria-label="Close navigation" onClick={() => setOpen(false)}>
+              <X className="size-4" />
+            </button>
+            <Brand />
+            <NavList onNavigate={() => setOpen(false)} />
+          </aside>
+        </div>
+      )}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/90 px-4 py-3 backdrop-blur md:px-8">
           <button className="rounded-md p-1.5 hover:bg-muted lg:hidden" onClick={() => setOpen(true)} aria-label="Open navigation">

@@ -1,4 +1,4 @@
-import { Briefcase, ClipboardList, FileText, LayoutDashboard, Lightbulb, Network, Settings } from "lucide-react";
+import { Briefcase, ClipboardList, FileText, LayoutDashboard, Lightbulb, Network, Settings } from "./icons";
 
 /** Single source of truth for primary navigation (§3). `phase` = delivery phase. */
 export const NAV = [

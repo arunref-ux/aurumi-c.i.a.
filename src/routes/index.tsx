@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "@/components/app/icons";
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel, StatusPill, type Tone } from "@/components/app/ui-bits";
 import { directory, repos } from "@/data/repositories";
