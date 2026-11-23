@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "@/components/app/icons";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState, PageHeader, Panel, StatusPill } from "@/components/app/ui-bits";
 import { adminActions, auditLog, directory, repos } from "@/data/repositories";
@@ -42,11 +42,21 @@ function Settings() {
 
 type RunState = { kind: "idle" } | { kind: "loading" } | { kind: "done"; result: AdapterResult<unknown> };
 
-function AdapterCard({ a }: { a: AdapterDescriptor }) {
+export function AdapterCard({ a }: { a: AdapterDescriptor }) {
   const [mode, setMode] = useState<"normal" | "empty" | "failing">("normal");
-  const [runs, setRuns] = useState<Record<string, RunState>>({});
-  const [denied, setDenied] = useState<string | null>(null);
   const { user } = useSession();
+  // Results are bound to the identity that requested them; anything owned by a previous identity is never shown.
+  const [runsState, setRunsState] = useState<{ owner: string; runs: Record<string, RunState> }>({ owner: user.id, runs: {} });
+  const [deniedState, setDeniedState] = useState<{ owner: string; msg: string } | null>(null);
+  const current = useRef(user.id);
+  current.current = user.id;
+  const runs = runsState.owner === user.id ? runsState.runs : {};
+  const denied = deniedState?.owner === user.id ? deniedState.msg : null;
+  const setDenied = (msg: string | null) => setDeniedState(msg === null ? null : { owner: user.id, msg });
+  const setRuns = (owner: string, f: (r: Record<string, RunState>) => Record<string, RunState>) => {
+    if (current.current !== owner) return; // discard responses that arrive after an identity switch
+    setRunsState((s) => ({ owner, runs: f(s.owner === owner ? s.runs : {}) }));
+  };
   const ctx = { user };
   const allowed = adminActions.canManage(ctx);
   const guard = async <T,>(label: string, op: () => T | Promise<T>): Promise<T | undefined> => {
@@ -81,9 +91,10 @@ function AdapterCard({ a }: { a: AdapterDescriptor }) {
                 <button className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-xs text-primary-foreground disabled:opacity-60" disabled={s.kind === "loading"} aria-disabled={!allowed}
                   onClick={async () => {
                     if (!allowed) { await guard(`Run ${a.key}.${op.name}`, op.run); return; }
-                    setRuns((r) => ({ ...r, [op.name]: { kind: "loading" } }));
+                    const owner = user.id;
+                    setRuns(owner, (r) => ({ ...r, [op.name]: { kind: "loading" } }));
                     const result = await guard(`Run ${a.key}.${op.name}`, op.run);
-                    setRuns((r) => ({ ...r, [op.name]: result ? { kind: "done", result } : { kind: "idle" } }));
+                    setRuns(owner, (r) => ({ ...r, [op.name]: result ? { kind: "done", result } : { kind: "idle" } }));
                   }}>
                   Run
                 </button>
@@ -108,9 +119,11 @@ function Integrations() {
 const DEMO_REFS = ["prp_a", "prp_b", "prp_c", "prp_e"];
 const MATRIX: Permission[] = ["assessment.read", "assessment.create", "proposal.read", "proposal.approve", "proposal.share", "engagement.assign", "settings.manage"];
 
-function Access() {
+export function Access() {
   const { user } = useSession();
-  const [result, setResult] = useState<string | null>(null);
+  const [resultState, setResultState] = useState<{ owner: string; text: string } | null>(null);
+  const result = resultState?.owner === user.id ? resultState.text : null;
+  const setResult = (text: string) => setResultState({ owner: user.id, text });
   const roles = Object.keys(ROLE_GRANTS) as RoleKey[];
   useStoreVersion();
   const ctx = { user };

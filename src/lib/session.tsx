@@ -9,7 +9,13 @@ const g = globalThis as { __ciaSessionCtx?: Context<SessionValue | null> };
 const SessionCtx = (g.__ciaSessionCtx ??= createContext<SessionValue | null>(null));
 
 const DEFAULT_USER_ID = "u_manager";
-const FALLBACK: SessionValue = { user: seedUsers.find((u) => u.id === DEFAULT_USER_ID) ?? seedUsers[0]!, setUserId: () => {} };
+/**
+ * Fail closed: without a provider the caller gets an anonymous identity with
+ * no roles, so no permission check can pass. This only avoids a blank screen
+ * during a live reload; it never grants access.
+ */
+export const NO_SESSION_USER: User = { id: "u_no_session", organizationId: "org_none", name: "Signed out", email: "", teamId: "team_none", roles: [], affiliation: "partner" };
+const FALLBACK: SessionValue = { user: NO_SESSION_USER, setUserId: () => {} };
 
 /** Prototype identity: switch between seeded users to exercise permissions. */
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -20,7 +26,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 export function useSession() {
   const c = useContext(SessionCtx);
   // During a live reload a consumer can briefly render without its provider;
-  // fall back to the default identity instead of blanking the screen.
+  // fall back to a permissionless identity instead of blanking the screen.
   return c ?? FALLBACK;
 }
 /** Re-render on any store change. */

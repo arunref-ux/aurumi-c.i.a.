@@ -48,6 +48,13 @@ interface Spec {
   updateFields: readonly string[];
   parent?: { field: string; table: "assessments" | "proposals"; resource: ResourceType };
   checkStatus?: (ctx: Ctx, deny: (p: Permission) => never, next: string | undefined, current?: string) => void;
+  /** Applied before validation when the caller omits the field. */
+  defaults?: Record<string, unknown>;
+  /** Required non-empty strings, enum fields and boolean fields, checked on every full row before persistence. */
+  required: readonly string[];
+  enums: Record<string, readonly string[]>;
+  booleans?: readonly string[];
+  optionalStrings?: readonly string[];
 }
 
 function createScopedRepository<R extends ScopedRecord, CIn, UIn>(spec: Spec) {
@@ -91,6 +98,21 @@ function createScopedRepository<R extends ScopedRecord, CIn, UIn>(spec: Spec) {
     if (scope !== "organization" && next.teamId !== ctx.user.teamId) deny(ctx, perm("assign"), id);
   };
 
+  /** Validates the complete candidate row; nothing is persisted unless this passes. */
+  const checkShape = (ctx: Ctx, row: AnyRow, id?: ID) => {
+    for (const f of spec.required) {
+      const v = row[f];
+      if (typeof v !== "string" || !v.trim()) reject(ctx, `field "${f}" is required`, id);
+    }
+    for (const [f, allowed] of Object.entries(spec.enums)) {
+      if (typeof row[f] !== "string" || !allowed.includes(row[f] as string)) reject(ctx, `invalid ${f} ${JSON.stringify(row[f] ?? null)}`, id);
+    }
+    for (const f of spec.booleans ?? []) if (typeof row[f] !== "boolean") reject(ctx, `field "${f}" must be true or false`, id);
+    for (const f of spec.optionalStrings ?? []) {
+      if (f in row && typeof row[f] !== "string") reject(ctx, `field "${f}" must be a string when supplied`, id);
+    }
+  };
+
   const checkParent = (ctx: Ctx, next: AnyRow, id?: ID) => {
     if (!spec.parent) return;
     const pid = next[spec.parent.field];
@@ -115,7 +137,8 @@ function createScopedRepository<R extends ScopedRecord, CIn, UIn>(spec: Spec) {
       const data = checkFields(ctx, input, spec.createFields);
       const now = new Date().toISOString();
       const defaults = { ownerId: ctx.user.id, teamId: ctx.user.teamId, assignedUserIds: [] as ID[] };
-      const row = { ...defaults, ...data, id: newId(resource.slice(0, 3)), organizationId: ctx.user.organizationId, createdAt: now, createdBy: ctx.user.id, updatedAt: now, updatedBy: ctx.user.id } as AnyRow;
+      const row = { ...defaults, ...spec.defaults, ...data, id: newId(resource.slice(0, 3)), organizationId: ctx.user.organizationId, createdAt: now, createdBy: ctx.user.id, updatedAt: now, updatedBy: ctx.user.id } as AnyRow;
+      checkShape(ctx, row);
       checkAssignment(ctx, row, defaults);
       checkParent(ctx, row);
       spec.checkStatus?.(ctx, (p) => deny(ctx, p), row["status"] as string | undefined);
@@ -129,9 +152,12 @@ function createScopedRepository<R extends ScopedRecord, CIn, UIn>(spec: Spec) {
       if (!current || !can(ctx.user, perm("update"), current)) return deny(ctx, perm("update"), id);
       const data = checkFields(ctx, patch, spec.updateFields, id);
       const next = { ...current, ...data, id, organizationId: current.organizationId, createdAt: current.createdAt, createdBy: current.createdBy, updatedAt: new Date().toISOString(), updatedBy: ctx.user.id } as AnyRow;
+      // An explicitly supplied status (including undefined/null) is validated; an omitted one keeps the stored value.
+      if (Object.prototype.hasOwnProperty.call(data, "status") && typeof data["status"] !== "string") reject(ctx, `invalid status ${JSON.stringify(data["status"] ?? null)}`, id);
+      checkShape(ctx, next, id);
       checkAssignment(ctx, next, current, id);
       checkParent(ctx, next, id);
-      if ("status" in data) spec.checkStatus?.(ctx, (p) => deny(ctx, p, id), next["status"] as string, current["status"] as string);
+      if (Object.prototype.hasOwnProperty.call(data, "status")) spec.checkStatus?.(ctx, (p) => deny(ctx, p, id), next["status"] as string, current["status"] as string);
       if (!can(ctx.user, perm("update"), next)) return deny(ctx, perm("update"), id);
       store.replace(table, rows().map((r) => (r.id === id ? next : r)) as never);
       audit(ctx, { action: perm("update"), resourceType: resource, resourceId: id, teamId: next.teamId, ownerId: next.ownerId, summary: `Updated ${resource}`, outcome: "allowed" });
@@ -141,6 +167,8 @@ function createScopedRepository<R extends ScopedRecord, CIn, UIn>(spec: Spec) {
 }
 
 /** Statuses a generic proposal update may set. Approval/sharing/acceptance need dedicated workflows (later phases). */
+const ASSESSMENT_STATUSES = ["draft", "in_progress", "under_review", "completed", "archived"] as const;
+const PROPOSAL_STATUSES = ["draft", "in_review", "approved", "shared", "accepted", "declined", "expired"] as const;
 const PROPOSAL_EDITABLE: ProposalStatus[] = ["draft", "in_review"];
 const PROPOSAL_PROTECTED: Partial<Record<ProposalStatus, Permission>> = { approved: "proposal.approve", shared: "proposal.share", accepted: "proposal.approve", declined: "proposal.approve", expired: "proposal.approve" };
 
@@ -149,12 +177,20 @@ export const repos = {
     table: "assessments", resource: "assessment",
     createFields: ["type", "title", "subjectName", "channel", "status", "crmReferenceId", "tenantReferenceId", "scenarioCode"],
     updateFields: ["title", "subjectName", "status", "channel", "crmReferenceId", "tenantReferenceId"],
+    defaults: { status: "draft" },
+    required: ["title", "subjectName"],
+    enums: { type: ["tenant", "partner"], status: ASSESSMENT_STATUSES, channel: ["direct", "website_self", "website_boss", "partner_referral", "existing_tenant"] },
+    optionalStrings: ["crmReferenceId", "tenantReferenceId", "scenarioCode"],
   }),
   proposals: createScopedRepository<Proposal, ProposalCreateInput, ProposalUpdateInput>({
     table: "proposals", resource: "proposal",
     createFields: ["assessmentId", "title", "track", "status", "includesPricing"],
     updateFields: ["title", "status", "includesPricing"],
     parent: { field: "assessmentId", table: "assessments", resource: "assessment" },
+    defaults: { status: "draft", includesPricing: false },
+    required: ["title", "assessmentId"],
+    enums: { status: PROPOSAL_STATUSES, track: ["tenant_solution", "tenant_commercial", "reseller_partner", "strategic_partner"] },
+    booleans: ["includesPricing"],
     checkStatus: (ctx, deny, next, current) => {
       if (next === undefined || next === current) return;
       if (current && !PROPOSAL_EDITABLE.includes(current as ProposalStatus)) throw new ValidationError(`status "${current}" can only change through its dedicated workflow`);
@@ -170,28 +206,47 @@ export const repos = {
     createFields: ["proposalId", "title", "status", "tenantSuccessReferenceId"],
     updateFields: ["title", "status", "tenantSuccessReferenceId"],
     parent: { field: "proposalId", table: "proposals", resource: "proposal" },
+    defaults: { status: "planned" },
+    required: ["title", "proposalId"],
+    enums: { status: ["planned", "active", "on_hold", "completed"] },
+    optionalStrings: ["tenantSuccessReferenceId"],
   }),
 };
 
-/** Internal directory: readable with professional.read, always within the caller's organization. */
+/**
+ * Internal directory, filtered by the effective professional.read scope
+ * (partner-affiliated users are capped at Self). Organization scope sees the
+ * whole organization; team scope sees its own team; self sees only itself.
+ */
+function directoryScope(ctx: Ctx) { return cappedScope(ctx.user, "professional.read"); }
+function visibleUsers(ctx: Ctx): User[] {
+  const scope = directoryScope(ctx);
+  const inOrg = store.table("users").filter((u) => u.organizationId === ctx.user.organizationId);
+  if (scope === "organization") return inOrg;
+  if (scope === "team") return inOrg.filter((u) => u.teamId === ctx.user.teamId);
+  return inOrg.filter((u) => u.id === ctx.user.id);
+}
 export const directory = {
   professionals(ctx: Ctx): CIAProfessional[] {
-    if (!can(ctx.user, "professional.read")) return [];
-    return store.table("professionals").filter((p) => p.organizationId === ctx.user.organizationId);
+    if (!directoryScope(ctx)) return [];
+    const ids = new Set(visibleUsers(ctx).map((u) => u.id));
+    return clone(store.table("professionals").filter((p) => p.organizationId === ctx.user.organizationId && ids.has(p.userId)));
   },
   affiliations(ctx: Ctx): CIAAffiliation[] {
-    if (!can(ctx.user, "professional.read")) return [];
-    return store.table("affiliations").filter((p) => p.organizationId === ctx.user.organizationId);
+    if (!directoryScope(ctx)) return [];
+    const ids = new Set(directory.professionals(ctx).map((p) => p.affiliationId));
+    return clone(store.table("affiliations").filter((a) => a.organizationId === ctx.user.organizationId && ids.has(a.id)));
   },
   teams(ctx: Ctx): Team[] {
-    if (!can(ctx.user, "professional.read")) return [];
-    return store.table("teams").filter((p) => p.organizationId === ctx.user.organizationId);
+    const scope = directoryScope(ctx);
+    if (!scope) return [];
+    return clone(store.table("teams").filter((t) => t.organizationId === ctx.user.organizationId && (scope === "organization" || t.id === ctx.user.teamId)));
   },
-  /** Display name for a colleague; opaque for callers without directory access or across organizations. */
+  /** Display name for a colleague; opaque outside the caller's directory scope. */
   displayName(ctx: Ctx, userId: ID): string {
     if (userId === ctx.user.id) return ctx.user.name;
-    if (!can(ctx.user, "professional.read")) return "Colleague";
-    return store.table("users").find((u) => u.id === userId && u.organizationId === ctx.user.organizationId)?.name ?? "Colleague";
+    if (!directoryScope(ctx)) return "Colleague";
+    return visibleUsers(ctx).find((u) => u.id === userId)?.name ?? "Colleague";
   },
 };
 
