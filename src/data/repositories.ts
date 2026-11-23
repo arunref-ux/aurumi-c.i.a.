@@ -241,6 +241,9 @@ function createScopedRepository<R extends ScopedRecord, CIn, UIn>(spec: Spec) {
     update(ctx: Ctx, id: ID, patch: UIn): R {
       const current = rows().find((x) => x.id === id);
       if (!current || !can(ctx.user, perm("update"), current)) return deny(ctx, perm("update"), id);
+      // Proposal Studio records change only through its workflow service (Phase 4).
+      if (table === "proposals" && (current as { source?: unknown }).source)
+        reject(ctx, "this proposal is managed by Proposal Studio; use its workflow", id);
       const data = checkFields(ctx, patch, spec.updateFields, id);
       const next = {
         ...current,

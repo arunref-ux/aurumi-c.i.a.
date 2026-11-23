@@ -9,6 +9,11 @@
  */
 import type { AssessmentHandoffSnapshot, AssessmentWorkspace } from "@/domain/assessment";
 import type { SolutionDesign, SolutionHandoffSnapshot, SolutionWorkspace } from "@/domain/solution";
+import type {
+  ProposalShareRecord,
+  ProposalVersionRecord,
+  ProposalWorkspace,
+} from "@/domain/proposal";
 import type { AuditEvent, BaseRecord } from "@/domain/types";
 import { sanitizeTable, type QuarantineEntry } from "./persisted-schema";
 import * as seed from "./seed";
@@ -26,6 +31,9 @@ export interface Tables {
   solutions: SolutionDesign[];
   solutionWorkspaces: SolutionWorkspace[];
   solutionSnapshots: SolutionHandoffSnapshot[];
+  proposalWorkspaces: ProposalWorkspace[];
+  proposalVersions: ProposalVersionRecord[];
+  proposalShares: ProposalShareRecord[];
 }
 
 /** Tables that represent user work and survive reloads; directory tables always come from seed. */
@@ -38,6 +46,9 @@ const PERSISTED = [
   "solutions",
   "solutionWorkspaces",
   "solutionSnapshots",
+  "proposalWorkspaces",
+  "proposalVersions",
+  "proposalShares",
 ] as const;
 export const STORAGE_KEY = "aurumi.cia.simulated-store.v1";
 /** Saved entries that failed validation are kept here for recovery, never deleted. */
@@ -79,6 +90,9 @@ function fresh(): { tables: Tables; audit: AuditEvent[] } {
       solutions: [],
       solutionWorkspaces: [],
       solutionSnapshots: [],
+      proposalWorkspaces: [],
+      proposalVersions: [],
+      proposalShares: [],
     }),
     audit: clone(seed.seedAudit),
   };

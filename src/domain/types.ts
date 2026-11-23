@@ -195,8 +195,16 @@ export interface SolutionPackage extends ScopedRecord {
 // ---------- Proposals ----------
 export type ProposalTrack =
   "tenant_solution" | "tenant_commercial" | "reseller_partner" | "strategic_partner";
+/** "shared" is the issued state; "changes_requested" is set only by Proposal Studio review. */
 export type ProposalStatus =
-  "draft" | "in_review" | "approved" | "shared" | "accepted" | "declined" | "expired";
+  | "draft"
+  | "in_review"
+  | "changes_requested"
+  | "approved"
+  | "shared"
+  | "accepted"
+  | "declined"
+  | "expired";
 
 export interface Proposal extends ScopedRecord {
   assessmentId: ID;
@@ -205,6 +213,10 @@ export interface Proposal extends ScopedRecord {
   status: ProposalStatus;
   currentVersionId?: ID;
   includesPricing: boolean;
+  /** Proposal Studio records only: the pinned approved solution snapshot. */
+  source?: import("./proposal").ProposalSource;
+  /** Proposal Studio records only: working revision (increments on rebase / revise). */
+  revision?: number;
 }
 /** Immutable snapshot — issued documents never change when sources are edited. */
 export interface ProposalVersion extends BaseRecord {

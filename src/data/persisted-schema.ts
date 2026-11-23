@@ -187,7 +187,81 @@ const ROW = {
     channel: str,
     crmReferenceId: optStr,
   }),
-  proposals: z.looseObject({ id, organizationId: str }),
+  proposals: z.looseObject({
+    id,
+    organizationId: str,
+    status: z
+      .enum(["draft", "in_review", "changes_requested", "approved", "shared", "accepted", "declined", "expired"])
+      .optional(),
+    /** Proposal Studio records carry a pinned approved-solution source. */
+    source: z
+      .looseObject({
+        solutionId: id,
+        solutionSnapshotId: id,
+        solutionSnapshotVersion: z.number().int().positive(),
+        assessmentId: id,
+        assessmentSnapshotId: id,
+      })
+      .optional(),
+    revision: z.number().int().positive().optional(),
+    currentVersionId: optStr,
+  }),
+  proposalWorkspaces: z.looseObject({
+    ...audited,
+    organizationId: str,
+    proposalId: id,
+    recipient: z.looseObject({ name: str, organization: str, contact: str }),
+    validityDays: z.number().int().positive(),
+    commercialNotes: str,
+    reviewerId: optStr,
+    revisions: z.array(z.looseObject({ revision: z.number(), source: z.looseObject({ solutionSnapshotId: id }), workspace: z.looseObject({}) })),
+  }),
+  /** Immutable: invalid proposal versions are quarantined whole. */
+  proposalVersions: z.looseObject({
+    schema: z.literal("aurumi.cia.proposal-version/1"),
+    id,
+    organizationId: str,
+    proposalId: id,
+    versionNumber: z.number().int().positive(),
+    revision: z.number().int().positive(),
+    createdAt: str,
+    createdBy: id,
+    contentHash: str,
+    document: z.looseObject({
+      templateVersion: str,
+      proposal: z.looseObject({ id, title: str, track: str }),
+      source: z.looseObject({ solutionSnapshotId: id }),
+      solution: z.looseObject({ id, schema: str, sourceAssessment: z.looseObject({ id }) }),
+      sections: z.array(z.looseObject({ key: str, title: str, body: str })),
+      deliverables: z.array(z.looseObject({ id, recommendationId: id })),
+      commercials: z.looseObject({
+        priceBookVersion: str,
+        lines: z.array(z.looseObject({ id, currency: str, quantity: z.number().finite() })),
+        summary: z.looseObject({ totals: z.array(z.looseObject({ currency: str, oneTime: z.number().finite() })) }),
+      }),
+    }),
+    review: z
+      .looseObject({ decision: z.enum(["approved", "changes_requested"]), by: id, at: str, comment: str, acknowledged: ids })
+      .optional(),
+    issue: z.looseObject({ issuedAt: str, issuedBy: id, effectiveAt: str, expiresAt: str }).optional(),
+    supersededAt: optStr,
+  }),
+  proposalShares: z.looseObject({
+    id,
+    organizationId: str,
+    proposalId: id,
+    versionId: id,
+    versionNumber: z.number().int().positive(),
+    recipient: z.looseObject({ name: str, email: z.string().regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/), organization: str }),
+    sharedAt: str,
+    sharedBy: id,
+    expiresAt: str,
+    access: z.enum(["active", "revoked"]),
+    response: z.enum(["pending", "viewed", "acknowledged", "accepted", "declined", "expired"]),
+    responseNote: str,
+    channelReference: str,
+    simulated: z.literal(true),
+  }),
   engagements: z.looseObject({ id, organizationId: str }),
   /** Snapshots are immutable records: an invalid one is quarantined whole, never repaired. */
   snapshots: snapshot,
@@ -346,6 +420,76 @@ const SOLUTION_CHILD = {
   comments: z.looseObject({ ...audited, kind: str, body: str }),
 } as const;
 
+const auth = z.looseObject({ approvedBy: id, approvedAt: str }).optional();
+const amount = z.number().finite().nonnegative();
+const PROPOSAL_CHILD = {
+  sections: z.looseObject({ key: str, title: str, body: str, origin: z.enum(["imported", "authored", "ai_draft"]), reviewed: z.boolean() }),
+  deliverables: z.looseObject({
+    ...audited,
+    recommendationId: id,
+    description: str,
+    inclusion: z.enum(["included", "optional", "excluded"]),
+    acceptanceCriterion: str,
+    responsibleParty: str,
+    customerDependencies: str,
+    deliveryAssumptions: str,
+    qualification: str,
+    sourceStatus: z.enum(["current", "missing"]),
+  }),
+  lines: z.looseObject({
+    ...audited,
+    category: str,
+    classification: z.enum(["priced", "estimated", "tbd", "excluded"]),
+    description: str,
+    quantity: z.number().finite().positive(),
+    recurrence: z.enum(["one_time", "monthly", "annual"]),
+    currency: z.string().regex(/^[A-Z]{3}$/),
+    priceRef: z
+      .looseObject({ priceBookItemId: id, priceBookVersion: str, currency: str, recurrence: str, publishedAmount: amount })
+      .optional(),
+    estimate: z.looseObject({ unitAmount: amount, basis: str }).optional(),
+    quoted: z.looseObject({ unitAmount: amount }).optional(),
+    override: z.looseObject({ unitAmount: amount, rationale: str, authorization: auth }).optional(),
+    discount: z.looseObject({ amount, rationale: str, authorization: auth }).optional(),
+    quoteReference: str,
+  }),
+  taxes: z.looseObject({ ...audited, label: str, ratePercent: z.number().finite().min(0).max(100), appliesTo: str, currency: str, source: str }),
+  partnerTerms: z.looseObject({ ...audited, kind: str, description: str, status: z.enum(["proposed", "approved"]), authorization: auth }),
+  risks: z.looseObject({ ...audited, category: str, description: str, severity: z.enum(["high", "medium", "low"]), resolution: z.enum(["open", "resolved", "accepted"]), qualification: str }),
+  milestones: z.looseObject({ ...audited, title: str, deliverableIds: ids, paymentTrigger: str, commitment: z.literal("indicative") }),
+  options: z.looseObject({ ...audited, kind: str, label: str, summary: str, deliverableIds: ids, lineIds: ids }),
+  comments: z.looseObject({ ...audited, kind: str, body: str }),
+} as const;
+
+/** Keeps valid child records of a nested workspace; broken ones are quarantined. */
+function sanitizeChildren(
+  table: string,
+  i: number,
+  row: Record<string, unknown>,
+  schemas: Record<string, z.ZodType>,
+  quarantined: QuarantineEntry[],
+) {
+  const out = { ...row };
+  for (const [kind, schema] of Object.entries(schemas)) {
+    const list = out[kind];
+    if (list === undefined) {
+      out[kind] = [];
+      continue;
+    }
+    if (!Array.isArray(list)) {
+      quarantined.push({ table, path: `${table}[${i}].${kind}`, reason: "expected a list", value: list });
+      out[kind] = [];
+      continue;
+    }
+    out[kind] = list.filter((item, j) => {
+      const c = schema.safeParse(item);
+      if (!c.success) quarantined.push({ table, path: `${table}[${i}].${kind}[${j}]`, reason: reasonOf(c.error), value: item });
+      return c.success;
+    });
+  }
+  return out;
+}
+
 const reasonOf = (e: z.ZodError) =>
   e.issues
     .slice(0, 3)
@@ -401,6 +545,8 @@ export function sanitizeTable(
       }
       return void out.push(sw);
     }
+    if (table === "proposalWorkspaces")
+      return void out.push(sanitizeChildren(table, i, row as Record<string, unknown>, PROPOSAL_CHILD, quarantined));
     if (table !== "workspaces") return void out.push(row);
     // Keep a valid workspace, setting aside only its broken child records.
     const ws = { ...(row as Record<string, unknown>) };
