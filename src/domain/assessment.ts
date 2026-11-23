@@ -227,16 +227,28 @@ export function canonical(v: unknown): string {
       .join(",")}}`;
   return JSON.stringify(v);
 }
+/** Links that change what a verification vouches for: the systems and requirements it is about. */
+export const MATERIAL_LINK_KINDS: readonly EvidenceLinkKind[] = ["system", "requirement"];
+export const materialLinks = (links: readonly { kind: EvidenceLinkKind; id: ID }[] | undefined) =>
+  (links ?? [])
+    .filter((l) => MATERIAL_LINK_KINDS.includes(l.kind))
+    .map((l) => `${l.kind}:${l.id}`)
+    .sort()
+    .filter((x, i, arr) => arr.indexOf(x) === i);
 /**
  * The content a verification vouches for: claim, classification, sources,
- * research date, AI origin and connector applicability. Notes, links and
- * confidence are not material, so editing them keeps a verification.
+ * research date, AI origin, connector applicability and the systems /
+ * requirements it is linked to (so it cannot be moved to another target).
+ * Notes, process/pain-point/finding links and confidence are not material.
  */
 export function materialEvidenceKey(
   e: Pick<
     EvidenceRecord,
     "attribute" | "statement" | "status" | "sources" | "researchedAt" | "generatedBy"
-  > & { applicability?: EvidenceApplicability | undefined },
+  > & {
+    applicability?: EvidenceApplicability | undefined;
+    links?: readonly { kind: EvidenceLinkKind; id: ID }[] | undefined;
+  },
 ): string {
   return canonical({
     attribute: e.attribute,
@@ -246,6 +258,7 @@ export function materialEvidenceKey(
     researchedAt: e.researchedAt,
     generatedBy: e.generatedBy ?? "",
     applicability: e.applicability ?? "general",
+    targets: materialLinks(e.links),
   });
 }
 /** Evidence counts for a positive connector claim only if verified, of the exact kind, and linked to that system. */

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Tone } from "@/components/app/ui-bits";
 import type { AssessmentStatus } from "@/domain/types";
-import { usePersistenceStatus } from "@/lib/session";
+import { retryStorageRecovery, usePersistenceStatus } from "@/lib/session";
 
 export const STATUS_TONE: Record<AssessmentStatus, Tone> = {
   draft: "neutral",
@@ -26,6 +26,15 @@ export function PersistenceNote() {
       {mounted && p.recovery && (
         <span role="status" className="mt-1 block text-destructive">
           {p.recovery}
+          {p.protected && (
+            <button
+              type="button"
+              className="ml-2 underline underline-offset-2"
+              onClick={() => retryStorageRecovery()}
+            >
+              Try recovery again
+            </button>
+          )}
         </span>
       )}
     </p>

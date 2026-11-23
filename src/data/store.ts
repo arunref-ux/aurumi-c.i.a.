@@ -81,19 +81,37 @@ let persistState: {
   /** Plain-language note when saved work needed recovery. */
   recovery: string | null;
   quarantined: number;
+  /** True only after the recovery copy was written and read back intact. */
+  backupSaved: boolean;
+  /** Saved work is unprotected: nothing may be written until recovery succeeds. */
+  protected: boolean;
 } = {
   mode: "none",
   lastSavedAt: null,
   error: null,
   recovery: null,
   quarantined: 0,
+  backupSaved: false,
+  protected: false,
 };
-/** When saved work could not be read, saving is paused so it is never overwritten. */
-let savingBlocked = false;
+/** The untouched original payload and what was set aside, kept until a backup is confirmed. */
+let pending: { raw: string; reason: string; entries: QuarantineEntry[] } | null = null;
+/** Saved work could not even be read; writing would risk overwriting it. */
+let readFailed = false;
 const listeners = new Set<() => void>();
 
+export class StorageProtectedError extends Error {
+  constructor() {
+    super(
+      "Saved work is protected until a recovery copy can be stored. Changes are paused — use “Try recovery again”.",
+    );
+    this.name = "StorageProtectedError";
+  }
+}
+const isProtected = () => readFailed || pending !== null;
+
 function save() {
-  if (!backend || savingBlocked) return;
+  if (!backend || isProtected()) return;
   try {
     const payload = {
       savedAt: new Date().toISOString(),
@@ -103,40 +121,80 @@ function save() {
     backend.write(STORAGE_KEY, JSON.stringify(payload));
     persistState = { ...persistState, lastSavedAt: payload.savedAt, error: null };
   } catch (e) {
-    persistState = { ...persistState, error: e instanceof Error ? e.message : "save failed" };
+    // A failed write leaves the previous saved payload in place.
+    persistState = {
+      ...persistState,
+      error: `Not saved: ${e instanceof Error ? e.message : "storage write failed"}. Your last saved copy is unchanged.`,
+    };
   }
 }
 
-function quarantine(entries: QuarantineEntry[]) {
-  if (!backend || !entries.length) return;
+/**
+ * Appends a full recovery copy (the original payload plus every set-aside entry,
+ * never truncated) and confirms it by reading it back. Returns false on any
+ * failure, including an unreadable existing recovery list (never overwritten).
+ */
+function writeBackup(p: { raw: string; reason: string; entries: QuarantineEntry[] }): boolean {
+  if (!backend) return false;
   try {
-    const prev = JSON.parse(backend.read(QUARANTINE_KEY) ?? "[]") as unknown;
-    const list = Array.isArray(prev) ? prev : [];
-    const at = new Date().toISOString();
-    backend.write(
-      QUARANTINE_KEY,
-      JSON.stringify([...list, ...entries.map((e) => ({ ...e, at }))].slice(-200)),
-    );
+    const existing = backend.read(QUARANTINE_KEY);
+    const list = existing === null ? [] : (JSON.parse(existing) as unknown);
+    if (!Array.isArray(list)) return false;
+    const next = JSON.stringify([
+      ...list,
+      {
+        at: new Date().toISOString(),
+        reason: p.reason,
+        originalPayload: p.raw,
+        entries: p.entries,
+      },
+    ]);
+    backend.write(QUARANTINE_KEY, next);
+    return backend.read(QUARANTINE_KEY) === next;
   } catch {
-    /* quarantine is best effort; the in-memory note still tells the user */
+    return false;
+  }
+}
+
+function protect(raw: string, reason: string, entries: QuarantineEntry[], restored: string) {
+  if (writeBackup({ raw, reason, entries })) {
+    pending = null;
+    persistState = {
+      ...persistState,
+      backupSaved: true,
+      protected: false,
+      quarantined: entries.length,
+      recovery: `${restored} A recovery copy of the original saved data was stored.`,
+    };
+  } else {
+    pending = { raw, reason, entries };
+    persistState = {
+      ...persistState,
+      backupSaved: false,
+      protected: true,
+      quarantined: entries.length,
+      recovery: `${restored} A recovery copy could NOT be stored, so the original saved data is left untouched and changes are paused until recovery succeeds.`,
+    };
   }
 }
 
 /** Loads saved work over seed data; saved drafts always win over seed, after validation. */
 function load() {
   db = fresh();
-  savingBlocked = false;
+  pending = null;
+  readFailed = false;
   if (!backend) return;
   let raw: string | null;
   try {
     raw = backend.read(STORAGE_KEY);
   } catch {
-    savingBlocked = true;
+    readFailed = true;
     persistState = {
       ...persistState,
       error: null,
+      protected: true,
       recovery:
-        "Saved work could not be read from this browser, so sample data is shown. Saving is paused so your saved work is not overwritten — reload to try again.",
+        "Saved work could not be read from this browser, so sample data is shown. Changes are paused so your saved work is not overwritten.",
     };
     return;
   }
@@ -146,13 +204,12 @@ function load() {
     parsed = JSON.parse(raw) as typeof parsed;
     if (!parsed || typeof parsed !== "object") throw new Error("not an object");
   } catch {
-    quarantine([{ table: "*", path: STORAGE_KEY, reason: "unreadable saved data", value: raw }]);
-    persistState = {
-      ...persistState,
-      recovery:
-        "Saved work was damaged and could not be opened. A copy was set aside for recovery; sample data is shown.",
-      quarantined: 1,
-    };
+    protect(
+      raw,
+      "unreadable saved data",
+      [{ table: "*", path: STORAGE_KEY, reason: "unreadable saved data", value: raw }],
+      "Saved work was damaged and could not be opened; sample data is shown.",
+    );
     return;
   }
   const setAside: QuarantineEntry[] = [];
@@ -164,16 +221,14 @@ function load() {
     (db.tables as unknown as Record<string, unknown>)[k] = r.rows;
   }
   if (Array.isArray(parsed.audit)) db.audit = parsed.audit as AuditEvent[];
-  quarantine(setAside);
-  persistState = {
-    ...persistState,
-    lastSavedAt: parsed.savedAt ?? null,
-    error: null,
-    quarantined: setAside.length,
-    recovery: setAside.length
-      ? `${setAside.length} damaged saved item(s) were set aside for recovery; everything else was restored.`
-      : null,
-  };
+  persistState = { ...persistState, lastSavedAt: parsed.savedAt ?? null, error: null };
+  if (setAside.length)
+    protect(
+      raw,
+      "invalid saved records",
+      setAside,
+      `${setAside.length} damaged saved item(s) were set aside; everything else was restored.`,
+    );
 }
 
 /** @internal Data-layer only. */
@@ -184,6 +239,7 @@ export const store = {
     return clone(db.tables[k]);
   },
   replace<K extends keyof Tables>(k: K, rows: Tables[K]) {
+    if (isProtected()) throw new StorageProtectedError();
     db.tables[k] = clone(rows);
     dataVersion++;
     store.emit();
@@ -204,6 +260,8 @@ export const store = {
       error: null,
       recovery: null,
       quarantined: 0,
+      backupSaved: false,
+      protected: false,
     };
     load();
     version++;
@@ -211,7 +269,30 @@ export const store = {
     listeners.forEach((l) => l());
   },
   persistence: () => ({ ...persistState }),
+  /**
+   * Explicit recovery path: retries storing the recovery copy (or re-reading
+   * unreadable storage). Normal saving resumes only once the original is safe.
+   */
+  retryRecovery(): { ok: boolean; message: string } {
+    if (readFailed) {
+      load();
+    } else if (pending) {
+      const p = pending;
+      protect(
+        p.raw,
+        p.reason,
+        p.entries,
+        `${p.entries.length} damaged saved item(s) were set aside.`,
+      );
+    }
+    const ok = !isProtected();
+    if (ok) save();
+    version++;
+    listeners.forEach((l) => l());
+    return { ok, message: store.persistence().recovery ?? "Saved work is available." };
+  },
   reset() {
+    if (isProtected()) throw new StorageProtectedError();
     db = fresh();
     dataVersion++;
     store.emit();

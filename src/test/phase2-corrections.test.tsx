@@ -11,6 +11,7 @@ import {
   memoryBackend,
   QUARANTINE_KEY,
   STORAGE_KEY,
+  StorageProtectedError,
   store,
   type PersistenceBackend,
 } from "@/data/store";
@@ -369,14 +370,18 @@ describe("P2-02 restored data hardening", () => {
     store.attach(backend);
     const p = store.persistence();
     expect(p.quarantined).toBe(4);
-    expect(p.recovery).toMatch(/set aside/);
+    expect(p.backupSaved).toBe(true);
+    expect(p.protected).toBe(false);
     const v = await S.get(PRO, a.id);
     expect(v.workspace.systems.map((s) => s.name)).toEqual(["Good system"]);
     expect(v.workspace.evidence).toEqual([]);
-    expect(JSON.parse(backend.read(QUARANTINE_KEY)!)).toHaveLength(4);
+    const backups = JSON.parse(backend.read(QUARANTINE_KEY)!);
+    expect(backups).toHaveLength(1);
+    expect(backups[0].entries).toHaveLength(4);
+    expect(JSON.parse(backups[0].originalPayload)).toEqual(saved);
     expect((await S.list(PRO)).some((x) => x.assessment.id === a.id)).toBe(true);
   });
-  it("handles a storage read failure without crashing or overwriting saved work", async () => {
+  it("handles a storage read failure without crashing, blocking writes so saved work is not overwritten", async () => {
     const writes: string[] = [];
     const failing: PersistenceBackend = {
       kind: "browser",
@@ -386,9 +391,10 @@ describe("P2-02 restored data hardening", () => {
       write: (k) => void writes.push(k),
     };
     store.attach(failing);
+    expect(store.persistence()).toMatchObject({ protected: true });
     expect(store.persistence().recovery).toMatch(/could not be read/);
-    const a = await newAssessment();
-    expect((await S.get(PRO, a.id)).assessment.id).toBe(a.id);
+    await expect(newAssessment()).rejects.toThrow(StorageProtectedError);
+    expect((await S.list(PRO)).length).toBeGreaterThan(0);
     expect(writes).toEqual([]);
   });
   it("sets aside unreadable saved data instead of crashing", () => {
@@ -396,6 +402,219 @@ describe("P2-02 restored data hardening", () => {
     backend.write(STORAGE_KEY, "{not json");
     store.attach(backend);
     expect(store.persistence().recovery).toMatch(/damaged/);
-    expect(JSON.parse(backend.read(QUARANTINE_KEY)!)[0].value).toBe("{not json");
+    expect(JSON.parse(backend.read(QUARANTINE_KEY)!)[0].originalPayload).toBe("{not json");
+  });
+});
+
+/** Storage whose recovery-copy writes can be switched off (e.g. quota exceeded). */
+function flakyBackend() {
+  const m = new Map<string, string>();
+  const ctl = { failQuarantine: true };
+  const b: PersistenceBackend = {
+    kind: "browser",
+    read: (k) => m.get(k) ?? null,
+    write: (k, v) => {
+      if (k === QUARANTINE_KEY && ctl.failQuarantine) throw new Error("QuotaExceededError");
+      m.set(k, v);
+    },
+  };
+  return { b, m, ctl };
+}
+
+describe("P1 final — protected recovery", () => {
+  it("never overwrites the original payload while no recovery copy exists, then recovers safely", async () => {
+    // A valid assessment saved earlier, plus one malformed record.
+    const ok = memoryBackend();
+    store.attach(ok);
+    const a = await newAssessment();
+    const saved = JSON.parse(ok.read(STORAGE_KEY)!);
+    saved.tables.assessments.push({ id: "broken", title: 7 });
+    const original = JSON.stringify(saved);
+
+    const { b, m, ctl } = flakyBackend();
+    m.set(STORAGE_KEY, original);
+    store.attach(b); // 1-2: malformed payload, quarantine write fails
+    expect(store.persistence()).toMatchObject({ protected: true, backupSaved: false });
+    expect(store.persistence().recovery).toMatch(/could NOT be stored/);
+    expect(m.get(STORAGE_KEY)).toBe(original); // 3
+    expect(m.has(QUARANTINE_KEY)).toBe(false);
+
+    await expect(S.saveOverview(PRO, a.id, { purpose: "new" })).rejects.toThrow(); // 4
+    expect(m.get(STORAGE_KEY)).toBe(original); // 5
+    await expect(S.get(u("u_partner_pro"), a.id)).rejects.toThrow(); // 6: audited denial
+    expect(m.get(STORAGE_KEY)).toBe(original); // 7
+    expect(() => store.reset()).toThrow(StorageProtectedError); // no seed replacement
+
+    expect(store.retryRecovery().ok).toBe(false); // still failing: honest result
+    expect(m.get(STORAGE_KEY)).toBe(original);
+
+    ctl.failQuarantine = false; // 8: storage available again
+    const r = store.retryRecovery();
+    expect(r.ok).toBe(true);
+    expect(store.persistence()).toMatchObject({ protected: false, backupSaved: true });
+    const backup = JSON.parse(m.get(QUARANTINE_KEY)!);
+    expect(backup[0].originalPayload).toBe(original);
+    await S.saveOverview(PRO, a.id, { purpose: "after recovery" });
+    expect((await S.get(PRO, a.id)).workspace.overview.purpose).toBe("after recovery");
+    expect(m.get(STORAGE_KEY)).not.toBe(original);
+  });
+  it("keeps every one of more than 200 set-aside entries", () => {
+    const backend = memoryBackend();
+    const rows = Array.from({ length: 260 }, (_, i) => ({ id: `bad_${i}` }));
+    backend.write(STORAGE_KEY, JSON.stringify({ tables: { proposals: rows } }));
+    store.attach(backend);
+    expect(store.persistence().quarantined).toBe(260);
+    const backup = JSON.parse(backend.read(QUARANTINE_KEY)!);
+    expect(backup[0].entries).toHaveLength(260);
+  });
+  it("never overwrites an unreadable existing recovery list", () => {
+    const { b, m, ctl } = flakyBackend();
+    ctl.failQuarantine = false;
+    m.set(QUARANTINE_KEY, "{corrupt");
+    m.set(STORAGE_KEY, "{not json");
+    store.attach(b);
+    expect(store.persistence().protected).toBe(true);
+    expect(m.get(QUARANTINE_KEY)).toBe("{corrupt");
+    expect(m.get(STORAGE_KEY)).toBe("{not json");
+  });
+});
+
+describe("P2 final — nested validation", () => {
+  it("rejects non-text nested fields without losing sibling data, and quarantines snapshots missing approval", async () => {
+    const backend = memoryBackend();
+    store.attach(backend);
+    const a = await newAssessment();
+    await S.saveOverview(PRO, a.id, { scope: "Kept scope" });
+    const saved = JSON.parse(backend.read(STORAGE_KEY)!);
+    const ws = saved.tables.workspaces.find(
+      (w: { assessmentId: string }) => w.assessmentId === a.id,
+    );
+    ws.overview.purpose = 42;
+    ws.profile.industry = { x: 1 };
+    ws.evidence = [
+      {
+        ...ev(),
+        id: "ev_bad",
+        createdAt: "t",
+        createdBy: "u",
+        updatedAt: "t",
+        updatedBy: "u",
+        notes: "",
+        verification: { state: "verified" },
+      },
+    ];
+    saved.tables.snapshots = [
+      {
+        id: "snap_x",
+        schema: "s",
+        organizationId: "o",
+        assessmentId: a.id,
+        version: 1,
+        createdAt: "t",
+      },
+    ];
+    backend.write(STORAGE_KEY, JSON.stringify(saved));
+    store.attach(backend);
+    const v = await S.get(PRO, a.id);
+    expect(v.workspace.overview.purpose).toBe("");
+    expect(v.workspace.overview.scope).toBe("Kept scope");
+    expect(v.workspace.profile.industry).toBe("");
+    expect(v.workspace.profile.businessName).toBe("Biz (fictional)");
+    expect(v.workspace.evidence).toEqual([]); // verified without verifier is rejected
+    expect(v.snapshots).toEqual([]);
+    const paths = JSON.parse(backend.read(QUARANTINE_KEY)!)[0].entries.map(
+      (e: { path: string }) => e.path,
+    );
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/overview\.purpose$/),
+        expect.stringMatching(/profile\.industry$/),
+        expect.stringMatching(/evidence\[0\]$/),
+        "snapshots[0]",
+      ]),
+    );
+  });
+});
+
+describe("P1 final — verification bound to its target system", () => {
+  it("moving verified connector evidence to another system invalidates it until explicitly re-verified", async () => {
+    const a = await newAssessment();
+    const sysA = await S.upsertChild(PRO, a.id, "systems", {
+      name: "System A",
+      classification: "commercial",
+    });
+    const sysB = await S.upsertChild(PRO, a.id, "systems", {
+      name: "System B",
+      classification: "commercial",
+    });
+    const forA = (extra: Record<string, unknown> = {}) =>
+      ev({ applicability: "connector_supported", links: [{ kind: "system", id: sysA }], ...extra });
+    // 1. Professional A verifies a supported-connector claim for system A.
+    const moved = await S.upsertChild(PRO, a.id, "evidence", forA());
+    const keep = await S.upsertChild(
+      PRO,
+      a.id,
+      "evidence",
+      forA({ statement: "Second source for A" }),
+    );
+    await S.upsertChild(PRO, a.id, "systems", {
+      id: sysA,
+      name: "System A",
+      classification: "commercial",
+      compatibility: { status: "supported", evidenceIds: [moved, keep] },
+    });
+    // 2. Professional B re-points it at system B, echoing the old verification.
+    await S.upsertChild(MGR, a.id, "evidence", {
+      ...ev({ applicability: "connector_supported", links: [{ kind: "system", id: sysB }] }),
+      id: moved,
+    });
+    // 3. Verification is invalid.
+    expect((await getEv(a.id, moved)).verification.state).toBe("unverified");
+    // System A's claim depended on it, so it is re-evaluated.
+    let v = await S.get(PRO, a.id);
+    expect(v.workspace.systems.find((s) => s.id === sysA)!.compatibility.status).toBe("unknown");
+    // 4. System B cannot claim support with the previous verification.
+    const setB = () =>
+      S.upsertChild(MGR, a.id, "systems", {
+        id: sysB,
+        name: "System B",
+        classification: "commercial",
+        compatibility: { status: "supported", evidenceIds: [moved] },
+      });
+    await expect(setB()).rejects.toThrow(ValidationError);
+    // 5. Explicit re-verification records the current actor and time.
+    const before = Date.now();
+    await S.verifyEvidence(MGR, a.id, moved, "Confirmed connector for System B");
+    const re = (await getEv(a.id, moved)).verification as {
+      verifiedBy: string;
+      verifiedAt: string;
+    };
+    expect(re.verifiedBy).toBe("u_manager");
+    expect(Date.parse(re.verifiedAt)).toBeGreaterThanOrEqual(before - 5);
+    await expect(setB()).resolves.toBe(sysB);
+    // 6. The untouched system A evidence still works and keeps its verifier.
+    expect((await getEv(a.id, keep)).verification).toMatchObject({
+      state: "verified",
+      verifiedBy: "u_pro",
+    });
+    await S.upsertChild(PRO, a.id, "systems", {
+      id: sysA,
+      name: "System A",
+      classification: "commercial",
+      compatibility: { status: "supported", evidenceIds: [keep] },
+    });
+    v = await S.get(PRO, a.id);
+    expect(v.workspace.systems.find((s) => s.id === sysA)!.compatibility.status).toBe("supported");
+  });
+  it("adding a process link (non-material) keeps the verification", async () => {
+    const a = await newAssessment();
+    const proc = await S.upsertChild(PRO, a.id, "processes", { name: "Billing" });
+    const id = await S.upsertChild(PRO, a.id, "evidence", ev());
+    const orig = (await getEv(a.id, id)).verification;
+    await S.upsertChild(MGR, a.id, "evidence", {
+      ...ev({ links: [{ kind: "process", id: proc }] }),
+      id,
+    });
+    expect((await getEv(a.id, id)).verification).toEqual(orig);
   });
 });

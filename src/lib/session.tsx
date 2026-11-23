@@ -62,6 +62,11 @@ export function useDataVersion() {
   return useSyncExternalStore(store.subscribe, store.dataVersion, store.dataVersion);
 }
 
+/** Explicit recovery action for the saved-work protection state. */
+export function retryStorageRecovery() {
+  return store.retryRecovery();
+}
+
 /** Simulated persistence status for the "saved" indicator. */
 export function usePersistenceStatus() {
   useStoreVersion();

@@ -780,7 +780,15 @@ export const assessmentStudio: AssessmentStudioService = {
       p.relatedSystemIds = strip(p.relatedSystemIds);
     });
     ws.requirements.forEach((r) => (r.evidenceIds = strip(r.evidenceIds)));
-    ws.evidence.forEach((e) => (e.links = e.links.filter((l) => l.id !== childId)));
+    ws.evidence.forEach((e) => {
+      const before = materialEvidenceKey(e);
+      e.links = e.links.filter((l) => l.id !== childId);
+      // Losing a linked system/requirement changes what was verified; require re-verification.
+      if (materialEvidenceKey(e) !== before && e.verification.state !== "unverified") {
+        e.verification = { state: "unverified" };
+        if (e.status === "confirmed_fact") e.status = "research_finding";
+      }
+    });
     if (kind === "customQuestions") ws.answers = ws.answers.filter((x) => x.questionId !== childId);
     downgradeUnsupported(ws);
     persist(ctx, a, ws, `Removed ${kind} record`);
