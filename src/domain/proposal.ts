@@ -554,11 +554,27 @@ export interface PriceRef {
   publishedAmount: number;
   basis: string;
   validUntil: string;
+  /** Pricing Studio's own capability binding for this price (absent = a general price). */
+  catalogItemId?: string;
 }
 export interface Authorization {
   approvedBy: ID;
   approvedAt: ISODate;
 }
+/** Why a published price may be used outside its ordinary terms. */
+export const PRICE_EXCEPTION_PERMITS = {
+  applicability: "Used for a capability the price does not apply to",
+  expired: "Used after the published price's validity ended",
+} as const;
+export type PriceExceptionPermit = keyof typeof PRICE_EXCEPTION_PERMITS;
+/** An explicit, separately authorized commercial exception for one pinned price. */
+export interface PriceException {
+  rationale: string;
+  permits: PriceExceptionPermit[];
+  authorization?: Authorization;
+}
+/** Clock for validity/expiry checks (overridable in tests; always UTC ISO). */
+export const proposalClock = { now: (): ISODate => new Date().toISOString() };
 export interface CommercialLine extends BaseRecord {
   category: LineCategory;
   classification: keyof typeof LINE_CLASSES;
@@ -566,7 +582,11 @@ export interface CommercialLine extends BaseRecord {
   quantity: number;
   recurrence: Recurrence;
   currency: string;
+  /** Structured identity of the product/capability this line sells (absent = a general line). */
+  catalogItemId?: string;
   priceRef?: PriceRef;
+  /** Explicit exception allowing the pinned price outside its applicability or validity. */
+  priceException?: PriceException;
   /** Estimated lines: an amount with its basis (never a published price). */
   estimate?: { unitAmount: number; basis: string };
   /** Priced third-party / custom items: the quoted unit amount (needs a quote reference). */
@@ -605,6 +625,7 @@ export type PriceBasis =
   | "approved_override"
   | "estimate"
   | "discount"
+  | "price_exception"
   | "none";
 export interface LineAmount {
   unitAmount: number;
@@ -642,7 +663,7 @@ export function lineAmount(l: CommercialLine): LineAmount {
   const [unit, basis]: [number, PriceBasis] = l.override
     ? [l.override.unitAmount, l.override.authorization ? "approved_override" : "proposed_override"]
     : l.priceRef
-      ? [l.priceRef.publishedAmount, "published"]
+      ? [l.priceRef.publishedAmount, l.priceException ? "price_exception" : "published"]
       : l.quoted
         ? [l.quoted.unitAmount, "quoted"]
         : l.estimate
@@ -748,7 +769,64 @@ export function priceRefOf(item: PriceBookItem, book: PriceBook): PriceRef {
     publishedAmount: item.amount,
     basis: item.basis,
     validUntil: item.validUntil,
+    ...(item.catalogItemId ? { catalogItemId: item.catalogItemId } : {}),
   };
+}
+/**
+ * End of a price's validity in epoch ms, or null when the value is not a real
+ * date. A date-only value is valid through the end of that UTC day.
+ */
+export function validityEnd(v: unknown): number | null {
+  if (typeof v !== "string") return null;
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const full = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+  if (!dateOnly && !full.test(v)) return null;
+  const t = Date.parse(dateOnly ? `${v}T23:59:59.999Z` : v);
+  if (!Number.isFinite(t)) return null;
+  // Reject rolled-over calendar dates such as 2027-02-30.
+  if (dateOnly && new Date(t).toISOString().slice(0, 10) !== v) return null;
+  return t;
+}
+/** Exception permits a priced line needs at `at` (empty = the published price applies as-is). */
+export function requiredPermits(
+  l: Pick<CommercialLine, "catalogItemId" | "priceRef">,
+  at: ISODate = proposalClock.now(),
+): PriceExceptionPermit[] {
+  if (!l.priceRef) return [];
+  const out: PriceExceptionPermit[] = [];
+  if (l.catalogItemId && l.catalogItemId !== l.priceRef.catalogItemId) out.push("applicability");
+  const end = validityEnd(l.priceRef.validUntil);
+  if (end !== null && end < Date.parse(at)) out.push("expired");
+  return out;
+}
+/**
+ * Problems with using a line's pinned published price at `at`: wrong capability,
+ * expired or unreadable validity, and exceptions that are missing or unauthorized.
+ */
+export function priceUseProblems(
+  l: Pick<CommercialLine, "catalogItemId" | "priceRef" | "priceException" | "description">,
+  at: ISODate = proposalClock.now(),
+): string[] {
+  const ref = l.priceRef;
+  if (!ref)
+    return l.priceException
+      ? [`${l.description || "line"}: a price exception needs a published price`]
+      : [];
+  const name = l.description || ref.name;
+  const out: string[] = [];
+  if (validityEnd(ref.validUntil) === null)
+    out.push(`${name}: published price has an invalid validity date ("${String(ref.validUntil)}")`);
+  const ex = l.priceException;
+  for (const need of requiredPermits(l, at)) {
+    if (!ex?.permits.includes(need))
+      out.push(
+        need === "applicability"
+          ? `${name}: price ${ref.priceBookItemId} applies to ${ref.catalogItemId ?? "general subscriptions"}, not ${l.catalogItemId}; use the applicable price or an authorized exception`
+          : `${name}: published price ${ref.priceBookItemId} expired on ${ref.validUntil}; refresh prices or use an authorized exception`,
+      );
+    else if (!ex.authorization) out.push(`${name}: price exception awaits authorization`);
+  }
+  return out;
 }
 /** A pinned price reference is current only if the book still publishes the same amount and terms. */
 export function priceRefProblem(ref: PriceRef, book: PriceBook): string | null {
@@ -758,6 +836,8 @@ export function priceRefProblem(ref: PriceRef, book: PriceBook): string | null {
     item.amount !== ref.publishedAmount ||
     item.currency !== ref.currency ||
     item.recurrence !== ref.recurrence ||
+    item.validUntil !== ref.validUntil ||
+    (item.catalogItemId ?? null) !== (ref.catalogItemId ?? null) ||
     book.priceBookVersion !== ref.priceBookVersion
   )
     return `${ref.name}: price book changed (${ref.priceBookVersion} → ${book.priceBookVersion}); refresh prices`;
@@ -942,6 +1022,7 @@ export function proposalReadiness(
       const prob = priceRefProblem(l.priceRef, book);
       if (prob) comm.push(prob);
     }
+    comm.push(...priceUseProblems(l));
     if (l.override && !l.override.authorization)
       comm.push(`${name}: manual price override awaits approval`);
     if (l.category === "discount" && !l.discount?.authorization)
@@ -1100,11 +1181,24 @@ export interface ProposalShareRecord {
   channelReference: string;
   simulated: true;
 }
+const parseInstant = (v: unknown) => (typeof v === "string" ? Date.parse(v) : Number.NaN);
+/** The moment a share stops being answerable: the earlier of its own and its issued version's expiry. */
+export function shareExpiry(s: Pick<ProposalShareRecord, "expiresAt">, versionExpiresAt?: string) {
+  const a = parseInstant(s.expiresAt);
+  const b =
+    versionExpiresAt === undefined ? Number.POSITIVE_INFINITY : parseInstant(versionExpiresAt);
+  // An unreadable expiry fails closed (already expired).
+  if (!Number.isFinite(a) || Number.isNaN(b)) return Number.NEGATIVE_INFINITY;
+  return Math.min(a, b);
+}
+/** Expiry applies to every non-final response (pending, viewed, acknowledged). */
 export const effectiveResponse = (
   s: ProposalShareRecord,
-  now = new Date().toISOString(),
+  now: string = proposalClock.now(),
+  versionExpiresAt?: string,
 ): ShareResponse =>
-  (s.response === "pending" || s.response === "viewed") && s.expiresAt < now
+  (s.response === "pending" || s.response === "viewed" || s.response === "acknowledged") &&
+  shareExpiry(s, versionExpiresAt) <= Date.parse(now)
     ? "expired"
     : s.response;
 
@@ -1150,4 +1244,55 @@ export function buildProposalDocument(
     milestones: structuredClone(ws.milestones),
     options: structuredClone(ws.options),
   };
+}
+
+/** Recomputes the approval-bound content hash from an immutable version document. */
+export function documentHash(doc: ProposalDocument): string {
+  const ws = {
+    recipient: doc.recipient,
+    validityDays: doc.validityDays,
+    commercialNotes: doc.commercialNotes,
+    sections: doc.sections,
+    deliverables: doc.deliverables.map(({ info: _i, ...d }) => d),
+    lines: doc.commercials.lines.map(({ computed: _c, ...l }) => l),
+    taxes: doc.commercials.taxes,
+    partnerTerms: doc.commercials.partnerTerms,
+    risks: doc.risks,
+    milestones: doc.milestones,
+    options: doc.options,
+  } as unknown as ProposalWorkspace;
+  return materialHash(doc.proposal, doc.source as ProposalSource, ws);
+}
+/**
+ * Independent integrity check of a stored proposal version: identities, every
+ * line amount and total recomputed from authoritative values, and the content
+ * hash recomputed from the document. Browser storage is never trusted.
+ */
+export function versionIntegrityProblems(v: ProposalVersionRecord): string[] {
+  const out: string[] = [];
+  try {
+    const d = v.document;
+    if (d.proposal.id !== v.proposalId) out.push("document belongs to a different proposal");
+    if (d.proposal.organizationId !== v.organizationId)
+      out.push("document belongs to a different organization");
+    const lines: CommercialLine[] = [];
+    for (const l of d.commercials.lines) {
+      const { computed, ...raw } = l;
+      lines.push(raw as CommercialLine);
+      if (typeof l.quantity !== "number" || !Number.isFinite(l.quantity) || l.quantity <= 0)
+        out.push(`line ${l.id}: invalid quantity`);
+      if (l.priceRef && !Number.isFinite(l.priceRef.publishedAmount))
+        out.push(`line ${l.id}: invalid published amount`);
+      if (canonical(computed) !== canonical(lineAmount(raw as CommercialLine)))
+        out.push(`line ${l.id}: stored amount does not match its recomputed amount`);
+    }
+    const summary = calculateCommercials(lines, [...d.commercials.taxes]);
+    if (canonical(summary) !== canonical(d.commercials.summary))
+      out.push("stored totals do not match recomputed totals");
+    if (documentHash(d) !== v.contentHash)
+      out.push("content hash does not match the stored document");
+  } catch {
+    out.push("version document is malformed");
+  }
+  return out;
 }

@@ -321,6 +321,10 @@ export function CommercialsSection({ view }: { view: ProposalView }) {
     ]),
   ]);
   const canAuth = view.permissions.canAuthorizeCommercials;
+  const capabilities = Object.fromEntries([
+    ["", "— general —"],
+    ...(view.source?.catalog.items ?? []).map((c) => [c.id, `${c.product} — ${c.capability}`]),
+  ]);
   return (
     <div className="flex flex-col gap-6">
       <p className="text-xs text-muted-foreground">
@@ -358,6 +362,12 @@ export function CommercialsSection({ view }: { view: ProposalView }) {
               options: LINE_CLASSES,
             },
             { key: "description", label: "Description", kind: "text" },
+            {
+              key: "catalogItemId",
+              label: "Product / capability (blank = general)",
+              kind: "select",
+              options: capabilities,
+            },
             { key: "priceBookItemId", label: "Price-book item", kind: "select", options: book },
             { key: "quantity", label: "Quantity", kind: "text" },
             { key: "currency", label: "Currency (if not from price book)", kind: "text" },
@@ -379,6 +389,11 @@ export function CommercialsSection({ view }: { view: ProposalView }) {
             { key: "overrideRationale", label: "Override rationale", kind: "text" },
             { key: "discountAmount", label: "Discount amount (discount lines)", kind: "text" },
             { key: "discountRationale", label: "Discount rationale", kind: "text" },
+            {
+              key: "exceptionRationale",
+              label: "Price exception rationale (wrong capability or expired price)",
+              kind: "text",
+            },
           ]}
           blank={() => ({
             category: "aurumi_subscription",
@@ -392,6 +407,8 @@ export function CommercialsSection({ view }: { view: ProposalView }) {
             classification: l.classification,
             description: l.description,
             priceBookItemId: l.priceRef?.priceBookItemId ?? "",
+            catalogItemId: l.catalogItemId ?? "",
+            exceptionRationale: l.priceException?.rationale ?? "",
             quantity: String(l.quantity),
             currency: l.priceRef ? "" : l.currency,
             recurrence: l.priceRef ? "" : l.recurrence,
@@ -413,7 +430,13 @@ export function CommercialsSection({ view }: { view: ProposalView }) {
               quantity: num(s("quantity")) ?? 1,
               quoteReference: s("quoteReference"),
             };
+            if (s("catalogItemId")) out["catalogItemId"] = s("catalogItemId");
             if (s("priceBookItemId")) out["priceBookItemId"] = s("priceBookItemId");
+            if (s("priceBookItemId") && s("exceptionRationale"))
+              out["priceException"] = {
+                rationale: s("exceptionRationale"),
+                permits: ["applicability", "expired"],
+              };
             else {
               if (s("currency")) out["currency"] = s("currency").toUpperCase();
               if (s("recurrence")) out["recurrence"] = s("recurrence");
@@ -472,6 +495,20 @@ export function CommercialsSection({ view }: { view: ProposalView }) {
                     onClick={() => auth.mutate([id, { kind: "override", itemId: l.id }])}
                   >
                     Approve override
+                  </button>
+                )}
+                {l.priceException && (
+                  <StatusPill tone={l.priceException.authorization ? "success" : "warning"}>
+                    Price exception —{" "}
+                    {l.priceException.authorization ? "authorized" : "awaiting authorization"}
+                  </StatusPill>
+                )}
+                {canAuth && l.priceException && !l.priceException.authorization && (
+                  <button
+                    className={btnGhost}
+                    onClick={() => auth.mutate([id, { kind: "exception", itemId: l.id }])}
+                  >
+                    Authorize price exception
                   </button>
                 )}
                 {canAuth && l.discount && !l.discount.authorization && (

@@ -6,6 +6,7 @@
  */
 import { z } from "zod";
 import { FINDING_FIELDS, PARTNER_FIELDS, PROFILE_FIELDS } from "@/domain/assessment";
+import { versionIntegrityProblems, type ProposalVersionRecord } from "@/domain/proposal";
 
 const id = z.string().min(1);
 const str = z.string();
@@ -251,7 +252,21 @@ const ROW = {
       deliverables: z.array(z.looseObject({ id, recommendationId: id })),
       commercials: z.looseObject({
         priceBookVersion: str,
-        lines: z.array(z.looseObject({ id, currency: str, quantity: z.number().finite() })),
+        lines: z.array(
+          z.looseObject({
+            id,
+            currency: str,
+            recurrence: z.enum(["one_time", "monthly", "annual"]),
+            quantity: z.number().finite().positive(),
+            computed: z.looseObject({
+              unitAmount: z.number().finite(),
+              amount: z.number().finite(),
+              basis: str,
+              counted: z.boolean(),
+            }),
+          }),
+        ),
+        taxes: z.array(z.looseObject({ id, ratePercent: z.number().finite(), currency: str })),
         summary: z.looseObject({
           totals: z.array(z.looseObject({ currency: str, oneTime: z.number().finite() })),
         }),
@@ -597,6 +612,14 @@ export function sanitizeTable(
     if (!r.success) {
       quarantined.push({ table, path: `${table}[${i}]`, reason: reasonOf(r.error), value: row });
       return;
+    }
+    if (table === "proposalVersions") {
+      // Immutable approval-bound documents: recompute amounts, totals and hash; never trust storage.
+      const bad = versionIntegrityProblems(row as ProposalVersionRecord);
+      if (bad.length) {
+        quarantined.push({ table, path: `${table}[${i}]`, reason: bad.join("; "), value: row });
+        return;
+      }
     }
     if (table === "solutionWorkspaces") {
       const sw = { ...(row as Record<string, unknown>) };

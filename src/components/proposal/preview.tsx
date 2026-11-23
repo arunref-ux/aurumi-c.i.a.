@@ -20,6 +20,7 @@ const BASIS: Record<string, string> = {
   quoted: "Third-party quote",
   proposed_override: "Proposed override (not approved)",
   approved_override: "Approved customer price",
+  price_exception: "Published price used under a commercial exception",
   estimate: "Estimate",
   discount: "Discount",
   none: "—",

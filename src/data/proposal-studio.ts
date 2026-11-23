@@ -6,7 +6,7 @@
  * sharing and responses go only through the workflow methods below.
  */
 import { z } from "zod";
-import { deepFreeze } from "@/domain/assessment";
+import { canonical, deepFreeze } from "@/domain/assessment";
 import { AccessDeniedError, can, type Permission } from "@/domain/permissions";
 import {
   buildProposalDocument,
@@ -20,6 +20,11 @@ import {
   PRICE_BOOK_CATEGORIES,
   priceRefOf,
   priceRefProblem,
+  priceUseProblems,
+  proposalClock,
+  requiredPermits,
+  shareExpiry,
+  versionIntegrityProblems,
   PROPOSAL_VERSION_SCHEMA,
   proposalReadiness,
   readinessPercent,
@@ -217,6 +222,13 @@ const CHILD = {
       })
       .optional(),
     quoteReference: str.default(""),
+    catalogItemId: z.string().trim().min(1).optional(),
+    priceException: z
+      .strictObject({
+        rationale: z.string().trim().min(1, "A price exception needs a rationale"),
+        permits: z.array(z.enum(["applicability", "expired"])).min(1),
+      })
+      .optional(),
   }),
   taxes: z.strictObject({
     id: childId,
@@ -500,6 +512,47 @@ const readinessFailures = (
   h: SolutionHandoffSnapshot | undefined,
   book: PriceBook,
 ) => proposalReadiness(p, ws, h, book).filter((i) => !i.ok);
+/**
+ * Everything a workflow decision depends on. Captured before any asynchronous
+ * adapter call and compared afterwards, so a decision never commits against
+ * state that changed while it was waiting.
+ */
+function fingerprint(id: ID): string {
+  const p = store.table("proposals").find((x) => x.id === id);
+  if (!p || !isStudio(p)) return "missing";
+  const ws = store.table("proposalWorkspaces").find((w) => w.proposalId === id);
+  const v = currentVersion(p);
+  return canonical({
+    status: p.status,
+    revision: p.revision,
+    currentVersionId: p.currentVersionId ?? null,
+    source: p.source,
+    hash: ws ? materialHash(p, p.source, ws) : null,
+    version: v
+      ? { id: v.id, hash: v.contentHash, review: v.review, issue: v.issue, sup: v.supersededAt }
+      : null,
+  });
+}
+function unchanged(ctx: Ctx, id: ID, before: string, what: string) {
+  if (fingerprint(id) !== before)
+    reject(
+      ctx,
+      `the proposal changed while ${what}; nothing was changed — reload and try again`,
+      id,
+    );
+}
+/** Problems that stop an exact stored version from being approved or issued. */
+function versionDefects(v: ProposalVersionRecord, book: PriceBook | null, at: string): string[] {
+  const out = versionIntegrityProblems(v).map((x) => `version integrity: ${x}`);
+  for (const l of v.document.commercials.lines) {
+    if (book && l.priceRef) {
+      const prob = priceRefProblem(l.priceRef, book);
+      if (prob) out.push(prob);
+    }
+    out.push(...priceUseProblems(l, at));
+  }
+  return out;
+}
 function qualificationIds(doc: ProposalDocument) {
   return [
     ...doc.deliverables.filter((d) => d.info.needsQualification).map((d) => d.id),
@@ -532,7 +585,7 @@ export interface ProposalStudioService {
   authorizeCommercial(
     ctx: Ctx,
     id: ID,
-    input: { kind: "override" | "discount" | "term"; itemId: ID },
+    input: { kind: "override" | "discount" | "exception" | "term"; itemId: ID },
   ): Promise<void>;
   addComment(ctx: Ctx, id: ID, body: string): Promise<void>;
   submitForReview(ctx: Ctx, id: ID, note?: string): Promise<ProposalVersionRecord>;
@@ -650,7 +703,14 @@ export const proposalStudio: ProposalStudioService = {
     const shares = store
       .table("proposalShares")
       .filter((s) => s.proposalId === p.id)
-      .map((s) => ({ ...s, effective: effectiveResponse(s) }));
+      .map((s) => ({
+        ...s,
+        effective: effectiveResponse(
+          s,
+          proposalClock.now(),
+          versions.find((v) => v.id === s.versionId)?.issue?.expiresAt ?? "invalid",
+        ),
+      }));
     shares.forEach((s) => people.add(s.sharedBy));
     return {
       proposal: p,
@@ -836,6 +896,8 @@ export const proposalStudio: ProposalStudioService = {
 
   async upsertChild(ctx, id, kind, input) {
     await tick();
+    // Read the price book first so every check below runs on current records.
+    const book = kind === "lines" ? await priceBookNow() : null;
     const p = parent(ctx, id, "proposal.update");
     editable(ctx, p);
     const schema = CHILD[kind];
@@ -870,12 +932,13 @@ export const proposalStudio: ProposalStudioService = {
         sourceStatus: "current",
       };
     }
-    if (kind === "lines") {
-      const book = await priceBookNow();
+    if (kind === "lines" && book) {
       const cat = data["category"] as CommercialLine["category"];
       const itemId = data["priceBookItemId"] as string | undefined;
       const prev = existing as unknown as CommercialLine | undefined;
-      const { priceBookItemId: _p, ...rest } = data;
+      const { priceBookItemId: _p, priceException: _x, catalogItemId: lineItem, ...rest } = data;
+      if (lineItem !== undefined && !h.catalog.items.some((c) => c.id === lineItem))
+        reject(ctx, `"${String(lineItem)}" is not a capability in the approved solution`, id);
       let priceRef = undefined as CommercialLine["priceRef"];
       if (itemId) {
         if (!PRICE_BOOK_CATEGORIES.includes(cat))
@@ -904,6 +967,33 @@ export const proposalStudio: ProposalStudioService = {
         data["classification"] === "priced"
       )
         reject(ctx, "priced Aurumi items must reference a Pricing Studio price-book item", id);
+      // A general line priced from a capability-specific price takes that capability.
+      const catalogItemId = (lineItem as string | undefined) ?? priceRef?.catalogItemId;
+      const px = data["priceException"] as
+        { rationale: string; permits: ("applicability" | "expired")[] } | undefined;
+      if (px && !priceRef) reject(ctx, "a price exception applies to a published price", id);
+      if (priceRef) {
+        const need = requiredPermits(
+          { ...(catalogItemId ? { catalogItemId } : {}), priceRef },
+          proposalClock.now(),
+        );
+        const missing = need.filter((n) => !px?.permits.includes(n));
+        if (missing.length)
+          reject(
+            ctx,
+            missing.includes("applicability")
+              ? `price ${priceRef.priceBookItemId} applies to ${priceRef.catalogItemId ?? "general subscriptions"}, not ${catalogItemId}; choose the applicable price or propose a price exception with a rationale`
+              : `published price ${priceRef.priceBookItemId} expired on ${priceRef.validUntil}; refresh prices or propose a price exception with a rationale`,
+            id,
+          );
+      }
+      const samePx =
+        !!px &&
+        !!prev?.priceException &&
+        prev.priceException.rationale === px.rationale &&
+        canonical([...prev.priceException.permits].sort()) === canonical([...px.permits].sort()) &&
+        canonical(prev.priceRef) === canonical(priceRef) &&
+        prev.catalogItemId === catalogItemId;
       const recurrence = priceRef?.recurrence ?? (data["recurrence"] as string | undefined);
       const currency = priceRef?.currency ?? (data["currency"] as string | undefined);
       if (!recurrence || !currency) reject(ctx, "state the currency and billing period", id);
@@ -946,8 +1036,17 @@ export const proposalStudio: ProposalStudioService = {
         ...rest,
         recurrence,
         currency,
+        ...(catalogItemId ? { catalogItemId } : {}),
         ...(priceRef ? { priceRef } : {}),
       };
+      if (px)
+        record["priceException"] = {
+          rationale: px.rationale,
+          permits: [...new Set(px.permits)],
+          ...(samePx && prev?.priceException?.authorization
+            ? { authorization: prev.priceException.authorization }
+            : {}),
+        };
       delete record["override"];
       delete record["discount"];
       const o = keepAuth(ov, prev?.override, sameOv);
@@ -955,6 +1054,7 @@ export const proposalStudio: ProposalStudioService = {
       if (o) record["override"] = o;
       if (dd) record["discount"] = dd;
       if ((ov && !sameOv) || (dc && !sameDc)) action = "proposal.override";
+      if (px && !samePx) action = "proposal.price_exception";
     }
     if (kind === "taxes") action = "proposal.tax";
     if (kind === "partnerTerms") {
@@ -1060,9 +1160,9 @@ export const proposalStudio: ProposalStudioService = {
 
   async refreshPrices(ctx, id) {
     await tick();
+    const book = await priceBookNow();
     const p = parent(ctx, id, "proposal.update");
     editable(ctx, p);
-    const book = await priceBookNow();
     const ws = clone(workspaceOf(p));
     const changes: string[] = [];
     ws.lines.forEach((l) => {
@@ -1072,6 +1172,12 @@ export const proposalStudio: ProposalStudioService = {
       const next = priceRefOf(item, book);
       if (next.publishedAmount !== l.priceRef.publishedAmount && l.override)
         delete l.override.authorization;
+      // A refreshed reference is a material change: a prior exception must be re-authorized.
+      if (
+        canonical(next) !== canonical({ ...l.priceRef, retrievedAt: next.retrievedAt }) &&
+        l.priceException
+      )
+        delete l.priceException.authorization;
       if (next.publishedAmount !== l.priceRef.publishedAmount)
         changes.push(`${item.name}: ${l.priceRef.publishedAmount} → ${next.publishedAmount}`);
       l.priceRef = next;
@@ -1100,7 +1206,12 @@ export const proposalStudio: ProposalStudioService = {
       Object.assign(t, { status: "approved", authorization: auth });
     } else {
       const l = ws.lines.find((x) => x.id === input.itemId);
-      const target = input.kind === "override" ? l?.override : l?.discount;
+      const target =
+        input.kind === "override"
+          ? l?.override
+          : input.kind === "exception"
+            ? l?.priceException
+            : l?.discount;
       if (!l || !target) return reject(ctx, `no ${input.kind} on that line`, id);
       target.authorization = auth;
     }
@@ -1142,11 +1253,16 @@ export const proposalStudio: ProposalStudioService = {
     const p = parent(ctx, id, "proposal.update");
     if (p.status !== "draft" && p.status !== "changes_requested")
       reject(ctx, `only drafts can be submitted (is ${p.status})`, id);
+    const before = fingerprint(id);
+    const book = await priceBookNow();
+    // Re-read and re-authorize after the adapter call; the commit below is synchronous.
+    unchanged(ctx, id, before, "pricing was being checked");
+    parent(ctx, id, "proposal.update");
     const ws = clone(workspaceOf(p));
     const h = handoffOf(p);
-    const book = await priceBookNow();
     const failing = readinessFailures(p, ws, h, book);
-    if (failing.length) reject(ctx, `not ready: ${failing.map((f) => f.label).join(", ")}`, id);
+    if (failing.length)
+      reject(ctx, `not ready: ${failing.map((f) => `${f.label} (${f.detail[0]})`).join(", ")}`, id);
     const at = now();
     const versionNumber = (versionsOf(p.id)[0]?.versionNumber ?? 0) + 1;
     const v: ProposalVersionRecord = {
@@ -1195,13 +1311,18 @@ export const proposalStudio: ProposalStudioService = {
         id,
       );
     if (v.review) reject(ctx, "this version already has a review decision", id);
+    const before = fingerprint(id);
+    const book = await priceBookNow();
+    unchanged(ctx, id, before, "pricing was being checked");
+    approver(ctx, id);
     const ws = workspaceOf(p);
     if (materialHash(p, p.source, ws) !== v.contentHash)
       reject(ctx, "the draft changed since this version was submitted", id);
-    const book = await priceBookNow();
     const failing = readinessFailures(p, ws, handoffOf(p), book);
     if (failing.length)
       reject(ctx, `not ready: ${failing.map((f) => `${f.label} (${f.detail[0]})`).join(", ")}`, id);
+    const defects = versionDefects(v, book, proposalClock.now());
+    if (defects.length) reject(ctx, `this version cannot be approved: ${defects.join("; ")}`, id);
     const need = qualificationIds(v.document);
     const ack = new Set(input.acknowledged ?? []);
     const missing = need.filter((x) => !ack.has(x));
@@ -1277,26 +1398,30 @@ export const proposalStudio: ProposalStudioService = {
 
   async issue(ctx, id, versionId) {
     await tick();
-    const p = parent(ctx, id, "proposal.share");
-    if (p.status !== "approved")
-      reject(ctx, `only approved proposals can be issued (is ${p.status})`, id);
-    const v = currentVersion(p);
-    if (!v || v.id !== versionId) return reject(ctx, "issue the current approved version", id);
-    if (v.review?.decision !== "approved" || v.supersededAt)
-      reject(ctx, "this exact version is not approved", id);
-    if (materialHash(p, p.source, workspaceOf(p)) !== v.contentHash)
-      reject(ctx, "the draft changed after approval; resubmit for review", id);
+    /** Authorization, lifecycle, exact approved version, approval validity, hash and integrity. */
+    const check = () => {
+      const p = parent(ctx, id, "proposal.share");
+      if (p.status !== "approved")
+        reject(ctx, `only approved proposals can be issued (is ${p.status})`, id);
+      const v = currentVersion(p);
+      if (!v || v.id !== versionId) return reject(ctx, "issue the current approved version", id);
+      if (v.review?.decision !== "approved" || v.supersededAt || v.issue)
+        reject(ctx, "this exact version is not approved", id);
+      if (materialHash(p, p.source, workspaceOf(p)) !== v.contentHash)
+        reject(ctx, "the draft changed after approval; resubmit for review", id);
+      if (!handoffOf(p)) reject(ctx, "source solution snapshot is missing", id);
+      return { p, v };
+    };
+    check();
+    const before = fingerprint(id);
     const book = await priceBookNow();
-    const stale = v.document.commercials.lines
-      .flatMap((l) => (l.priceRef ? [priceRefProblem(l.priceRef, book)] : []))
-      .filter(Boolean);
-    if (stale.length)
-      reject(
-        ctx,
-        `price book changed since approval — revise and resubmit (${stale.join("; ")})`,
-        id,
-      );
-    const at = new Date();
+    // Authoritative re-read after the adapter call; validation and commit are synchronous.
+    unchanged(ctx, id, before, "pricing was being checked");
+    const { p, v } = check();
+    const defects = versionDefects(v, book, proposalClock.now());
+    if (defects.length)
+      reject(ctx, `cannot issue this version — revise and resubmit (${defects.join("; ")})`, id);
+    const at = new Date(proposalClock.now());
     const exp = new Date(at.getTime() + v.document.validityDays * 86400000).toISOString();
     patchVersion(v.id, {
       issue: {
@@ -1340,12 +1465,22 @@ export const proposalStudio: ProposalStudioService = {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) reject(ctx, "enter a valid recipient email", id);
     if (!input.recipient.name.trim()) reject(ctx, "name the recipient", id);
     const expiresAt = input.expiresAt ?? v.issue.expiresAt;
-    if (expiresAt > v.issue.expiresAt)
+    const exp = Date.parse(expiresAt);
+    if (
+      typeof expiresAt !== "string" ||
+      !Number.isFinite(exp) ||
+      !/^\d{4}-\d{2}-\d{2}T/.test(expiresAt)
+    )
+      reject(ctx, "enter a valid expiry date and time", id);
+    if (exp > Date.parse(v.issue.expiresAt))
       reject(ctx, "a share cannot outlive the issued version's validity", id);
-    if (expiresAt < now())
+    if (exp <= Date.parse(proposalClock.now()))
       reject(ctx, "this version has expired; revise to issue a new version", id);
+    const before = fingerprint(id);
     const r = await proposalShareAdapter.share({ versionId: v.id, recipientEmail: email });
     if (!r.ok) return reject(ctx, `sharing unavailable: ${r.error}`, id);
+    unchanged(ctx, id, before, "the share was being prepared");
+    parent(ctx, id, "proposal.share");
     const rec: ProposalShareRecord = {
       id: newId("psh"),
       organizationId: p.organizationId,
@@ -1359,7 +1494,7 @@ export const proposalStudio: ProposalStudioService = {
       },
       sharedAt: now(),
       sharedBy: ctx.user.id,
-      expiresAt,
+      expiresAt: new Date(exp).toISOString(),
       access: "active",
       response: "pending",
       responseNote: "",
@@ -1385,9 +1520,14 @@ export const proposalStudio: ProposalStudioService = {
     if (!s) return deny(ctx, "proposal.share", shareId);
     const p = parent(ctx, s.proposalId, "proposal.share");
     if (s.access !== "active") reject(ctx, "this share was revoked", p.id);
-    const cur = effectiveResponse(s);
+    const ver = store.table("proposalVersions").find((x) => x.id === s.versionId);
+    const at = proposalClock.now();
+    const cur = effectiveResponse(s, at, ver?.issue?.expiresAt ?? "invalid");
     if (["accepted", "declined", "expired"].includes(cur))
       reject(ctx, `response already final (${cur})`, p.id);
+    // Independent of status: nothing is answerable at or after the effective expiry.
+    if (shareExpiry(s, ver?.issue?.expiresAt ?? "invalid") <= Date.parse(at))
+      reject(ctx, "this share has expired", p.id);
     const decisive = ["accepted", "declined", "expired"].includes(input.response);
     if (decisive && p.status !== "shared")
       reject(ctx, `proposal is ${p.status}; responses apply to the issued version`, p.id);
@@ -1400,7 +1540,7 @@ export const proposalStudio: ProposalStudioService = {
           ? {
               ...x,
               response: input.response,
-              respondedAt: now(),
+              respondedAt: at,
               responseNote: input.note?.trim() ?? "",
               recordedBy: ctx.user.id,
             }

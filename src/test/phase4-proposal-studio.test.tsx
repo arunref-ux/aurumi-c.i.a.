@@ -571,12 +571,21 @@ describe("12–14. protected review, exact-version approval, issue and share", (
 });
 
 describe("15–16. immutable issued versions and standalone interpretation", () => {
-  it("issued versions never change after edits, price changes, rebase or later approvals", async () => {
+  it("issued versions never change after edits, a later approval, price changes or source removal", async () => {
     const { p, issued, sol } = await issuedProposal();
     const frozen = structuredClone(issued);
     expect(Object.isFrozen(issued.document)).toBe(true);
     await P.revise(PRO, p.id, "Customer wants more users");
     await P.saveSection(PRO, p.id, "next_steps", { body: "Updated next steps" });
+    // A later approval of the revised draft leaves the issued version untouched.
+    const v2 = await P.submitForReview(PRO, p.id);
+    await P.approve(REVIEWER, p.id, v2.id, {
+      acknowledged: [
+        ...v2.document.deliverables.filter((d) => d.info.needsQualification).map((d) => d.id),
+        ...v2.document.risks.filter((x) => x.resolution === "accepted").map((x) => x.id),
+      ],
+    });
+    expect(v2.id).not.toBe(issued.id);
     const item = MOCK_PRICE_BOOK.items.find((i) => i.id === "pb_receivables")!;
     item.amount = 3100;
     try {
