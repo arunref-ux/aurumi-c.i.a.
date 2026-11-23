@@ -28,3 +28,12 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Architecture (C.I.A. Workspace)
+- Domain types live in `src/domain/types.ts`; every entity extends BaseRecord (immutable id, audit fields, organizationId) so persistence can be swapped later.
+- Authorization is enforced in `src/data/repositories.ts` via `can()` from `src/domain/permissions.ts`; UI hiding is never the only check, because the spec requires service-layer enforcement.
+- Data is simulated in-memory (`src/data/store.ts`) behind repositories, so a real backend can replace it without touching screens.
+- Other Aurumi apps are reached only through typed adapters in `src/integrations/adapters/` (mock implementations, status "mock"); never invent production endpoints.
+- Dashboard numbers are derived from records in `src/domain/metrics.ts`, never stored counters.
+- Primary navigation is defined once in `src/components/app/nav.ts`.
+- Work proceeds in phases; do not start a new phase without explicit user approval.
