@@ -243,6 +243,7 @@ const ROW = {
     createdAt: str,
     createdBy: id,
     contentHash: str,
+    hashContract: z.literal("proposal-content-hash/2").optional(),
     document: z.looseObject({
       templateVersion: str,
       proposal: z.looseObject({ id, title: str, track: str }),

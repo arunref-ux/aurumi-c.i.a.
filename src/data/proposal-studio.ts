@@ -25,6 +25,8 @@ import {
   requiredPermits,
   shareExpiry,
   versionIntegrityProblems,
+  HASH_CONTRACT,
+  isLegacyVersion,
   PROPOSAL_VERSION_SCHEMA,
   proposalReadiness,
   readinessPercent,
@@ -542,9 +544,12 @@ function unchanged(ctx: Ctx, id: ID, before: string, what: string) {
       id,
     );
 }
+const LEGACY_REMEDY =
+  "this version predates strengthened content hashing (proposal-content-hash/1) and stays as history only; revise the proposal and resubmit to create a new version for fresh approval";
 /** Problems that stop an exact stored version from being approved or issued. */
 function versionDefects(v: ProposalVersionRecord, book: PriceBook | null, at: string): string[] {
   const out = versionIntegrityProblems(v).map((x) => `version integrity: ${x}`);
+  if (isLegacyVersion(v)) out.unshift(LEGACY_REMEDY);
   for (const l of v.document.commercials.lines) {
     if (book && l.priceRef) {
       const prob = priceRefProblem(l.priceRef, book);
@@ -973,6 +978,14 @@ export const proposalStudio: ProposalStudioService = {
       // no stated capability takes the capability of a capability-specific price.
       let catalogItemId: string | undefined;
       if (lineItem === null) {
+        // Removing an existing binding would turn a product line into a "general" one and
+        // escape the applicability check; Phase 4 has no authorized removal workflow.
+        if (prev?.catalogItemId)
+          reject(
+            ctx,
+            `this line is bound to ${prev.catalogItemId}; its capability cannot be removed — replace it with another capability, or add a separate general subscription line`,
+            id,
+          );
         if (priceRef?.catalogItemId)
           reject(
             ctx,
@@ -1291,6 +1304,7 @@ export const proposalStudio: ProposalStudioService = {
       createdAt: at,
       createdBy: ctx.user.id,
       contentHash: materialHash(p, p.source, ws, h),
+      hashContract: HASH_CONTRACT,
       document: deepFreeze(buildProposalDocument(p, ws, h!, book)),
     };
     store.replace("proposalVersions", [...store.table("proposalVersions"), v]);
@@ -1327,6 +1341,7 @@ export const proposalStudio: ProposalStudioService = {
         id,
       );
     if (v.review) reject(ctx, "this version already has a review decision", id);
+    if (isLegacyVersion(v)) reject(ctx, LEGACY_REMEDY, id);
     const before = fingerprint(id);
     const book = await priceBookNow();
     unchanged(ctx, id, before, "pricing was being checked");
@@ -1423,6 +1438,7 @@ export const proposalStudio: ProposalStudioService = {
       if (!v || v.id !== versionId) return reject(ctx, "issue the current approved version", id);
       if (v.review?.decision !== "approved" || v.supersededAt || v.issue)
         reject(ctx, "this exact version is not approved", id);
+      if (isLegacyVersion(v)) reject(ctx, LEGACY_REMEDY, id);
       if (materialHash(p, p.source, workspaceOf(p), handoffOf(p)) !== v.contentHash)
         reject(ctx, "the draft changed after approval; resubmit for review", id);
       if (!handoffOf(p)) reject(ctx, "source solution snapshot is missing", id);

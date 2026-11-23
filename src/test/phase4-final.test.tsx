@@ -152,16 +152,8 @@ describe("P1-02 capability identity survives line updates", () => {
         priceBookItemId: "pb_receivables",
         description: "x",
       }),
-    ).rejects.toThrow(/specific to app_receivables/);
-    // Removal with a genuinely general price is allowed and leaves no binding.
-    await P.upsertChild(PRO, p.id, "lines", {
-      id: lid,
-      category: "aurumi_subscription",
-      catalogItemId: null,
-      priceBookItemId: "pb_core_user",
-      description: "Workspace users",
-    });
-    expect((await lineOf(p.id, lid)).catalogItemId).toBeUndefined();
+    ).rejects.toThrow(/capability cannot be removed/);
+    expect((await lineOf(p.id, lid)).catalogItemId).toBe("app_receivables");
   });
   it("a new general subscription remains valid", async () => {
     const { p } = await readyProposal();
