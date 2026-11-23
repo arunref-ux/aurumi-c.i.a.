@@ -14,9 +14,10 @@ import { Route as EngagementsRouteImport } from './routes/engagements'
 import { Route as NetworkRouteImport } from './routes/network'
 import { Route as ProposalsRouteImport } from './routes/proposals'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SolutionsRouteImport } from './routes/solutions'
 import { Route as AssessmentsIndexRouteImport } from './routes/assessments.index'
 import { Route as AssessmentsAssessmentIdRouteImport } from './routes/assessments.$assessmentId'
+import { Route as SolutionsIndexRouteImport } from './routes/solutions.index'
+import { Route as SolutionsSolutionIdRouteImport } from './routes/solutions.$solutionId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -43,11 +44,6 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SolutionsRoute = SolutionsRouteImport.update({
-  id: '/solutions',
-  path: '/solutions',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AssessmentsIndexRoute = AssessmentsIndexRouteImport.update({
   id: '/assessments/',
   path: '/assessments/',
@@ -58,6 +54,16 @@ const AssessmentsAssessmentIdRoute = AssessmentsAssessmentIdRouteImport.update({
   path: '/assessments/$assessmentId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SolutionsIndexRoute = SolutionsIndexRouteImport.update({
+  id: '/solutions/',
+  path: '/solutions/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SolutionsSolutionIdRoute = SolutionsSolutionIdRouteImport.update({
+  id: '/solutions/$solutionId',
+  path: '/solutions/$solutionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -65,9 +71,10 @@ export interface FileRoutesByFullPath {
   '/network': typeof NetworkRoute
   '/proposals': typeof ProposalsRoute
   '/settings': typeof SettingsRoute
-  '/solutions': typeof SolutionsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
+  '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments/': typeof AssessmentsIndexRoute
+  '/solutions/': typeof SolutionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -75,9 +82,10 @@ export interface FileRoutesByTo {
   '/network': typeof NetworkRoute
   '/proposals': typeof ProposalsRoute
   '/settings': typeof SettingsRoute
-  '/solutions': typeof SolutionsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
+  '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments': typeof AssessmentsIndexRoute
+  '/solutions': typeof SolutionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,9 +94,10 @@ export interface FileRoutesById {
   '/network': typeof NetworkRoute
   '/proposals': typeof ProposalsRoute
   '/settings': typeof SettingsRoute
-  '/solutions': typeof SolutionsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
+  '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments/': typeof AssessmentsIndexRoute
+  '/solutions/': typeof SolutionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -98,9 +107,10 @@ export interface FileRouteTypes {
     | '/network'
     | '/proposals'
     | '/settings'
-    | '/solutions'
     | '/assessments/$assessmentId'
+    | '/solutions/$solutionId'
     | '/assessments/'
+    | '/solutions/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -108,9 +118,10 @@ export interface FileRouteTypes {
     | '/network'
     | '/proposals'
     | '/settings'
-    | '/solutions'
     | '/assessments/$assessmentId'
+    | '/solutions/$solutionId'
     | '/assessments'
+    | '/solutions'
   id:
     | '__root__'
     | '/'
@@ -118,9 +129,10 @@ export interface FileRouteTypes {
     | '/network'
     | '/proposals'
     | '/settings'
-    | '/solutions'
     | '/assessments/$assessmentId'
+    | '/solutions/$solutionId'
     | '/assessments/'
+    | '/solutions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -129,9 +141,10 @@ export interface RootRouteChildren {
   NetworkRoute: typeof NetworkRoute
   ProposalsRoute: typeof ProposalsRoute
   SettingsRoute: typeof SettingsRoute
-  SolutionsRoute: typeof SolutionsRoute
   AssessmentsAssessmentIdRoute: typeof AssessmentsAssessmentIdRoute
+  SolutionsSolutionIdRoute: typeof SolutionsSolutionIdRoute
   AssessmentsIndexRoute: typeof AssessmentsIndexRoute
+  SolutionsIndexRoute: typeof SolutionsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -171,13 +184,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/solutions': {
-      id: '/solutions'
-      path: '/solutions'
-      fullPath: '/solutions'
-      preLoaderRoute: typeof SolutionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/assessments/': {
       id: '/assessments/'
       path: '/assessments'
@@ -192,6 +198,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AssessmentsAssessmentIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/solutions/': {
+      id: '/solutions/'
+      path: '/solutions'
+      fullPath: '/solutions/'
+      preLoaderRoute: typeof SolutionsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/solutions/$solutionId': {
+      id: '/solutions/$solutionId'
+      path: '/solutions/$solutionId'
+      fullPath: '/solutions/$solutionId'
+      preLoaderRoute: typeof SolutionsSolutionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -201,9 +221,10 @@ const rootRouteChildren: RootRouteChildren = {
   NetworkRoute: NetworkRoute,
   ProposalsRoute: ProposalsRoute,
   SettingsRoute: SettingsRoute,
-  SolutionsRoute: SolutionsRoute,
   AssessmentsAssessmentIdRoute: AssessmentsAssessmentIdRoute,
+  SolutionsSolutionIdRoute: SolutionsSolutionIdRoute,
   AssessmentsIndexRoute: AssessmentsIndexRoute,
+  SolutionsIndexRoute: SolutionsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
