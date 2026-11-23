@@ -121,6 +121,7 @@ export const MOCK_CATALOG: CatalogSnapshot = {
       dependencies: [],
       actions: ["ledger.read", "invoice.read"],
       limitations: ["One-way (read) sync"],
+      connector: { systemMatch: ["tally"], directions: ["inbound"], operations: ["read"] },
       source: "Connector registry (illustrative)",
     }),
     item({
@@ -134,6 +135,7 @@ export const MOCK_CATALOG: CatalogSnapshot = {
       dependencies: [],
       actions: [],
       limitations: ["Planned — not available"],
+      connector: { systemMatch: ["essl"], directions: ["inbound"], operations: ["read"] },
       source: "Connector registry (illustrative)",
     }),
     item({
@@ -147,6 +149,7 @@ export const MOCK_CATALOG: CatalogSnapshot = {
       dependencies: [],
       actions: [],
       limitations: ["No supported PMS connector today"],
+      connector: { systemMatch: ["pms"], directions: ["inbound"], operations: ["read"] },
       source: "Connector registry (illustrative)",
     }),
     item({

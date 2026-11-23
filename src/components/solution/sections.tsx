@@ -733,9 +733,19 @@ export function AISection({ view }: { view: SolutionView }) {
 export function ArchitectureSection({ view }: { view: SolutionView }) {
   const { workspace: ws, dependencies: dep } = view;
   const title = (id: string) => ws.recommendations.find((r) => r.id === id)?.title ?? id;
+  const sourceTitle = (src: { kind: string; id: string }) =>
+    src.kind === "recommendation"
+      ? title(src.id)
+      : src.kind === "integration"
+        ? `Integration: ${ws.integrations.find((i) => i.id === src.id)?.systemName ?? src.id}`
+        : `AI design for ${title(ws.aiDesigns.find((d) => d.id === src.id)?.recommendationId ?? "")}`;
   return (
     <div className="flex flex-col gap-6">
-      {(dep.missing.length > 0 || dep.cycles.length > 0 || dep.catalogGaps.length > 0) && (
+      {(dep.missing.length > 0 ||
+        dep.cycles.length > 0 ||
+        dep.catalogGaps.length > 0 ||
+        dep.unsupported.length > 0 ||
+        dep.catalogCycles.length > 0) && (
         <Panel title="Dependency problems">
           <ul className="flex flex-col gap-1 text-sm text-destructive">
             {dep.cycles.map((c, i) => (
@@ -747,10 +757,18 @@ export function ArchitectureSection({ view }: { view: SolutionView }) {
               </li>
             ))}
             {dep.catalogGaps.map((g) => (
-              <li key={`${g.recommendationId}${g.needs}`}>
-                {title(g.recommendationId)}: {catName(view, g.itemId)} needs{" "}
-                {catName(view, g.needs)}, which isn’t in the solution
+              <li key={`${g.source.kind}${g.source.id}${g.needs}`}>
+                {sourceTitle(g.source)}: {g.path.map((x) => catName(view, x)).join(" → ")} —{" "}
+                {catName(view, g.needs)} is a required prerequisite that isn’t selected
               </li>
+            ))}
+            {dep.unsupported.map((u) => (
+              <li key={`u${u.itemId}${u.needs}`}>
+                {catName(view, u.itemId)} needs {u.needs}, which is {u.reason}
+              </li>
+            ))}
+            {dep.catalogCycles.map((c, i) => (
+              <li key={`cc${i}`}>Circular catalog dependency: {c.join(" → ")}</li>
             ))}
           </ul>
         </Panel>

@@ -240,6 +240,7 @@ const CHILD_SCHEMAS = {
         "connector_supported",
       ])
       .default("general"),
+    connectorItemId: z.string().trim().max(100).optional(),
   }),
   openQuestions: z.strictObject({
     id: childId,

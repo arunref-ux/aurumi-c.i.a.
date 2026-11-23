@@ -214,6 +214,8 @@ export interface EvidenceRecord extends ChildRecord, ResearchFinding {
   notes: string;
   /** Missing on older records = "general". */
   applicability?: EvidenceApplicability;
+  /** Catalog connector this evidence is about (connector claims only). */
+  connectorItemId?: string;
 }
 
 /** Stable JSON (sorted keys) so equal content always compares equal. */
@@ -247,6 +249,7 @@ export function materialEvidenceKey(
     "attribute" | "statement" | "status" | "sources" | "researchedAt" | "generatedBy"
   > & {
     applicability?: EvidenceApplicability | undefined;
+    connectorItemId?: string | undefined;
     links?: readonly { kind: EvidenceLinkKind; id: ID }[] | undefined;
   },
 ): string {
@@ -258,6 +261,8 @@ export function materialEvidenceKey(
     researchedAt: e.researchedAt,
     generatedBy: e.generatedBy ?? "",
     applicability: e.applicability ?? "general",
+    // Omitted when unset, so keys of older evidence are unchanged.
+    connector: e.connectorItemId || undefined,
     targets: materialLinks(e.links),
   });
 }

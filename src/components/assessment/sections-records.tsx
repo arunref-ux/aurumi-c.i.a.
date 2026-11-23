@@ -519,6 +519,12 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
             help: "Connector claims need evidence of exactly that connector status, linked to the system.",
           },
           {
+            key: "connectorItemId",
+            label: "Connector this evidence is about (catalog id, optional)",
+            kind: "text",
+            help: "For example conn_tally. A confirmed integration needs evidence naming that exact connector.",
+          },
+          {
             key: "sourceType",
             label: "Source type",
             kind: "select",

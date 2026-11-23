@@ -98,6 +98,7 @@ const CHILD = {
     verification,
     generatedBy: optStr,
     applicability: optStr,
+    connectorItemId: optStr,
     links: z.array(link),
     notes: str,
   }),

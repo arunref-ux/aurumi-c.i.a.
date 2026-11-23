@@ -1,163 +1,29 @@
 /** Phase 3 — Solution Studio acceptance tests (service-level, as the boundary that matters). */
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { assessmentStudio as A, studioConfig } from "@/data/assessment-studio";
+import { assessmentStudio as A } from "@/data/assessment-studio";
 import { ValidationError } from "@/data/repositories";
 import { seedUsers } from "@/data/seed";
-import { solutionStudio as S, solutionConfig } from "@/data/solution-studio";
+import { solutionStudio as S } from "@/data/solution-studio";
 import { memoryBackend, STORAGE_KEY, store } from "@/data/store";
 import { AccessDeniedError } from "@/domain/permissions";
 import { analyzeDependencies } from "@/domain/solution";
 import { MOCK_CATALOG } from "@/integrations/adapters/solution-catalog";
+import {
+  ADMIN,
+  approvedAssessment,
+  evidence,
+  MGR,
+  PARTNER,
+  PM,
+  PRO,
+  readySolution,
+  resetSolutionTestState,
+  REVIEWER,
+} from "./solution-fixtures";
 
-const u = (id: string) => ({ user: seedUsers.find((x) => x.id === id)! });
-const PRO = u("u_pro");
-const MGR = u("u_manager");
-const ADMIN = u("u_admin");
-const PARTNER = u("u_partner_pro");
-const REVIEWER = u("u_reviewer");
-const PM = u("u_pm");
-
-beforeEach(() => {
-  studioConfig.latencyMs = 0;
-  solutionConfig.latencyMs = 0;
-  store.attach(null);
-  store.reset();
-});
+beforeEach(resetSolutionTestState);
 afterEach(cleanup);
-
-const evidence = (over: Record<string, unknown> = {}) => ({
-  attribute: "api",
-  statement: "Vendor documents a REST API",
-  status: "research_finding" as const,
-  sources: [
-    {
-      title: "Vendor docs",
-      sourceType: "vendor_documentation" as const,
-      retrievedAt: "2026-11-01T00:00:00Z",
-    },
-  ],
-  researchedAt: "2026-11-01T00:00:00Z",
-  confidence: { level: "medium" as const },
-  verification: { state: "verified" as const, method: "Checked docs" },
-  links: [],
-  ...over,
-});
-
-/** Approved assessment owned by PRO with one system, pain point, requirement and verified evidence. */
-async function approvedAssessment(type: "tenant" | "partner" = "tenant") {
-  const a = await A.create(PRO, {
-    type,
-    title: "Acme review",
-    subjectName: "Acme (fictional)",
-    channel: "direct",
-  });
-  await A.saveOverview(PRO, a.id, { purpose: "p", scope: "s", primaryContact: "c" });
-  await A.saveProfile(PRO, a.id, {
-    industry: "Retail",
-    geography: "Pune",
-    employees: "20",
-    businessModel: "Retail",
-  });
-  if (type === "partner")
-    await A.savePartner(PRO, a.id, {
-      partnerCategory: "ISV",
-      products: "Ledger",
-      objectives: "Reach",
-    });
-  const sys = await A.upsertChild(PRO, a.id, "systems", {
-    name: "TallyPrime",
-    classification: "commercial",
-  });
-  const proc = await A.upsertChild(PRO, a.id, "processes", { name: "Collections" });
-  const pain = await A.upsertChild(PRO, a.id, "painPoints", {
-    processId: proc,
-    description: "Overdue invoices are chased by hand",
-  });
-  const req = await A.upsertChild(PRO, a.id, "requirements", {
-    category: "workflow",
-    statement: "See overdue invoices daily",
-    basis: "confirmed",
-  });
-  const ev = await A.upsertChild(
-    PRO,
-    a.id,
-    "evidence",
-    evidence({ links: [{ kind: "requirement", id: req }] }),
-  );
-  const apiEv = await A.upsertChild(
-    PRO,
-    a.id,
-    "evidence",
-    evidence({
-      applicability: "external_api",
-      links: [{ kind: "system", id: sys }],
-      statement: "Tally exposes an API",
-    }),
-  );
-  await A.saveFindings(PRO, a.id, {
-    environment: "e",
-    problems: "p",
-    opportunities: "o",
-    nextSteps: "n",
-  });
-  for (const q of ["q_goal", "q_pain", "q_systems", "q_decision"])
-    await A.saveAnswer(PRO, a.id, { questionId: q, state: "answered", value: "yes" });
-  if (type === "partner")
-    for (const q of (await A.get(PRO, a.id)).sections.find((s) => s.key === "questions")!.missing)
-      void q;
-  await A.submitForReview(PRO, a.id);
-  const snap = await A.approve(MGR, a.id, "ok");
-  return { a, snap, sys, pain, req, ev, apiEv };
-}
-
-/** A solution that passes every readiness check. */
-async function readySolution() {
-  const base = await approvedAssessment();
-  const sol = await S.create(PRO, {
-    assessmentId: base.a.id,
-    snapshotId: base.snap.id,
-    title: "Collections uplift",
-  });
-  const need = await S.upsertChild(PRO, sol.id, "needs", {
-    source: { kind: "pain_point", id: base.pain },
-    priority: "high",
-  });
-  const rec = await S.upsertChild(PRO, sol.id, "recommendations", {
-    category: "native_app",
-    title: "Receivables app",
-    needIds: [need],
-    rationale: "Daily ageing list replaces manual chasing",
-    catalogItemIds: ["app_receivables", "conn_tally"],
-    provenance: "verified_catalog_capability",
-    evidenceIds: [base.ev],
-  });
-  await S.upsertChild(PRO, sol.id, "integrations", {
-    systemId: base.sys,
-    proposalKind: "connector",
-    catalogItemId: "conn_tally",
-    feasibility: "possible_uncommitted",
-    validationOwner: "Integration lead",
-  });
-  await S.upsertChild(PRO, sol.id, "values", {
-    description: "Less time chasing invoices",
-    assumptionSource: "Customer interview",
-  });
-  await S.upsertChild(PRO, sol.id, "roadmap", {
-    stage: "foundation",
-    deliverables: "Connect Tally",
-  });
-  await S.upsertChild(PRO, sol.id, "alternatives", { approach: "aurumi_led", preferred: true });
-  await S.upsertChild(PRO, sol.id, "alternatives", {
-    approach: "defer",
-    summary: "Keep manual process",
-  });
-  await S.saveOverview(PRO, sol.id, {
-    preferredRationale: "Fastest path with an available connector",
-    outstandingQuestions: "Confirm Tally edition supports the connector",
-  });
-  return { ...base, sol, need, rec };
-}
 
 describe("creation from approved snapshots only", () => {
   it("requires an approved, compatible snapshot and blocks accidental duplicates", async () => {
@@ -509,7 +375,7 @@ describe("review, approval and immutable hand-off", () => {
     await S.assign(MGR, sol.id, { assignedUserIds: [] });
     const snap = await S.approve(MGR, sol.id, "Good");
     expect(snap).toMatchObject({
-      schema: "aurumi.cia.solution-handoff/1",
+      schema: "aurumi.cia.solution-handoff/2",
       version: 1,
       approval: { approvedBy: "u_manager" },
     });
@@ -519,14 +385,19 @@ describe("review, approval and immutable hand-off", () => {
     expect(Object.isFrozen(snap.recommendations)).toBe(true);
 
     await S.reopen(PRO, sol.id, "Customer asked for a CRM option");
+    const cur = (await S.get(PRO, sol.id)).workspace.recommendations[0]!;
+    // The later edit must actually succeed (no swallowed errors).
     await S.upsertChild(PRO, sol.id, "recommendations", {
-      ...(await S.get(PRO, sol.id)).workspace.recommendations[0]!,
+      id: cur.id,
+      category: cur.category,
       title: "Renamed",
-      evidenceIds: [],
-      catalogItemIds: ["app_receivables", "conn_tally"],
+      needIds: cur.needIds,
+      rationale: cur.rationale,
+      catalogItemIds: cur.catalogRefs.map((c) => c.itemId),
       provenance: "professional_judgment",
-    } as never).catch(() => null);
+    });
     const v = await S.get(PRO, sol.id);
+    expect(v.workspace.recommendations[0]!.title).toBe("Renamed");
     expect(v.snapshots[0]!.recommendations[0]!.title).toBe("Receivables app");
     expect(store.audit().some((e) => e.action === "solution.snapshot")).toBe(true);
   });

@@ -14,6 +14,8 @@ import {
 import { AccessDeniedError, can, type Permission } from "@/domain/permissions";
 import {
   analyzeDependencies,
+  dependencyInput,
+  unresolvedHandoffRefs,
   availabilityOf,
   diffSnapshots,
   emptyOverview,
@@ -569,7 +571,7 @@ export const solutionStudio: SolutionStudioService = {
       availability: Object.fromEntries(
         ws.recommendations.map((r) => [r.id, availabilityOf(r, catalog)]),
       ),
-      dependencies: analyzeDependencies(ws.recommendations, catalog),
+      dependencies: analyzeDependencies(dependencyInput(ws), catalog),
       snapshots: snaps,
       permissions: permissionsFor(ctx, s),
       names: Object.fromEntries([...people].map((p) => [p, directory.displayName(ctx, p)])),
@@ -908,12 +910,6 @@ export const solutionStudio: SolutionStudioService = {
     const failing = solutionReadiness(s, ws, snap, catalog).filter((i) => !i.ok);
     if (failing.length) reject(ctx, `not ready: ${failing.map((f) => f.label).join(", ")}`, id);
     const at = now();
-    ws.comments.push(
-      stamp(ctx, s, "sc", { kind: "approved" as const, body: comment.trim() || "Approved." }),
-    );
-    persist(ctx, s, ws, "Approved — ready for Proposal Studio", "solution.status.approved", {
-      status: "approved",
-    });
     const used = new Set([
       ...ws.recommendations.flatMap((r) => r.catalogRefs.map((c) => c.itemId)),
       ...ws.integrations.flatMap((i) =>
@@ -925,7 +921,15 @@ export const solutionStudio: SolutionStudioService = {
       ...ws.recommendations.flatMap((r) => r.evidenceRefs.map((e) => e.evidenceId)),
       ...ws.integrations.flatMap((i) => i.evidenceIds),
     ]);
-    const approved = store.table("solutions").find((x) => x.id === id)!;
+    // Reference closure: selected items plus their transitive catalog dependencies.
+    const closure = new Set<ID>();
+    const close = (itemId: ID) => {
+      if (closure.has(itemId)) return;
+      closure.add(itemId);
+      catalog.items.find((i) => i.id === itemId)?.dependencies.forEach(close);
+    };
+    used.forEach(close);
+    const approved = s;
     const version = store.table("solutionSnapshots").filter((x) => x.solutionId === id).length + 1;
     const out: SolutionHandoffSnapshot = deepFreeze({
       schema: SOLUTION_HANDOFF_SCHEMA,
@@ -962,10 +966,20 @@ export const solutionStudio: SolutionStudioService = {
       catalog: {
         catalogVersion: catalog.catalogVersion,
         retrievedAt: catalog.retrievedAt,
-        items: catalog.items.filter((i) => used.has(i.id)),
+        items: catalog.items.filter((i) => closure.has(i.id)).map((i) => clone(i)),
       },
+      sourceAssessment: clone(snap!),
       evidence: (snap?.evidence ?? []).filter((e) => cited.has(e.id)).map((e) => clone(e)),
-      dependencies: analyzeDependencies(ws.recommendations, catalog),
+      dependencies: analyzeDependencies(dependencyInput(ws), catalog),
+    });
+    const unresolved = unresolvedHandoffRefs(out);
+    if (unresolved.length)
+      reject(ctx, `hand-off would not be self-contained: ${unresolved.join(", ")}`, id);
+    ws.comments.push(
+      stamp(ctx, s, "sc", { kind: "approved" as const, body: comment.trim() || "Approved." }),
+    );
+    persist(ctx, s, ws, "Approved — ready for Proposal Studio", "solution.status.approved", {
+      status: "approved",
     });
     store.replace("solutionSnapshots", [...store.table("solutionSnapshots"), out]);
     audit(ctx, {

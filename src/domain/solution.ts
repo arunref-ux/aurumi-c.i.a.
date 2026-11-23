@@ -43,6 +43,15 @@ export interface CatalogItem {
   limitations: string[];
   source: string;
   verifiedAt: ISODate;
+  /** Connector scope: which external systems, data directions and operations it supports. */
+  connector?: ConnectorSpec;
+}
+export interface ConnectorSpec {
+  /** Lower-case fragments matched against the assessed system's name / vendor. */
+  systemMatch: string[];
+  /** inbound = system → Aurumi, outbound = Aurumi → system. */
+  directions: ("inbound" | "outbound")[];
+  operations: ("read" | "write")[];
 }
 export interface CatalogSnapshot {
   catalogVersion: string;
@@ -394,6 +403,31 @@ export function findSource(s: AssessmentHandoffSnapshot, kind: NeedSource, id: I
   return needCandidates(s).find((c) => c.kind === kind && c.id === id);
 }
 
+// ---------- Catalog claim applicability ----------
+/** Catalog kind that must back the claimed functionality of a recommendation category. */
+export const CATEGORY_CATALOG_KIND: Partial<Record<RecCategory, CatalogKind>> = {
+  native_app: "native_app",
+  connector: "connector",
+  ai: "ai_capability",
+};
+/**
+ * Mixed selections are allowed (dependencies), but the claimed functionality
+ * itself needs at least one selected item of the applicable kind.
+ */
+export function categoryProblems(
+  r: Pick<Recommendation, "category" | "catalogRefs">,
+  catalog: CatalogSnapshot,
+): string[] {
+  const kind = CATEGORY_CATALOG_KIND[r.category];
+  if (!kind || !r.catalogRefs.length) return [];
+  const kinds = r.catalogRefs.map((c) => catalog.items.find((i) => i.id === c.itemId)?.kind);
+  return kinds.includes(kind)
+    ? []
+    : [
+        `a ${REC_CATEGORIES[r.category]} recommendation needs a selected ${CATALOG_KINDS[kind]}; the selected items do not provide that capability`,
+      ];
+}
+
 // ---------- Derived availability ----------
 export function availabilityOf(
   r: Pick<Recommendation, "category" | "catalogRefs">,
@@ -403,6 +437,7 @@ export function availabilityOf(
     return "not_applicable";
   if (r.category === "future" || r.category === "custom") return "proposed";
   if (!r.catalogRefs.length) return "unsupported";
+  if (categoryProblems(r, catalog).length) return "unsupported";
   const levels = r.catalogRefs.map(
     (ref) => catalog.items.find((i) => i.id === ref.itemId)?.readiness,
   );
@@ -440,9 +475,11 @@ export function provenanceProblems(
     });
     if (!ok) p.push("“Verified assessment fact” needs cited verified evidence from the baseline");
   }
+  p.push(...categoryProblems(r, catalog));
   if (r.provenance === "verified_catalog_capability") {
     const ok =
       r.catalogRefs.length > 0 &&
+      !categoryProblems(r, catalog).length &&
       r.catalogRefs.every(
         (ref) => catalog.items.find((i) => i.id === ref.itemId)?.readiness === "available",
       );
@@ -453,7 +490,10 @@ export function provenanceProblems(
 
 /** Integration feasibility claims must be backed by the catalog and, for confirmed, verified connector evidence. */
 export function feasibilityProblems(
-  i: Pick<IntegrationDesign, "feasibility" | "proposal" | "evidenceIds" | "systemId">,
+  i: Pick<
+    IntegrationDesign,
+    "feasibility" | "proposal" | "evidenceIds" | "systemId" | "direction" | "access"
+  >,
   snap: AssessmentHandoffSnapshot,
   catalog: CatalogSnapshot,
 ): string[] {
@@ -468,20 +508,48 @@ export function feasibilityProblems(
         e!.applicability === "connector_supported" &&
         e!.links.some((l) => l.kind === "system" && l.id === i.systemId),
     );
+  const sys = snap.systems.find((x) => x.id === i.systemId);
+  /** Exact system / direction / operation scope of the selected connector. */
+  const scope = (): string[] => {
+    if (!item) return [];
+    const spec = item.connector;
+    if (!spec) return [`${item.product} does not declare which systems and operations it supports`];
+    const p: string[] = [];
+    const hay = `${sys?.name ?? ""} ${sys?.vendor ?? ""}`.toLowerCase();
+    if (!sys || !spec.systemMatch.some((m) => hay.includes(m)))
+      p.push(`${item.product} does not apply to ${sys?.name ?? "this system"}`);
+    const dirs = i.direction === "bidirectional" ? ["inbound", "outbound"] : [i.direction];
+    if (i.direction === "unknown") p.push("the data direction is unknown");
+    else if (!dirs.every((d) => spec.directions.includes(d as never)))
+      p.push(`${item.product} does not support ${i.direction} data flow`);
+    const ops = i.access === "read_write" ? ["read", "write"] : [i.access];
+    if (i.access === "unknown") p.push("the required read/write operations are unknown");
+    else if (!ops.every((o) => spec.operations.includes(o as never)))
+      p.push(`${item.product} does not support ${i.access.replace("_", "/")} operations`);
+    return p;
+  };
   switch (i.feasibility) {
-    case "confirmed_working":
+    case "confirmed_working": {
       if (item?.kind !== "connector" || item.readiness !== "available")
         return ["Confirmed working needs a connector the catalog lists as Available"];
+      const p = scope().map((m) => `Confirmed working not allowed: ${m}`);
       if (!connectorEvidence.length)
-        return [
+        p.push(
           "Confirmed working needs verified “connector tested & supported” evidence linked to this system (an external API is not enough)",
-        ];
-      return [];
+        );
+      else if (!connectorEvidence.some((e) => e!.connectorItemId === item.id))
+        p.push(
+          `Confirmed working needs supporting evidence that names the selected connector (${item.id}); evidence about another or an unnamed connector does not count`,
+        );
+      return p;
+    }
     case "implemented_unvalidated":
-      return item?.kind === "connector" &&
-        (item.readiness === "beta" || item.readiness === "available")
-        ? []
-        : ["Implemented needs a connector the catalog lists as Beta or Available"];
+      if (
+        item?.kind !== "connector" ||
+        (item.readiness !== "beta" && item.readiness !== "available")
+      )
+        return ["Implemented needs a connector the catalog lists as Beta or Available"];
+      return scope().map((m) => `Implemented not allowed: ${m}`);
     case "planned":
       return item?.kind === "connector" && ["planned", "beta", "available"].includes(item.readiness)
         ? []
@@ -492,18 +560,42 @@ export function feasibilityProblems(
 }
 
 // ---------- Dependencies ----------
+export type DependencySourceKind = "recommendation" | "integration" | "aiDesign";
 export interface DependencyReport {
   missing: { from: ID; to: ID }[];
   cycles: ID[][];
-  catalogGaps: { recommendationId: ID; itemId: ID; needs: ID }[];
+  /** A selected component needs a catalog item (directly or transitively) that is not selected. */
+  catalogGaps: {
+    source: { kind: DependencySourceKind; id: ID };
+    /** Kept for recommendation sources. */
+    recommendationId?: ID;
+    itemId: ID;
+    needs: ID;
+    path: ID[];
+  }[];
+  /** A required dependency that is unknown to the catalog or marked not supported. */
+  unsupported: { itemId: ID; needs: ID; reason: string }[];
+  catalogCycles: ID[][];
 }
+type DepRec = Pick<Recommendation, "id" | "dependsOn" | "catalogRefs"> &
+  Partial<Pick<Recommendation, "status">>;
+export interface DependencyInput {
+  recommendations: DepRec[];
+  integrations?: Pick<IntegrationDesign, "id" | "proposal">[];
+  aiDesigns?: Pick<AIDesign, "id" | "recommendationId" | "capabilityRefs">[];
+}
+/** Rejected (not recommended) components never satisfy or create dependencies. */
+const selected = (r: DepRec) => r.status !== "not_recommended";
+
 export function analyzeDependencies(
-  recs: Pick<Recommendation, "id" | "dependsOn" | "catalogRefs">[],
+  input: DepRec[] | DependencyInput,
   catalog: CatalogSnapshot,
 ): DependencyReport {
+  const d: DependencyInput = Array.isArray(input) ? { recommendations: input } : input;
+  const recs = d.recommendations.filter(selected);
   const ids = new Set(recs.map((r) => r.id));
   const missing = recs.flatMap((r) =>
-    r.dependsOn.filter((d) => !ids.has(d)).map((to) => ({ from: r.id, to })),
+    r.dependsOn.filter((x) => !ids.has(x)).map((to) => ({ from: r.id, to })),
   );
   const cycles: ID[][] = [];
   const state = new Map<ID, 1 | 2>();
@@ -511,25 +603,92 @@ export function analyzeDependencies(
   const visit = (id: ID) => {
     state.set(id, 1);
     stack.push(id);
-    for (const d of recs.find((r) => r.id === id)?.dependsOn ?? []) {
-      if (!ids.has(d)) continue;
-      if (state.get(d) === 1) cycles.push([...stack.slice(stack.indexOf(d)), d]);
-      else if (!state.has(d)) visit(d);
+    for (const x of recs.find((r) => r.id === id)?.dependsOn ?? []) {
+      if (!ids.has(x)) continue;
+      if (state.get(x) === 1) cycles.push([...stack.slice(stack.indexOf(x)), x]);
+      else if (!state.has(x)) visit(x);
     }
     stack.pop();
     state.set(id, 2);
   };
   recs.forEach((r) => !state.has(r.id) && visit(r.id));
-  const chosen = new Set(recs.flatMap((r) => r.catalogRefs.map((c) => c.itemId)));
-  const catalogGaps = recs.flatMap((r) =>
-    r.catalogRefs.flatMap((ref) =>
-      (catalog.items.find((i) => i.id === ref.itemId)?.dependencies ?? [])
-        .filter((d) => !chosen.has(d))
-        .map((needs) => ({ recommendationId: r.id, itemId: ref.itemId, needs })),
-    ),
-  );
-  return { missing, cycles, catalogGaps };
+
+  // Every selected catalog reference, from recommendations, integrations and AI designs.
+  const sources: { kind: DependencySourceKind; id: ID; itemIds: ID[] }[] = [
+    ...recs.map((r) => ({
+      kind: "recommendation" as const,
+      id: r.id,
+      itemIds: r.catalogRefs.map((c) => c.itemId),
+    })),
+    ...(d.integrations ?? [])
+      .filter((i) => i.proposal.kind === "connector" && i.proposal.catalogRef)
+      .map((i) => ({
+        kind: "integration" as const,
+        id: i.id,
+        itemIds: [i.proposal.catalogRef!.itemId],
+      })),
+    ...(d.aiDesigns ?? [])
+      .filter((a) => ids.has(a.recommendationId))
+      .map((a) => ({
+        kind: "aiDesign" as const,
+        id: a.id,
+        itemIds: a.capabilityRefs.map((c) => c.itemId),
+      })),
+  ];
+  const chosen = new Set(sources.flatMap((x) => x.itemIds));
+  const find = (id: ID) => catalog.items.find((i) => i.id === id);
+  const catalogGaps: DependencyReport["catalogGaps"] = [];
+  const unsupported: DependencyReport["unsupported"] = [];
+  const catalogCycles: ID[][] = [];
+  const seenGap = new Set<string>();
+  const seenUnsup = new Set<string>();
+  const seenCycle = new Set<string>();
+  for (const src of sources)
+    for (const root of src.itemIds) {
+      const walk = (itemId: ID, path: ID[]) => {
+        for (const needs of find(itemId)?.dependencies ?? []) {
+          if (path.includes(needs)) {
+            const c = [...path.slice(path.indexOf(needs)), needs];
+            if (!seenCycle.has(c.join(">"))) {
+              seenCycle.add(c.join(">"));
+              catalogCycles.push(c);
+            }
+            continue;
+          }
+          const dep = find(needs);
+          if ((!dep || dep.readiness === "not_supported") && !seenUnsup.has(`${itemId}>${needs}`)) {
+            seenUnsup.add(`${itemId}>${needs}`);
+            unsupported.push({
+              itemId,
+              needs,
+              reason: dep ? "marked not supported in the catalog" : "not in the catalog",
+            });
+          }
+          const key = `${src.kind}:${src.id}:${needs}`;
+          if (!chosen.has(needs) && !seenGap.has(key)) {
+            seenGap.add(key);
+            catalogGaps.push({
+              source: { kind: src.kind, id: src.id },
+              ...(src.kind === "recommendation" ? { recommendationId: src.id } : {}),
+              itemId: root,
+              needs,
+              path: [...path, needs],
+            });
+          }
+          walk(needs, [...path, needs]);
+        }
+      };
+      walk(root, [root]);
+    }
+  return { missing, cycles, catalogGaps, unsupported, catalogCycles };
 }
+export const dependencyInput = (
+  ws: Pick<SolutionWorkspace, "recommendations" | "integrations" | "aiDesigns">,
+): DependencyInput => ({
+  recommendations: ws.recommendations,
+  integrations: ws.integrations,
+  aiDesigns: ws.aiDesigns,
+});
 
 // ---------- Readiness (derived, never stored) ----------
 export interface ReadinessItem {
@@ -578,11 +737,12 @@ export function solutionReadiness(
   add(
     "catalog",
     "Offering and capability references validated",
-    ws.recommendations.flatMap((r) =>
-      r.catalogRefs
+    ws.recommendations.flatMap((r) => [
+      ...r.catalogRefs
         .filter((c) => !catalog.items.some((i) => i.id === c.itemId))
         .map((c) => `${r.title}: unknown catalog item ${c.itemId}`),
-    ),
+      ...categoryProblems(r, catalog).map((m) => `${r.title}: ${m}`),
+    ]),
   );
   add(
     "integrations",
@@ -611,14 +771,18 @@ export function solutionReadiness(
       .filter((v) => !v.assumptionSource.trim())
       .map((v) => `${v.description.slice(0, 40)}: state the source of the assumption`),
   ]);
-  const dep = analyzeDependencies(ws.recommendations, catalog);
+  const dep = analyzeDependencies(dependencyInput(ws), catalog);
   add("roadmap", "Roadmap and dependencies complete", [
     ...(ws.roadmap.length ? [] : ["Add at least one roadmap phase"]),
     ...dep.missing.map((m) => `Missing dependency ${m.to}`),
     ...dep.cycles.map((c) => `Circular dependency: ${c.join(" → ")}`),
+  ]);
+  add("dependencies", "Mandatory catalog prerequisites resolved", [
     ...dep.catalogGaps.map(
-      (g) => `${g.itemId} depends on ${g.needs}, which is not in the solution`,
+      (g) => `${g.path.join(" → ")}: ${g.needs} is required but not selected in the solution`,
     ),
+    ...dep.unsupported.map((u) => `${u.itemId} needs ${u.needs}, which is ${u.reason}`),
+    ...dep.catalogCycles.map((c) => `Circular catalog dependency: ${c.join(" → ")}`),
   ]);
   add(
     "unknowns",
@@ -720,7 +884,8 @@ export function diffSnapshots(
 }
 
 // ---------- Hand-off snapshot ----------
-export const SOLUTION_HANDOFF_SCHEMA = "aurumi.cia.solution-handoff/1" as const;
+/** /2 embeds the full source assessment snapshot and the catalog dependency closure. */
+export const SOLUTION_HANDOFF_SCHEMA = "aurumi.cia.solution-handoff/2" as const;
 export interface SolutionHandoffSnapshot {
   readonly schema: typeof SOLUTION_HANDOFF_SCHEMA;
   readonly id: ID;
@@ -757,7 +922,9 @@ export interface SolutionHandoffSnapshot {
   readonly values: readonly ValueItem[];
   readonly roadmap: readonly RoadmapPhase[];
   readonly alternatives: readonly Alternative[];
-  /** Full copies of every referenced catalog item as seen at approval. */
+  /** The complete immutable source assessment snapshot (requirements, processes, systems, evidence, questions, answers, findings). */
+  readonly sourceAssessment: AssessmentHandoffSnapshot;
+  /** Full copies of every referenced catalog item and its transitive dependencies, as seen at approval. */
   readonly catalog: {
     readonly catalogVersion: string;
     readonly retrievedAt: ISODate;
@@ -766,4 +933,51 @@ export interface SolutionHandoffSnapshot {
   /** Baseline evidence cited by recommendations or integrations. */
   readonly evidence: readonly EvidenceRecord[];
   readonly dependencies: Readonly<DependencyReport>;
+}
+
+/** Every reference in a hand-off that does not resolve inside the hand-off itself (should be empty). */
+export function unresolvedHandoffRefs(h: SolutionHandoffSnapshot): string[] {
+  const src = h.sourceAssessment;
+  const out: string[] = [];
+  const items = new Set(h.catalog.items.map((i) => i.id));
+  const ev = new Set(src.evidence.map((e) => e.id));
+  const sets: Record<string, Set<ID>> = {
+    system: new Set(src.systems.map((x) => x.id)),
+    process: new Set(src.processes.map((x) => x.id)),
+    pain_point: new Set(src.painPoints.map((x) => x.id)),
+    requirement: new Set(src.requirements.map((x) => x.id)),
+    finding: new Set(Object.keys(src.findings)),
+  };
+  if (src.id !== h.baseline.snapshotId) out.push("source assessment is not the baseline");
+  h.needs.forEach((n) => {
+    if (!findSource(src, n.source.kind, n.source.id)) out.push(`need source ${n.source.id}`);
+  });
+  src.evidence.forEach((e) =>
+    e.links.forEach((l) => {
+      if (!sets[l.kind]?.has(l.id)) out.push(`evidence ${e.id} target ${l.kind}:${l.id}`);
+    }),
+  );
+  src.painPoints.forEach((p) => {
+    if (p.processId && !sets["process"]!.has(p.processId)) out.push(`process ${p.processId}`);
+  });
+  src.answers.forEach((a) => {
+    if (!src.questions.some((q) => q.id === a.questionId)) out.push(`question ${a.questionId}`);
+  });
+  h.recommendations.forEach((r) => {
+    r.evidenceRefs.forEach((e) => !ev.has(e.evidenceId) && out.push(`evidence ${e.evidenceId}`));
+    r.catalogRefs.forEach((c) => !items.has(c.itemId) && out.push(`catalog ${c.itemId}`));
+  });
+  h.integrations.forEach((i) => {
+    if (!sets["system"]!.has(i.systemId)) out.push(`system ${i.systemId}`);
+    i.evidenceIds.forEach((e) => !ev.has(e) && out.push(`evidence ${e}`));
+    const c = i.proposal.catalogRef?.itemId;
+    if (c && !items.has(c)) out.push(`catalog ${c}`);
+  });
+  h.aiDesigns.forEach((a) =>
+    a.capabilityRefs.forEach((c) => !items.has(c.itemId) && out.push(`catalog ${c.itemId}`)),
+  );
+  h.catalog.items.forEach((i) =>
+    i.dependencies.forEach((d) => !items.has(d) && out.push(`catalog dependency ${d}`)),
+  );
+  return [...new Set(out)];
 }
