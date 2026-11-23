@@ -205,16 +205,23 @@ describe("4/5. inventory and connector compatibility", () => {
         compatibility: { status: "beta", evidenceIds: [unver] },
       }),
     ).rejects.toThrow(/verified/);
+    const sys = await S.upsertChild(PRO, a.id, "systems", {
+      name: "X",
+      classification: "commercial",
+    });
     const ver = await S.upsertChild(
       PRO,
       a.id,
       "evidence",
       evidence({
         status: "confirmed_fact",
+        applicability: "connector_supported",
+        links: [{ kind: "system", id: sys }],
         verification: { state: "verified", method: "Catalog check" },
       }),
     );
-    const sys = await S.upsertChild(PRO, a.id, "systems", {
+    await S.upsertChild(PRO, a.id, "systems", {
+      id: sys,
       name: "X",
       classification: "commercial",
       compatibility: { status: "supported", evidenceIds: [ver] },
@@ -391,7 +398,7 @@ describe("11/12. protected approval and immutable snapshots", () => {
     await expect(S.approve(u("u_pm"), a.id)).rejects.toThrow(AccessDeniedError); // other team
     const snap = await S.approve(MGR, a.id, "Looks good");
     expect(snap).toMatchObject({
-      schema: "aurumi.cia.assessment-handoff/1",
+      schema: "aurumi.cia.assessment-handoff/2",
       version: 1,
       approval: { approvedBy: "u_manager" },
     });

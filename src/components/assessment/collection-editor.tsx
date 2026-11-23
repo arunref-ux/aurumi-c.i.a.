@@ -58,7 +58,7 @@ export function CollectionEditor<T extends Row>({
   /** Map a stored record to form values (defaults to the record itself). */
   fromItem?: (t: T) => Record<string, unknown>;
   /** Map form values to the service input (defaults to the field values). */
-  toInput?: (values: Record<string, unknown>) => Record<string, unknown>;
+  toInput?: (values: Record<string, unknown>, original?: T) => Record<string, unknown>;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, unknown>>({});
@@ -75,7 +75,8 @@ export function CollectionEditor<T extends Row>({
     setError(null);
     try {
       const values = Object.fromEntries(fields.map((f) => [f.key, draft[f.key]]));
-      const input = toInput ? toInput(values) : values;
+      const original = editing === "new" ? undefined : items.find((i) => i.id === editing);
+      const input = toInput ? toInput(values, original) : values;
       await onSave(editing === "new" ? input : { ...input, id: editing });
       setEditing(null);
     } catch (e) {

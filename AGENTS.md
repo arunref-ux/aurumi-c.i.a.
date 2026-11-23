@@ -43,3 +43,8 @@ use the editor.
 - Assessment child records live in one workspace per assessment and inherit the parent's authorization; review statuses (under_review/approved/returned) change only through the service workflow, never via generic updates.
 - Approved assessments produce versioned, deep-frozen hand-off snapshots (`src/domain/assessment.ts`) that are never edited, so Solution Studio consumes a stable record.
 - Simulated persistence saves work tables to browser storage behind `store.attach()`; directory tables always reload from seed, and saved work always wins over seed.
+- Evidence verification survives only non-material edits (`materialEvidenceKey` in `src/domain/assessment.ts`); material changes clear it and re-verification goes through `verifyEvidence`, so a verifier never vouches for content they did not see.
+- Positive connector compatibility needs verified evidence whose `applicability` matches that exact status and is linked to the system; statuses are never promoted, because an external API is not an Aurumi connector.
+- Hand-off snapshots embed full question definitions plus the question-bank id/version, so they stay interpretable after working questions change.
+- Assessment queries key on `store.dataVersion()`, which audit events never move, so logged denials cannot cause refetch loops.
+- Restored browser data passes `src/data/persisted-schema.ts`; invalid rows/child records are quarantined under a separate storage key and saving pauses if storage can't be read, so saved work is never silently lost or overwritten.

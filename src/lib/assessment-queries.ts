@@ -8,7 +8,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { assessmentStudio, type AssessmentStudioService } from "@/data/assessment-studio";
 import type { Ctx } from "@/data/repositories";
 import type { ID } from "@/domain/types";
-import { useSession, useStoreVersion } from "./session";
+import { useDataVersion, useSession } from "./session";
 
 function sameUserPlaceholder<T>(userId: ID) {
   return (prev: T | undefined, prevQuery: { queryKey: readonly unknown[] } | undefined) =>
@@ -17,7 +17,7 @@ function sameUserPlaceholder<T>(userId: ID) {
 
 export function useAssessmentList() {
   const { user } = useSession();
-  const v = useStoreVersion();
+  const v = useDataVersion();
   return useQuery({
     queryKey: ["assessments", "list", user.id, v],
     queryFn: () => assessmentStudio.list({ user }),
@@ -28,7 +28,7 @@ export function useAssessmentList() {
 
 export function useAssessmentWorkspace(id: ID) {
   const { user } = useSession();
-  const v = useStoreVersion();
+  const v = useDataVersion();
   return useQuery({
     queryKey: ["assessments", "detail", user.id, id, v],
     queryFn: () => assessmentStudio.get({ user }, id),

@@ -6,6 +6,7 @@ import {
   API_AVAILABILITY,
   COMPATIBILITY,
   DEPLOYMENTS,
+  EVIDENCE_APPLICABILITY,
   evidenceLabel,
   FINDING_FIELDS,
   FREQUENCY,
@@ -21,6 +22,7 @@ import type { EvidenceStatus, ResearchFinding } from "@/domain/types";
 import { research } from "@/integrations/adapters/mock";
 import { useStudioMutation } from "@/lib/assessment-queries";
 import { CollectionEditor } from "./collection-editor";
+import { evidenceToForm, formToEvidenceInput, toDate } from "./evidence-form";
 import { btnGhost, ErrorNote } from "./fields";
 
 const opts = (list: { id: string }[], label: (x: never) => string) =>
@@ -49,7 +51,11 @@ export function SystemsSection({ view }: { view: WorkspaceView }) {
   const { assessment: a, workspace: ws, permissions } = view;
   const up = useStudioMutation((s) => s.upsertChild);
   const rm = useStudioMutation((s) => s.removeChild);
-  const verified = ws.evidence.filter((e) => e.verification.state === "verified");
+  const connectorEvidence = ws.evidence.filter(
+    (e) =>
+      e.verification.state === "verified" &&
+      (e.applicability ?? "general").startsWith("connector_"),
+  );
   return (
     <Panel title={`Current software & systems (${ws.systems.length})`}>
       <p className="mb-4 rounded-md bg-info-soft px-3 py-2 text-xs">
@@ -100,14 +106,14 @@ export function SystemsSection({ view }: { view: WorkspaceView }) {
             label: "Aurumi connector compatibility",
             kind: "select",
             options: COMPATIBILITY,
-            help: "Planned, beta or supported require linked verified evidence.",
+            help: "Positive statuses need verified evidence about exactly that connector status, linked to this system. An external API alone is not enough.",
           },
           { key: "compatNote", label: "Compatibility note", kind: "text" },
           {
             key: "compatEvidence",
             label: "Verified evidence for compatibility",
             kind: "multi",
-            options: opts(verified, (e: EvidenceRecord) => e.statement.slice(0, 60)),
+            options: opts(connectorEvidence, (e: EvidenceRecord) => e.statement.slice(0, 60)),
           },
         ]}
         blank={() => ({
@@ -444,8 +450,6 @@ export function RequirementsSection({ view }: { view: WorkspaceView }) {
 }
 
 // ---------- Evidence ----------
-const toDate = (iso: string | undefined) => (iso ? iso.slice(0, 10) : "");
-const toIso = (d: unknown) => (typeof d === "string" && d ? `${d}T00:00:00Z` : "");
 
 export function EvidenceSection({ view }: { view: WorkspaceView }) {
   const { assessment: a, workspace: ws, permissions, names } = view;
@@ -508,6 +512,13 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
             },
           },
           {
+            key: "applicability",
+            label: "What this evidence supports",
+            kind: "select",
+            options: EVIDENCE_APPLICABILITY,
+            help: "Connector claims need evidence of exactly that connector status, linked to the system.",
+          },
+          {
             key: "sourceType",
             label: "Source type",
             kind: "select",
@@ -554,6 +565,7 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
           statement: "",
           attribute: "",
           status: "research_finding",
+          applicability: "general",
           sourceType: "interview",
           sourceTitle: "",
           sourceUrl: "",
@@ -567,74 +579,8 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
           links: [],
           notes: "",
         })}
-        fromItem={(e) => {
-          const src = e.sources[0];
-          return {
-            statement: e.statement,
-            attribute: e.attribute,
-            status: e.status,
-            sourceType: src?.sourceType ?? "interview",
-            sourceTitle: src?.title ?? "",
-            sourceUrl: src?.url ?? "",
-            researchedAt: toDate(e.researchedAt),
-            retrievedAt: toDate(src?.retrievedAt),
-            confidence: e.confidence.level,
-            confidenceNote:
-              e.confidence.level === "unknown"
-                ? e.confidence.reason
-                : (e.confidence.rationale ?? ""),
-            verification: e.verification.state,
-            verificationNote:
-              e.verification.state === "verified"
-                ? e.verification.method
-                : e.verification.state === "disputed"
-                  ? e.verification.note
-                  : "",
-            generatedBy: e.generatedBy ?? "",
-            links: e.links.map((l) => `${l.kind}:${l.id}`),
-            notes: e.notes,
-          };
-        }}
-        toInput={(v) => {
-          const s = (k: string) => String(v[k] ?? "");
-          const conf = s("confidence");
-          const ver = s("verification");
-          return {
-            statement: s("statement"),
-            attribute: s("attribute"),
-            status: s("status"),
-            sources: s("sourceTitle")
-              ? [
-                  {
-                    title: s("sourceTitle"),
-                    sourceType: s("sourceType"),
-                    retrievedAt: toIso(v["retrievedAt"]),
-                    ...(s("sourceUrl") ? { url: s("sourceUrl") } : {}),
-                  },
-                ]
-              : [],
-            researchedAt: toIso(v["researchedAt"]),
-            confidence:
-              conf === "unknown"
-                ? { level: "unknown", reason: s("confidenceNote") }
-                : {
-                    level: conf,
-                    ...(s("confidenceNote") ? { rationale: s("confidenceNote") } : {}),
-                  },
-            verification:
-              ver === "verified"
-                ? { state: "verified", method: s("verificationNote") }
-                : ver === "disputed"
-                  ? { state: "disputed", note: s("verificationNote") }
-                  : { state: "unverified" },
-            ...(s("generatedBy") ? { generatedBy: s("generatedBy") } : {}),
-            links: ((v["links"] as string[]) ?? []).map((x) => {
-              const [kind, ...rest] = x.split(":");
-              return { kind, id: rest.join(":") };
-            }),
-            notes: s("notes"),
-          };
-        }}
+        fromItem={evidenceToForm}
+        toInput={formToEvidenceInput}
         summary={(e) => (
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -647,6 +593,9 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
               </span>
             </div>
             <p className="text-sm">{e.statement}</p>
+            {(e.applicability ?? "general") !== "general" && (
+              <p className="text-[11px]">Supports: {EVIDENCE_APPLICABILITY[e.applicability!]}</p>
+            )}
             <p className="text-[11px] text-muted-foreground">
               {e.sources.length
                 ? e.sources.map((s) => `${s.title}${s.url ? ` (${s.url})` : ""}`).join("; ")
@@ -656,9 +605,49 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
             </p>
           </div>
         )}
+        extra={(e) =>
+          permissions.canEdit &&
+          e.verification.state !== "verified" &&
+          (e.status === "research_finding" || e.status === "confirmed_fact") ? (
+            <VerifyEvidence assessmentId={a.id} evidenceId={e.id} />
+          ) : null
+        }
         onSave={(d) => up.mutateAsync([a.id, "evidence", d as never])}
         onRemove={(id) => rm.mutateAsync([a.id, "evidence", id])}
       />
     </Panel>
+  );
+}
+
+function VerifyEvidence({
+  assessmentId,
+  evidenceId,
+}: {
+  assessmentId: string;
+  evidenceId: string;
+}) {
+  const verify = useStudioMutation((s) => s.verifyEvidence);
+  const [method, setMethod] = useState("");
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+      <input
+        aria-label="How was this verified?"
+        className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2"
+        placeholder="How was this verified? (e.g. called vendor)"
+        value={method}
+        onChange={(ev) => setMethod(ev.target.value)}
+      />
+      <button
+        type="button"
+        className={btnGhost}
+        disabled={!method.trim() || verify.isPending}
+        onClick={() => verify.mutate([assessmentId, evidenceId, method])}
+      >
+        Mark verified by me
+      </button>
+      {verify.error && (
+        <span className="text-destructive">{String((verify.error as Error).message)}</span>
+      )}
+    </div>
   );
 }

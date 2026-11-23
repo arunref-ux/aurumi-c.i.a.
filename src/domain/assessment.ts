@@ -110,12 +110,32 @@ export const API_AVAILABILITY = {
 export const COMPATIBILITY = {
   unknown: "Unknown — not assessed",
   not_supported: "Not supported",
-  planned: "Planned (verified)",
-  beta: "Beta (verified)",
-  supported: "Supported (verified)",
+  planned: "Aurumi connector planned (verified)",
+  beta: "Aurumi connector implemented / beta (verified)",
+  supported: "Aurumi connector tested & supported (verified)",
 } as const;
 export type CompatibilityStatus = keyof typeof COMPATIBILITY;
 export const POSITIVE_COMPATIBILITY: CompatibilityStatus[] = ["planned", "beta", "supported"];
+
+/**
+ * What a piece of evidence actually supports. An external API or a technically
+ * possible integration is never evidence of an Aurumi connector, and no level
+ * is promoted into another: each positive status needs evidence of exactly its kind.
+ */
+export const EVIDENCE_APPLICABILITY = {
+  general: "General / not about connectors",
+  external_api: "External system has an API",
+  integration_possible: "Integration technically possible",
+  connector_planned: "Aurumi connector planned",
+  connector_implemented: "Aurumi connector implemented",
+  connector_supported: "Aurumi connector tested & supported",
+} as const;
+export type EvidenceApplicability = keyof typeof EVIDENCE_APPLICABILITY;
+export const COMPATIBILITY_REQUIRES: Partial<Record<CompatibilityStatus, EvidenceApplicability>> = {
+  planned: "connector_planned",
+  beta: "connector_implemented",
+  supported: "connector_supported",
+};
 
 export interface InventorySystem extends ChildRecord {
   name: string;
@@ -192,6 +212,58 @@ export type EvidenceLinkKind = "system" | "process" | "pain_point" | "requiremen
 export interface EvidenceRecord extends ChildRecord, ResearchFinding {
   links: { kind: EvidenceLinkKind; id: ID }[];
   notes: string;
+  /** Missing on older records = "general". */
+  applicability?: EvidenceApplicability;
+}
+
+/** Stable JSON (sorted keys) so equal content always compares equal. */
+export function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+  if (v && typeof v === "object")
+    return `{${Object.keys(v)
+      .filter((k) => (v as Record<string, unknown>)[k] !== undefined)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`)
+      .join(",")}}`;
+  return JSON.stringify(v);
+}
+/**
+ * The content a verification vouches for: claim, classification, sources,
+ * research date, AI origin and connector applicability. Notes, links and
+ * confidence are not material, so editing them keeps a verification.
+ */
+export function materialEvidenceKey(
+  e: Pick<
+    EvidenceRecord,
+    "attribute" | "statement" | "status" | "sources" | "researchedAt" | "generatedBy"
+  > & { applicability?: EvidenceApplicability | undefined },
+): string {
+  return canonical({
+    attribute: e.attribute,
+    statement: e.statement,
+    status: e.status,
+    sources: e.sources,
+    researchedAt: e.researchedAt,
+    generatedBy: e.generatedBy ?? "",
+    applicability: e.applicability ?? "general",
+  });
+}
+/** Evidence counts for a positive connector claim only if verified, of the exact kind, and linked to that system. */
+export function supportsCompatibility(
+  e: EvidenceRecord | undefined,
+  status: CompatibilityStatus,
+  systemId: ID | undefined,
+): boolean {
+  const need = COMPATIBILITY_REQUIRES[status];
+  return (
+    !!e &&
+    !!need &&
+    !!systemId &&
+    e.verification.state === "verified" &&
+    (e.status === "confirmed_fact" || e.status === "research_finding") &&
+    (e.applicability ?? "general") === need &&
+    e.links.some((l) => l.kind === "system" && l.id === systemId)
+  );
 }
 /** The four classes users must be able to tell apart (§4F). */
 export const EVIDENCE_CLASSES: Partial<Record<EvidenceStatus, string>> = {
@@ -268,8 +340,40 @@ export interface AssessmentWorkspace extends BaseRecord {
   reviewComments: ReviewComment[];
 }
 
+/** Every question in V1.0 takes a free-text answer with one of three states. */
+export const ANSWER_SCHEMA = {
+  type: "free_text",
+  states: ["unanswered", "answered", "not_applicable"],
+  value: { type: "string", maxLength: 4000 },
+} as const;
+export interface QuestionBankRef {
+  id: string;
+  version: string;
+}
+/** Self-contained question definition frozen into a snapshot. */
+export interface SnapshotQuestion {
+  readonly id: ID;
+  readonly origin: "template" | "custom";
+  readonly prompt: string;
+  readonly section: SectionKey;
+  readonly category: string;
+  readonly required: boolean;
+  readonly answerType: typeof ANSWER_SCHEMA.type;
+  readonly answerSchema: typeof ANSWER_SCHEMA;
+  readonly template?: {
+    readonly bankId: string;
+    readonly bankVersion: string;
+    readonly templateId: ID;
+  };
+  readonly custom?: {
+    readonly createdBy: ID;
+    readonly createdAt: ISODate;
+    readonly updatedAt: ISODate;
+  };
+}
+
 /** Versioned, immutable hand-off for Solution Studio (Phase 3 consumer). */
-export const HANDOFF_SCHEMA = "aurumi.cia.assessment-handoff/1" as const;
+export const HANDOFF_SCHEMA = "aurumi.cia.assessment-handoff/2" as const;
 export interface AssessmentHandoffSnapshot {
   readonly schema: typeof HANDOFF_SCHEMA;
   readonly id: ID;
@@ -294,6 +398,9 @@ export interface AssessmentHandoffSnapshot {
   readonly requirements: readonly Requirement[];
   readonly evidence: readonly EvidenceRecord[];
   readonly findings: Readonly<FindingsData>;
+  readonly questionBank: Readonly<QuestionBankRef>;
+  /** Definitions for every applicable or answered question, so answers stay interpretable. */
+  readonly questions: readonly SnapshotQuestion[];
   readonly answers: readonly Answer[];
   readonly outstandingQuestions: readonly OpenQuestion[];
 }
@@ -451,8 +558,38 @@ export function buildHandoffSnapshot(
   a: Assessment,
   ws: AssessmentWorkspace,
   meta: { id: ID; version: number; approvedBy: ID; approvedAt: ISODate; comment: string },
+  bank: readonly QuestionTemplate[],
+  bankRef: QuestionBankRef,
 ): AssessmentHandoffSnapshot {
   const c = structuredClone(ws);
+  const applicable = questionsFor(c, a.type, bank);
+  const answeredExtra = c.answers
+    .map((x) => x.questionId)
+    .filter((qid) => !applicable.some((q) => q.id === qid))
+    .map((qid) => bank.find((q) => q.id === qid))
+    .filter((q): q is QuestionTemplate => !!q);
+  const questions: SnapshotQuestion[] = [...applicable, ...answeredExtra].map((q) => {
+    const base = {
+      id: q.id,
+      prompt: q.prompt,
+      section: q.section,
+      category: q.category,
+      required: q.required,
+      answerType: ANSWER_SCHEMA.type,
+      answerSchema: structuredClone(ANSWER_SCHEMA) as typeof ANSWER_SCHEMA,
+    };
+    return "assessmentTypes" in q
+      ? {
+          ...base,
+          origin: "template" as const,
+          template: { bankId: bankRef.id, bankVersion: bankRef.version, templateId: q.id },
+        }
+      : {
+          ...base,
+          origin: "custom" as const,
+          custom: { createdBy: q.createdBy, createdAt: q.createdAt, updatedAt: q.updatedAt },
+        };
+  });
   const snap: AssessmentHandoffSnapshot = {
     schema: HANDOFF_SCHEMA,
     id: meta.id,
@@ -478,6 +615,8 @@ export function buildHandoffSnapshot(
     requirements: c.requirements,
     evidence: c.evidence,
     findings: c.findings,
+    questionBank: { id: bankRef.id, version: bankRef.version },
+    questions,
     answers: c.answers,
     outstandingQuestions: c.openQuestions.filter((q) => !q.resolved),
   };

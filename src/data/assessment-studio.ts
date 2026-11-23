@@ -15,8 +15,11 @@ import {
   emptyProfile,
   FINDING_FIELDS,
   PARTNER_FIELDS,
+  materialEvidenceKey,
   POSITIVE_COMPATIBILITY,
   PROFILE_FIELDS,
+  supportsCompatibility,
+  type CompatibilityStatus,
   readiness,
   sectionStatuses,
   type AssessmentHandoffSnapshot,
@@ -32,7 +35,7 @@ import { AccessDeniedError, can, type Permission } from "@/domain/permissions";
 import { validateFinding } from "@/domain/research";
 import type { AcquisitionChannel, Assessment, AssessmentType, ID } from "@/domain/types";
 import { crm } from "@/integrations/adapters/mock";
-import { QUESTION_BANK } from "./question-bank";
+import { QUESTION_BANK, QUESTION_BANK_REF } from "./question-bank";
 import { _internal, directory, repos, ValidationError, type Ctx } from "./repositories";
 import { newId, store } from "./store";
 
@@ -227,6 +230,16 @@ const CHILD_SCHEMAS = {
       .max(50)
       .default([]),
     notes: str.default(""),
+    applicability: z
+      .enum([
+        "general",
+        "external_api",
+        "integration_possible",
+        "connector_planned",
+        "connector_implemented",
+        "connector_supported",
+      ])
+      .default("general"),
   }),
   openQuestions: z.strictObject({
     id: childId,
@@ -405,45 +418,110 @@ function stamp<T extends object>(
     updatedBy: ctx.user.id,
   };
 }
-const isVerifiedEvidence = (e: EvidenceRecord | undefined) =>
-  !!e &&
-  e.verification.state === "verified" &&
-  (e.status === "confirmed_fact" || e.status === "research_finding");
-
-/** Positive connector compatibility must be backed by verified evidence in this assessment. */
+/**
+ * Positive connector compatibility needs verified evidence in this assessment
+ * that is about exactly that connector status and linked to that system.
+ */
 function checkCompatibility(
   ctx: Ctx,
   a: Assessment,
   ws: AssessmentWorkspace,
   c: { status: string; evidenceIds: ID[] },
+  systemId: ID | undefined,
 ) {
-  if (!POSITIVE_COMPATIBILITY.includes(c.status as never)) return;
+  const status = c.status as CompatibilityStatus;
+  if (!POSITIVE_COMPATIBILITY.includes(status)) return;
+  if (!systemId)
+    reject(
+      ctx,
+      `compatibility "${status}" requires verified evidence linked to a saved system; save the system first`,
+      a.id,
+    );
   if (!c.evidenceIds.length)
-    reject(ctx, `compatibility "${c.status}" requires linked verified evidence`, a.id);
+    reject(ctx, `compatibility "${status}" requires linked verified evidence`, a.id);
   for (const eid of c.evidenceIds) {
-    if (!isVerifiedEvidence(ws.evidence.find((e) => e.id === eid)))
+    if (
+      !supportsCompatibility(
+        ws.evidence.find((e) => e.id === eid),
+        status,
+        systemId,
+      )
+    )
       reject(
         ctx,
-        `compatibility "${c.status}" requires verified evidence; "${eid}" is not verified`,
+        `compatibility "${status}" requires verified evidence about that exact connector status, linked to this system; "${eid}" does not qualify`,
         a.id,
       );
   }
 }
-/** When evidence loses verification or is removed, unsupported compatibility claims fall back to unknown. */
+/** When evidence loses verification, applicability or its link, unsupported compatibility claims fall back to unknown. */
 function downgradeUnsupported(ws: AssessmentWorkspace) {
   for (const s of ws.systems) {
     const c = s.compatibility;
     if (!POSITIVE_COMPATIBILITY.includes(c.status)) continue;
     const ok =
       c.evidenceIds.length > 0 &&
-      c.evidenceIds.every((id) => isVerifiedEvidence(ws.evidence.find((e) => e.id === id)));
+      c.evidenceIds.every((id) =>
+        supportsCompatibility(
+          ws.evidence.find((e) => e.id === id),
+          c.status,
+          s.id,
+        ),
+      );
     if (!ok)
       s.compatibility = {
         status: "unknown",
         evidenceIds: [],
-        note: "Reset: supporting evidence no longer verified.",
+        note: "Reset: supporting evidence no longer verified or applicable.",
       };
   }
+}
+
+/**
+ * Decides the stored verification for an evidence save. A verification is kept
+ * only when nothing material changed and the same method is requested; any
+ * material change clears it (a confirmed fact falls back to reported
+ * information) and a person must verify again explicitly.
+ */
+function resolveVerification(
+  ctx: Ctx,
+  data: Record<string, unknown>,
+  prev: EvidenceRecord | undefined,
+): { record: Record<string, unknown>; note: string } {
+  const v = data["verification"] as { state: string; method?: string; note?: string };
+  const material =
+    !!prev && materialEvidenceKey(prev) !== materialEvidenceKey(data as unknown as EvidenceRecord);
+  const pv = prev?.verification;
+  if (prev && material && pv && pv.state !== "unverified") {
+    const status = data["status"] === "confirmed_fact" ? "research_finding" : data["status"];
+    return {
+      record: { ...data, status, verification: { state: "unverified" } },
+      note: ` (material change cleared ${pv.state === "verified" ? "verification" : "dispute"}; re-verify explicitly)`,
+    };
+  }
+  let verification;
+  if (v.state === "verified") {
+    verification =
+      pv?.state === "verified" && pv.method === (v.method ?? "") && !material
+        ? pv
+        : {
+            state: "verified" as const,
+            verifiedBy: ctx.user.id,
+            verifiedAt: now(),
+            method: v.method ?? "",
+          };
+  } else if (v.state === "disputed") {
+    verification =
+      pv?.state === "disputed" && pv.note === (v.note ?? "") && !material
+        ? pv
+        : {
+            state: "disputed" as const,
+            reviewedBy: ctx.user.id,
+            reviewedAt: now(),
+            note: v.note ?? "",
+          };
+  } else verification = { state: "unverified" as const };
+  return { record: { ...data, verification }, note: "" };
 }
 function checkRefs(
   ctx: Ctx,
@@ -516,6 +594,8 @@ export interface AssessmentStudioService {
   removeChild(ctx: Ctx, id: ID, kind: ChildKind, childId: ID): Promise<void>;
   saveAnswer(ctx: Ctx, id: ID, input: z.input<typeof AnswerInput>): Promise<void>;
   verifyAnswer(ctx: Ctx, id: ID, questionId: ID): Promise<void>;
+  /** Explicitly (re-)verify evidence as the current user, now. */
+  verifyEvidence(ctx: Ctx, id: ID, evidenceId: ID, method: string): Promise<void>;
   assign(ctx: Ctx, id: ID, input: { ownerId?: ID; assignedUserIds?: ID[] }): Promise<void>;
   linkCrm(ctx: Ctx, id: ID, crmId: string): Promise<void>;
   assignReviewer(ctx: Ctx, id: ID, reviewerId: ID): Promise<void>;
@@ -651,28 +731,11 @@ export const assessmentStudio: AssessmentStudioService = {
     if (d.id && !existing) reject(ctx, `unknown ${kind} record`, id);
     const { id: _ignored, ...data } = d;
     let record: Record<string, unknown> = data;
+    let verificationNote = "";
     if (kind === "evidence") {
-      const v = data["verification"] as { state: string; method?: string; note?: string };
-      const prev = existing as unknown as EvidenceRecord | undefined;
-      const verification =
-        v.state === "verified"
-          ? prev?.verification.state === "verified" && prev.verification.method === v.method
-            ? prev.verification
-            : {
-                state: "verified" as const,
-                verifiedBy: ctx.user.id,
-                verifiedAt: now(),
-                method: v.method ?? "",
-              }
-          : v.state === "disputed"
-            ? {
-                state: "disputed" as const,
-                reviewedBy: ctx.user.id,
-                reviewedAt: now(),
-                note: v.note ?? "",
-              }
-            : { state: "unverified" as const };
-      record = { ...data, verification };
+      const r = resolveVerification(ctx, data, existing as unknown as EvidenceRecord | undefined);
+      record = r.record;
+      verificationNote = r.note;
       const errors = validateFinding(record as never);
       if (errors.length) reject(ctx, `invalid evidence: ${errors.join("; ")}`, id);
     }
@@ -683,6 +746,7 @@ export const assessmentStudio: AssessmentStudioService = {
         a,
         ws,
         record["compatibility"] as { status: string; evidenceIds: ID[] },
+        existing?.id,
       );
     const stamped = stamp(ctx, a, ID_PREFIX[kind], record, existing);
     const nextList = existing
@@ -690,7 +754,7 @@ export const assessmentStudio: AssessmentStudioService = {
       : [...list, stamped];
     (ws as unknown as Record<string, unknown>)[kind] = nextList;
     if (kind === "evidence") downgradeUnsupported(ws);
-    persist(ctx, a, ws, `${existing ? "Updated" : "Added"} ${kind} record`);
+    persist(ctx, a, ws, `${existing ? "Updated" : "Added"} ${kind} record${verificationNote}`);
     return stamped.id;
   },
 
@@ -753,6 +817,29 @@ export const assessmentStudio: AssessmentStudioService = {
     ans!.verifiedBy = ctx.user.id;
     ans!.verifiedAt = now();
     persist(ctx, a, ws, "Verified answer");
+  },
+
+  async verifyEvidence(ctx, id, evidenceId, method) {
+    await tick();
+    const a = parent(ctx, id, "assessment.update");
+    editable(ctx, a);
+    if (!method.trim()) reject(ctx, "say how the evidence was verified", id);
+    const ws = clone(workspaceOf(a));
+    const e = ws.evidence.find((x) => x.id === evidenceId);
+    if (!e) return reject(ctx, "unknown evidence record", id);
+    if (e.status === "ai_inference" || e.status === "professional_assumption")
+      reject(ctx, "reclassify this evidence before verifying it", id);
+    e.verification = {
+      state: "verified",
+      verifiedBy: ctx.user.id,
+      verifiedAt: now(),
+      method: method.trim().slice(0, 500),
+    };
+    e.updatedAt = now();
+    e.updatedBy = ctx.user.id;
+    const errors = validateFinding(e);
+    if (errors.length) reject(ctx, `invalid evidence: ${errors.join("; ")}`, id);
+    persist(ctx, a, ws, `Verified evidence ${evidenceId}`);
   },
 
   async assign(ctx, id, input) {
@@ -851,13 +938,19 @@ export const assessmentStudio: AssessmentStudioService = {
     );
     persist(ctx, a, ws, "Approved — ready for Solution Studio", "approved");
     const approved = store.table("assessments").find((r) => r.id === id)!;
-    const snap = buildHandoffSnapshot(approved, workspaceOf(approved), {
-      id: newId("snap"),
-      version: snapshotsOf(a).length + 1,
-      approvedBy: ctx.user.id,
-      approvedAt: at,
-      comment,
-    });
+    const snap = buildHandoffSnapshot(
+      approved,
+      workspaceOf(approved),
+      {
+        id: newId("snap"),
+        version: snapshotsOf(a).length + 1,
+        approvedBy: ctx.user.id,
+        approvedAt: at,
+        comment,
+      },
+      QUESTION_BANK,
+      QUESTION_BANK_REF,
+    );
     store.replace("snapshots", [...store.table("snapshots"), snap]);
     audit(ctx, {
       action: "assessment.snapshot",

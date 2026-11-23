@@ -54,6 +54,14 @@ export function useStoreVersion() {
   return useSyncExternalStore(store.subscribe, store.version, store.version);
 }
 
+/**
+ * Re-render only when assessment/work data changes. Audit events (e.g. a
+ * logged denied read) do not move this, so they cannot trigger refetch loops.
+ */
+export function useDataVersion() {
+  return useSyncExternalStore(store.subscribe, store.dataVersion, store.dataVersion);
+}
+
 /** Simulated persistence status for the "saved" indicator. */
 export function usePersistenceStatus() {
   useStoreVersion();

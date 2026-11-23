@@ -23,6 +23,11 @@ export function PersistenceNote() {
         ? `Simulated storage in this browser only${p.lastSavedAt ? ` · last saved ${new Date(p.lastSavedAt).toLocaleTimeString()}` : ""}. Not production storage — use fictional data only.`
         : "Loading saved work…"}
       {p.error && <span className="text-destructive"> {p.error}</span>}
+      {mounted && p.recovery && (
+        <span role="status" className="mt-1 block text-destructive">
+          {p.recovery}
+        </span>
+      )}
     </p>
   );
 }

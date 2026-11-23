@@ -9,6 +9,7 @@
  */
 import type { AssessmentHandoffSnapshot, AssessmentWorkspace } from "@/domain/assessment";
 import type { AuditEvent, BaseRecord } from "@/domain/types";
+import { sanitizeTable, type QuarantineEntry } from "./persisted-schema";
 import * as seed from "./seed";
 
 export interface Tables {
@@ -26,6 +27,8 @@ export interface Tables {
 /** Tables that represent user work and survive reloads; directory tables always come from seed. */
 const PERSISTED = ["assessments", "proposals", "engagements", "workspaces", "snapshots"] as const;
 export const STORAGE_KEY = "aurumi.cia.simulated-store.v1";
+/** Saved entries that failed validation are kept here for recovery, never deleted. */
+export const QUARANTINE_KEY = `${STORAGE_KEY}.quarantine`;
 
 export interface PersistenceBackend {
   kind: "browser" | "memory";
@@ -66,21 +69,31 @@ function fresh(): { tables: Tables; audit: AuditEvent[] } {
 }
 
 let db = fresh();
+/** Bumps on every change, including audit events (activity feeds). */
 let version = 0;
+/** Bumps only when work/directory data changes; audit events never move it (P1-04). */
+let dataVersion = 0;
 let backend: PersistenceBackend | null = null;
 let persistState: {
   mode: "none" | "browser" | "memory";
   lastSavedAt: string | null;
   error: string | null;
+  /** Plain-language note when saved work needed recovery. */
+  recovery: string | null;
+  quarantined: number;
 } = {
   mode: "none",
   lastSavedAt: null,
   error: null,
+  recovery: null,
+  quarantined: 0,
 };
+/** When saved work could not be read, saving is paused so it is never overwritten. */
+let savingBlocked = false;
 const listeners = new Set<() => void>();
 
 function save() {
-  if (!backend) return;
+  if (!backend || savingBlocked) return;
   try {
     const payload = {
       savedAt: new Date().toISOString(),
@@ -94,27 +107,73 @@ function save() {
   }
 }
 
-/** Loads saved work over seed data; saved drafts always win over seed. */
+function quarantine(entries: QuarantineEntry[]) {
+  if (!backend || !entries.length) return;
+  try {
+    const prev = JSON.parse(backend.read(QUARANTINE_KEY) ?? "[]") as unknown;
+    const list = Array.isArray(prev) ? prev : [];
+    const at = new Date().toISOString();
+    backend.write(
+      QUARANTINE_KEY,
+      JSON.stringify([...list, ...entries.map((e) => ({ ...e, at }))].slice(-200)),
+    );
+  } catch {
+    /* quarantine is best effort; the in-memory note still tells the user */
+  }
+}
+
+/** Loads saved work over seed data; saved drafts always win over seed, after validation. */
 function load() {
   db = fresh();
+  savingBlocked = false;
   if (!backend) return;
-  const raw = backend.read(STORAGE_KEY);
-  if (!raw) return;
+  let raw: string | null;
   try {
-    const parsed = JSON.parse(raw) as {
-      savedAt?: string;
-      tables?: Partial<Tables>;
-      audit?: AuditEvent[];
-    };
-    for (const k of PERSISTED) {
-      const rows = parsed.tables?.[k];
-      if (Array.isArray(rows)) (db.tables as unknown as Record<string, unknown>)[k] = rows;
-    }
-    if (Array.isArray(parsed.audit)) db.audit = parsed.audit;
-    persistState = { ...persistState, lastSavedAt: parsed.savedAt ?? null, error: null };
+    raw = backend.read(STORAGE_KEY);
   } catch {
-    persistState = { ...persistState, error: "saved data could not be read; using sample data" };
+    savingBlocked = true;
+    persistState = {
+      ...persistState,
+      error: null,
+      recovery:
+        "Saved work could not be read from this browser, so sample data is shown. Saving is paused so your saved work is not overwritten — reload to try again.",
+    };
+    return;
   }
+  if (!raw) return;
+  let parsed: { savedAt?: string; tables?: Record<string, unknown>; audit?: unknown };
+  try {
+    parsed = JSON.parse(raw) as typeof parsed;
+    if (!parsed || typeof parsed !== "object") throw new Error("not an object");
+  } catch {
+    quarantine([{ table: "*", path: STORAGE_KEY, reason: "unreadable saved data", value: raw }]);
+    persistState = {
+      ...persistState,
+      recovery:
+        "Saved work was damaged and could not be opened. A copy was set aside for recovery; sample data is shown.",
+      quarantined: 1,
+    };
+    return;
+  }
+  const setAside: QuarantineEntry[] = [];
+  for (const k of PERSISTED) {
+    const rows = parsed.tables?.[k];
+    if (rows === undefined) continue;
+    const r = sanitizeTable(k, rows);
+    setAside.push(...r.quarantined);
+    (db.tables as unknown as Record<string, unknown>)[k] = r.rows;
+  }
+  if (Array.isArray(parsed.audit)) db.audit = parsed.audit as AuditEvent[];
+  quarantine(setAside);
+  persistState = {
+    ...persistState,
+    lastSavedAt: parsed.savedAt ?? null,
+    error: null,
+    quarantined: setAside.length,
+    recovery: setAside.length
+      ? `${setAside.length} damaged saved item(s) were set aside for recovery; everything else was restored.`
+      : null,
+  };
 }
 
 /** @internal Data-layer only. */
@@ -126,6 +185,7 @@ export const store = {
   },
   replace<K extends keyof Tables>(k: K, rows: Tables[K]) {
     db.tables[k] = clone(rows);
+    dataVersion++;
     store.emit();
   },
   audit(): AuditEvent[] {
@@ -138,14 +198,22 @@ export const store = {
   /** Attach a persistence backend and load saved work from it (simulates a page refresh when re-called). */
   attach(b: PersistenceBackend | null) {
     backend = b;
-    persistState = { mode: b ? b.kind : "none", lastSavedAt: null, error: null };
+    persistState = {
+      mode: b ? b.kind : "none",
+      lastSavedAt: null,
+      error: null,
+      recovery: null,
+      quarantined: 0,
+    };
     load();
     version++;
+    dataVersion++;
     listeners.forEach((l) => l());
   },
   persistence: () => ({ ...persistState }),
   reset() {
     db = fresh();
+    dataVersion++;
     store.emit();
   },
   emit() {
@@ -160,6 +228,7 @@ export const store = {
     };
   },
   version: () => version,
+  dataVersion: () => dataVersion,
 };
 
 export function newId(prefix: string): string {

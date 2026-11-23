@@ -1,5 +1,11 @@
 /** Small representative question bank (§6). Extend with industry templates later. */
-import type { QuestionTemplate } from "@/domain/assessment";
+import type { QuestionBankRef, QuestionTemplate } from "@/domain/assessment";
+
+/** Bump the version whenever a template's wording, section or requirement changes. */
+export const QUESTION_BANK_REF: QuestionBankRef = {
+  id: "aurumi.cia.question-bank",
+  version: "1.0.0",
+};
 
 export const BUSINESS_CATEGORIES = {
   general: "General business",
