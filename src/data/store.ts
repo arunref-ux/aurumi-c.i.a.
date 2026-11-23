@@ -40,7 +40,11 @@ const listeners = new Set<() => void>();
 
 /** @internal Data-layer only. */
 export const store = {
-  table<K extends keyof Tables>(k: K): Tables[K] { return clone(db.tables[k]); },
+  table<K extends keyof Tables>(k: K): Tables[K] {
+    // A live-reloaded store may predate a newly added table; backfill it from seed.
+    if (!db.tables[k]) db.tables[k] = fresh().tables[k];
+    return clone(db.tables[k]);
+  },
   replace<K extends keyof Tables>(k: K, rows: Tables[K]) { db.tables[k] = clone(rows); store.emit(); },
   audit(): AuditEvent[] { return clone(db.audit); },
   log(e: Omit<AuditEvent, "id" | "at">) {
