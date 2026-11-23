@@ -18,6 +18,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             key={item.to}
             to={item.to}
             onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
             className={cn(
               "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
               active
@@ -27,7 +28,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           >
             <item.icon className={cn("size-4", active ? "text-sidebar-primary" : "opacity-70")} />
             <span className="flex-1">{item.label}</span>
-            {item.phase > 1 && (
+            {item.phase > 2 && (
               <span className="text-[10px] uppercase tracking-wider opacity-50">P{item.phase}</span>
             )}
           </Link>

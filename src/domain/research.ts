@@ -12,9 +12,29 @@ import type {
   Verification,
 } from "./types";
 
-const ISO_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/;
-const isIso = (v: unknown) =>
-  typeof v === "string" && ISO_RE.test(v) && !Number.isNaN(Date.parse(v));
+const ISO_RE =
+  /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-](\d{2}):(\d{2}))?)?$/;
+const daysInMonth = (y: number, m: number) =>
+  [31, y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][
+    m - 1
+  ] ?? 0;
+/**
+ * Strict ISO-8601 check with real calendar rules: rejects impossible days
+ * (2026-02-30), non-leap Feb 29, and out-of-range hours/minutes/seconds/offsets.
+ * Date.parse alone silently rolls such values over, so it is not used as the test.
+ */
+export function isValidIsoDate(v: unknown): v is ISODate {
+  if (typeof v !== "string") return false;
+  const m = ISO_RE.exec(v);
+  if (!m) return false;
+  const [y, mo, d, h, mi, s, oh, om] = m.slice(1).map((x) => (x === undefined ? 0 : Number(x)));
+  if (mo! < 1 || mo! > 12) return false;
+  if (d! < 1 || d! > daysInMonth(y!, mo!)) return false;
+  if (h! > 23 || mi! > 59 || s! > 59) return false;
+  if (oh! > 14 || om! > 59) return false;
+  return !Number.isNaN(Date.parse(v));
+}
+const isIso = isValidIsoDate;
 const filled = (v: unknown) => typeof v === "string" && v.trim().length > 0;
 
 export function validateFinding(f: ResearchFinding): string[] {

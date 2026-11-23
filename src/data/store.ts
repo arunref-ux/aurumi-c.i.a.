@@ -1,9 +1,13 @@
 /**
- * Simulated persistence (§13): an in-memory store with change notification.
- * Internal to the data layer — screens must go through repositories.
- * Every read returns a deep copy and every write stores a deep copy, so no
- * caller can mutate stored state through a shared reference.
+ * Simulated persistence (§13): an in-memory store with change notification and
+ * an optional local persistence backend (browser localStorage in the app, an
+ * in-memory map in tests). Internal to the data layer — screens go through
+ * repositories/services. Every read and write is deep-copied.
+ *
+ * SIMULATED STORAGE: this is not production storage. Only fictional workspace
+ * data is kept; never store secrets, credentials or real customer data here.
  */
+import type { AssessmentHandoffSnapshot, AssessmentWorkspace } from "@/domain/assessment";
 import type { AuditEvent, BaseRecord } from "@/domain/types";
 import * as seed from "./seed";
 
@@ -15,6 +19,31 @@ export interface Tables {
   affiliations: typeof seed.seedAffiliations;
   teams: typeof seed.seedTeams;
   users: typeof seed.seedUsers;
+  workspaces: AssessmentWorkspace[];
+  snapshots: AssessmentHandoffSnapshot[];
+}
+
+/** Tables that represent user work and survive reloads; directory tables always come from seed. */
+const PERSISTED = ["assessments", "proposals", "engagements", "workspaces", "snapshots"] as const;
+export const STORAGE_KEY = "aurumi.cia.simulated-store.v1";
+
+export interface PersistenceBackend {
+  kind: "browser" | "memory";
+  read(key: string): string | null;
+  write(key: string, value: string): void;
+}
+export function memoryBackend(): PersistenceBackend {
+  const m = new Map<string, string>();
+  return { kind: "memory", read: (k) => m.get(k) ?? null, write: (k, v) => void m.set(k, v) };
+}
+export function browserBackend(): PersistenceBackend | null {
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    const ls = window.localStorage;
+    return { kind: "browser", read: (k) => ls.getItem(k), write: (k, v) => ls.setItem(k, v) };
+  } catch {
+    return null;
+  }
 }
 
 const clone = <T>(v: T): T => structuredClone(v);
@@ -29,6 +58,8 @@ function fresh(): { tables: Tables; audit: AuditEvent[] } {
       affiliations: seed.seedAffiliations,
       teams: seed.seedTeams,
       users: seed.seedUsers,
+      workspaces: seed.seedWorkspaces,
+      snapshots: [],
     }),
     audit: clone(seed.seedAudit),
   };
@@ -36,7 +67,47 @@ function fresh(): { tables: Tables; audit: AuditEvent[] } {
 
 let db = fresh();
 let version = 0;
+let backend: PersistenceBackend | null = null;
+let persistState: { mode: "none" | "browser" | "memory"; lastSavedAt: string | null; error: string | null } = {
+  mode: "none",
+  lastSavedAt: null,
+  error: null,
+};
 const listeners = new Set<() => void>();
+
+function save() {
+  if (!backend) return;
+  try {
+    const payload = {
+      savedAt: new Date().toISOString(),
+      tables: Object.fromEntries(PERSISTED.map((k) => [k, db.tables[k]])),
+      audit: db.audit,
+    };
+    backend.write(STORAGE_KEY, JSON.stringify(payload));
+    persistState = { ...persistState, lastSavedAt: payload.savedAt, error: null };
+  } catch (e) {
+    persistState = { ...persistState, error: e instanceof Error ? e.message : "save failed" };
+  }
+}
+
+/** Loads saved work over seed data; saved drafts always win over seed. */
+function load() {
+  db = fresh();
+  if (!backend) return;
+  const raw = backend.read(STORAGE_KEY);
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw) as { savedAt?: string; tables?: Partial<Tables>; audit?: AuditEvent[] };
+    for (const k of PERSISTED) {
+      const rows = parsed.tables?.[k];
+      if (Array.isArray(rows)) (db.tables as unknown as Record<string, unknown>)[k] = rows;
+    }
+    if (Array.isArray(parsed.audit)) db.audit = parsed.audit;
+    persistState = { ...persistState, lastSavedAt: parsed.savedAt ?? null, error: null };
+  } catch {
+    persistState = { ...persistState, error: "saved data could not be read; using sample data" };
+  }
+}
 
 /** @internal Data-layer only. */
 export const store = {
@@ -56,12 +127,22 @@ export const store = {
     db.audit = [{ ...clone(e), id: newId("aud"), at: new Date().toISOString() }, ...db.audit];
     store.emit();
   },
+  /** Attach a persistence backend and load saved work from it (simulates a page refresh when re-called). */
+  attach(b: PersistenceBackend | null) {
+    backend = b;
+    persistState = { mode: b ? b.kind : "none", lastSavedAt: null, error: null };
+    load();
+    version++;
+    listeners.forEach((l) => l());
+  },
+  persistence: () => ({ ...persistState }),
   reset() {
     db = fresh();
     store.emit();
   },
   emit() {
     version++;
+    save();
     listeners.forEach((l) => l());
   },
   subscribe(l: () => void) {
@@ -74,6 +155,10 @@ export const store = {
 };
 
 export function newId(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+  const rnd =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().replace(/-/g, "").slice(0, 12)
+      : Math.random().toString(36).slice(2, 14);
+  return `${prefix}_${rnd}`;
 }
 export type { BaseRecord };

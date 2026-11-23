@@ -29,7 +29,9 @@ export type EvidenceStatus =
   | "ai_inference"
   | "recommendation"
   | "commercial_proposal"
-  | "approved_commitment";
+  | "approved_commitment"
+  /** A professional's working assumption — never presented as fact. */
+  | "professional_assumption";
 
 export type ReadinessLevel = "available" | "beta" | "planned" | "not_supported" | "unknown";
 export type AcquisitionChannel =
@@ -37,7 +39,20 @@ export type AcquisitionChannel =
 
 // ---------- Core / Assessments ----------
 export type AssessmentType = "tenant" | "partner";
-export type AssessmentStatus = "draft" | "in_progress" | "under_review" | "completed" | "archived";
+/**
+ * Lifecycle: draft → in_progress → under_review → approved | returned.
+ * Generic updates may only move between draft/in_progress (and out of returned);
+ * every other transition goes through the dedicated workflow in assessment-studio.ts.
+ * "completed" is a legacy Phase 1 status kept for existing records.
+ */
+export type AssessmentStatus =
+  | "draft"
+  | "in_progress"
+  | "under_review"
+  | "returned"
+  | "approved"
+  | "completed"
+  | "archived";
 
 export interface Assessment extends ScopedRecord {
   type: AssessmentType;

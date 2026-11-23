@@ -29,6 +29,8 @@ const STATUS_TONE: Record<AssessmentStatus, Tone> = {
   draft: "neutral",
   in_progress: "info",
   under_review: "warning",
+  returned: "danger",
+  approved: "success",
   completed: "success",
   archived: "neutral",
 };

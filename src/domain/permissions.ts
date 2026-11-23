@@ -24,7 +24,14 @@ const all = (r: ResourceType, s: Scope, actions: Action[]): Grants =>
 
 export const ROLE_GRANTS: Record<RoleKey, Grants> = {
   cia_admin: {
-    ...all("assessment", "organization", ["read", "create", "update", "delete", "assign"]),
+    ...all("assessment", "organization", [
+      "read",
+      "create",
+      "update",
+      "delete",
+      "assign",
+      "approve",
+    ]),
     ...all("solution", "organization", ["read", "create", "update", "delete"]),
     ...all("proposal", "organization", ["read", "create", "update", "delete", "approve", "share"]),
     ...all("engagement", "organization", ["read", "create", "update", "assign"]),
@@ -33,7 +40,7 @@ export const ROLE_GRANTS: Record<RoleKey, Grants> = {
     "audit.read": "organization",
   },
   cia_manager: {
-    ...all("assessment", "team", ["read", "create", "update", "assign"]),
+    ...all("assessment", "team", ["read", "create", "update", "assign", "approve"]),
     ...all("solution", "team", ["read", "create", "update"]),
     ...all("proposal", "team", ["read", "create", "update", "share"]),
     ...all("engagement", "team", ["read", "create", "update", "assign"]),

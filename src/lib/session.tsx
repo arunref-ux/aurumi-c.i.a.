@@ -1,13 +1,14 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   useSyncExternalStore,
   type Context,
   type ReactNode,
 } from "react";
 import { seedUsers } from "@/data/seed";
-import { store } from "@/data/store";
+import { browserBackend, store } from "@/data/store";
 import type { User } from "@/domain/types";
 
 type SessionValue = { user: User; setUserId: (id: string) => void };
@@ -35,6 +36,10 @@ const FALLBACK: SessionValue = { user: NO_SESSION_USER, setUserId: () => {} };
 /** Prototype identity: switch between seeded users to exercise permissions. */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState(DEFAULT_USER_ID);
+  // Load saved drafts after hydration (SSR renders sample data; the browser then restores saved work).
+  useEffect(() => {
+    store.attach(browserBackend());
+  }, []);
   const user = seedUsers.find((u) => u.id === userId) ?? seedUsers[0]!;
   return <SessionCtx.Provider value={{ user, setUserId }}>{children}</SessionCtx.Provider>;
 }
@@ -47,4 +52,10 @@ export function useSession() {
 /** Re-render on any store change. */
 export function useStoreVersion() {
   return useSyncExternalStore(store.subscribe, store.version, store.version);
+}
+
+/** Simulated persistence status for the "saved" indicator. */
+export function usePersistenceStatus() {
+  useStoreVersion();
+  return store.persistence();
 }

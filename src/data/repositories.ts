@@ -289,9 +289,13 @@ const ASSESSMENT_STATUSES = [
   "draft",
   "in_progress",
   "under_review",
+  "returned",
+  "approved",
   "completed",
   "archived",
 ] as const;
+/** Statuses a generic assessment update may set; the rest belong to the review workflow. */
+const ASSESSMENT_EDITABLE = ["draft", "in_progress"];
 const PROPOSAL_STATUSES = [
   "draft",
   "in_review",
@@ -340,6 +344,17 @@ export const repos = {
       channel: ["direct", "website_self", "website_boss", "partner_referral", "existing_tenant"],
     },
     optionalStrings: ["crmReferenceId", "tenantReferenceId", "scenarioCode"],
+    checkStatus: (_ctx, _deny, next, current) => {
+      if (next === undefined || next === current) return;
+      if (current && !ASSESSMENT_EDITABLE.includes(current) && current !== "returned")
+        throw new ValidationError(
+          `status "${current}" can only change through the assessment review workflow`,
+        );
+      if (!ASSESSMENT_EDITABLE.includes(next))
+        throw new ValidationError(
+          `status "${next}" can only be set through the assessment review workflow`,
+        );
+    },
   }),
   proposals: createScopedRepository<Proposal, ProposalCreateInput, ProposalUpdateInput>({
     table: "proposals",
@@ -471,3 +486,6 @@ export const adminActions = {
     return result;
   },
 };
+
+/** @internal Shared audit/deny helpers for data-layer services (e.g. Assessment Studio). */
+export const _internal = { audit, denyWith, cappedScope };

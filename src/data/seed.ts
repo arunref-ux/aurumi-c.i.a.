@@ -1,4 +1,10 @@
 /** Clearly fictional seed data (§16, scenarios A–E). */
+import {
+  emptyFindings,
+  emptyPartner,
+  emptyProfile,
+  type AssessmentWorkspace,
+} from "@/domain/assessment";
 import type {
   Assessment,
   AuditEvent,
@@ -297,5 +303,194 @@ export const seedAudit: AuditEvent[] = [
     resourceId: "prp_a",
     summary: "Shared proposal v2 with Shreeji leadership",
     outcome: "allowed",
+  },
+];
+
+// ---------- Phase 2: assessment workspaces (fictional) ----------
+
+const child = (id: string, by: string, at: string) => base(id, by, at);
+const T1 = daysAgo(8);
+
+export const seedWorkspaces: AssessmentWorkspace[] = [
+  {
+    ...base("ws_asm_b", "u_manager", daysAgo(9)),
+    assessmentId: "asm_b",
+    category: "hospitality",
+    overview: {
+      primaryContact: "Operations manager (name withheld in sample)",
+      purpose: "Understand guest-operations pain points before the peak season.",
+      scope: "Front desk, housekeeping and F&B ordering.",
+      summary: "",
+    },
+    profile: {
+      ...emptyProfile("Coral Bay Resort (fictional)"),
+      industry: "Hospitality — beach resort",
+      geography: "Goa, India — 1 property",
+      employees: "80–120",
+      businessModel: "Room nights + F&B",
+      unknown: ["digitalMaturity"],
+    },
+    systems: [
+      {
+        ...child("sys_b1", "u_pro", T1),
+        name: "Housekeeping tracker",
+        vendor: "",
+        category: "Task tracking",
+        classification: "spreadsheet",
+        deployment: "desktop",
+        departments: "Housekeeping",
+        processesSupported: "Room turnover",
+        userCount: "6",
+        usage: "Updated twice per shift",
+        satisfaction: "low",
+        limitations: "No real-time view for front desk",
+        integrationNeeds: "Room status to front desk",
+        apiAvailability: "none",
+        notes: "",
+        evidenceIds: [],
+        compatibility: { status: "unknown", evidenceIds: [], note: "" },
+      },
+      {
+        ...child("sys_b2", "u_pro", T1),
+        name: "LagoonPMS (fictional)",
+        vendor: "Lagoon Software (fictional)",
+        category: "Property management",
+        classification: "commercial",
+        deployment: "cloud",
+        departments: "Front desk, Reservations",
+        processesSupported: "Bookings, check-in/out",
+        userCount: "12",
+        usage: "Core system",
+        satisfaction: "medium",
+        limitations: "Reports exported manually",
+        integrationNeeds: "Occupancy feed",
+        apiAvailability: "unknown",
+        notes: "Vendor says an API exists — not verified.",
+        evidenceIds: ["ev_b1"],
+        compatibility: { status: "unknown", evidenceIds: [], note: "No Aurumi connector verified." },
+      },
+    ],
+    processes: [
+      {
+        ...child("proc_b1", "u_pro", T1),
+        department: "Housekeeping",
+        name: "Room turnover",
+        currentProcess: "Supervisor radios front desk when a room is ready.",
+        relatedSystemIds: ["sys_b1"],
+        evidenceIds: [],
+      },
+    ],
+    painPoints: [
+      {
+        ...child("pain_b1", "u_pro", T1),
+        processId: "proc_b1",
+        description: "Guests wait in lobby because room readiness is unknown.",
+        impact: "Late check-ins and complaints in peak season",
+        frequency: "daily",
+        severity: "high",
+        priority: "high",
+        desiredOutcome: "Front desk sees room status live",
+        workaround: "Radio calls and walk-arounds",
+        relatedSystemIds: ["sys_b1"],
+        evidenceIds: [],
+      },
+    ],
+    requirements: [
+      {
+        ...child("req_b1", "u_pro", T1),
+        category: "workflow",
+        statement: "Room-ready status visible to front desk within a minute.",
+        basis: "confirmed",
+        priority: "high",
+        evidenceIds: [],
+      },
+      {
+        ...child("req_b2", "u_pro", T1),
+        category: "budget",
+        statement: "Budget likely under one housekeeping salary per year.",
+        basis: "assumption",
+        priority: "medium",
+        evidenceIds: [],
+      },
+    ],
+    evidence: [
+      {
+        ...child("ev_b1", "u_pro", T1),
+        attribute: "api_availability",
+        statement: "LagoonPMS publishes a partner API for reservations.",
+        status: "research_finding",
+        sources: [
+          {
+            title: "LagoonPMS partner page (fictional)",
+            url: "https://lagoon.example/partners",
+            sourceType: "vendor_site",
+            retrievedAt: "2026-11-14T10:00:00Z",
+          },
+        ],
+        researchedAt: "2026-11-14T10:00:00Z",
+        confidence: { level: "medium", rationale: "Vendor marketing only" },
+        verification: { state: "unverified" },
+        links: [{ kind: "system", id: "sys_b2" }],
+        notes: "",
+      },
+    ],
+    findings: { ...emptyFindings(), environment: "Single resort, mixed spreadsheets and one cloud PMS." },
+    customQuestions: [],
+    answers: [
+      {
+        questionId: "q_decision",
+        state: "answered",
+        value: "General manager decides; owner signs off above budget.",
+        answeredBy: "u_pro",
+        answeredAt: T1,
+      },
+    ],
+    openQuestions: [
+      { ...child("oq_b1", "u_pro", T1), text: "Does F&B use a separate POS?", resolved: false },
+    ],
+    reviewComments: [],
+  },
+  {
+    ...base("ws_asm_c", "u_pm", daysAgo(14)),
+    assessmentId: "asm_c",
+    category: "software_vendor",
+    overview: {
+      primaryContact: "Managing partner (sample)",
+      purpose: "Assess fit as a prospective reseller of Aurumi to accounting clients.",
+      scope: "Customer base, distribution capability and integration with their accounting tools.",
+      summary: "Prospective reseller; no agreement exists.",
+    },
+    profile: {
+      ...emptyProfile("Maple Books Consulting (fictional)"),
+      industry: "Accounting advisory",
+      geography: "Ontario, Canada",
+      employees: "25",
+      businessModel: "Advisory retainers",
+      unknown: [],
+    },
+    partner: {
+      ...emptyPartner(),
+      partnerCategory: "Reseller / channel partner",
+      products: "Bookkeeping services on third-party accounting software",
+      objectives: "Offer operations software to existing SMB clients",
+      customerSegments: "SMB retail and professional services",
+    },
+    systems: [],
+    processes: [],
+    painPoints: [],
+    requirements: [],
+    evidence: [],
+    findings: emptyFindings(),
+    customQuestions: [],
+    answers: [],
+    openQuestions: [],
+    reviewerId: "u_admin",
+    reviewComments: [
+      {
+        ...child("rc_c1", "u_pm", daysAgo(2)),
+        kind: "submitted",
+        body: "Submitted for review.",
+      },
+    ],
   },
 ];
