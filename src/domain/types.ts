@@ -32,7 +32,8 @@ export type EvidenceStatus =
   | "approved_commitment";
 
 export type ReadinessLevel = "available" | "beta" | "planned" | "not_supported" | "unknown";
-export type AcquisitionChannel = "direct" | "website_self" | "website_boss" | "partner_referral" | "existing_tenant";
+export type AcquisitionChannel =
+  "direct" | "website_self" | "website_boss" | "partner_referral" | "existing_tenant";
 
 // ---------- Core / Assessments ----------
 export type AssessmentType = "tenant" | "partner";
@@ -94,7 +95,13 @@ export interface ExternalSoftwareReference extends BaseRecord {
   evidenceIds: ID[];
 }
 // ---------- Research provenance (shared by evidence records and the research adapter) ----------
-export type SourceType = "vendor_site" | "vendor_documentation" | "third_party" | "curated_catalog" | "interview" | "ai_model";
+export type SourceType =
+  | "vendor_site"
+  | "vendor_documentation"
+  | "third_party"
+  | "curated_catalog"
+  | "interview"
+  | "ai_model";
 export interface SourceProvenance {
   title: string;
   url?: string;
@@ -177,8 +184,10 @@ export interface SolutionPackage extends ScopedRecord {
 }
 
 // ---------- Proposals ----------
-export type ProposalTrack = "tenant_solution" | "tenant_commercial" | "reseller_partner" | "strategic_partner";
-export type ProposalStatus = "draft" | "in_review" | "approved" | "shared" | "accepted" | "declined" | "expired";
+export type ProposalTrack =
+  "tenant_solution" | "tenant_commercial" | "reseller_partner" | "strategic_partner";
+export type ProposalStatus =
+  "draft" | "in_review" | "approved" | "shared" | "accepted" | "declined" | "expired";
 
 export interface Proposal extends ScopedRecord {
   assessmentId: ID;
@@ -354,10 +363,23 @@ export interface AuditEvent {
 
 // ---------- Write inputs (runtime allowlists live in src/data/repositories.ts) ----------
 type Assignable = { ownerId?: ID; teamId?: ID; assignedUserIds?: ID[] };
-export type AssessmentCreateInput = Assignable & Pick<Assessment, "type" | "title" | "subjectName" | "channel"> &
+export type AssessmentCreateInput = Assignable &
+  Pick<Assessment, "type" | "title" | "subjectName" | "channel"> &
   Partial<Pick<Assessment, "status" | "crmReferenceId" | "tenantReferenceId" | "scenarioCode">>;
-export type AssessmentUpdateInput = Assignable & Partial<Pick<Assessment, "title" | "subjectName" | "status" | "channel" | "crmReferenceId" | "tenantReferenceId">>;
-export type ProposalCreateInput = Assignable & Pick<Proposal, "assessmentId" | "title" | "track"> & Partial<Pick<Proposal, "status" | "includesPricing">>;
-export type ProposalUpdateInput = Assignable & Partial<Pick<Proposal, "title" | "status" | "includesPricing">>;
-export type EngagementCreateInput = Assignable & Pick<Engagement, "proposalId" | "title"> & Partial<Pick<Engagement, "status" | "tenantSuccessReferenceId">>;
-export type EngagementUpdateInput = Assignable & Partial<Pick<Engagement, "title" | "status" | "tenantSuccessReferenceId">>;
+export type AssessmentUpdateInput = Assignable &
+  Partial<
+    Pick<
+      Assessment,
+      "title" | "subjectName" | "status" | "channel" | "crmReferenceId" | "tenantReferenceId"
+    >
+  >;
+export type ProposalCreateInput = Assignable &
+  Pick<Proposal, "assessmentId" | "title" | "track"> &
+  Partial<Pick<Proposal, "status" | "includesPricing">>;
+export type ProposalUpdateInput = Assignable &
+  Partial<Pick<Proposal, "title" | "status" | "includesPricing">>;
+export type EngagementCreateInput = Assignable &
+  Pick<Engagement, "proposalId" | "title"> &
+  Partial<Pick<Engagement, "status" | "tenantSuccessReferenceId">>;
+export type EngagementUpdateInput = Assignable &
+  Partial<Pick<Engagement, "title" | "status" | "tenantSuccessReferenceId">>;

@@ -9,7 +9,9 @@ const u = (id: string) => seedUsers.find((x) => x.id === id)!;
 describe("authorization", () => {
   it("denies a partner-affiliated professional an unassigned proposal (Workflow 8)", () => {
     store.reset();
-    expect(() => repos.proposals.get({ user: u("u_partner_pro") }, "prp_c")).toThrow(AccessDeniedError);
+    expect(() => repos.proposals.get({ user: u("u_partner_pro") }, "prp_c")).toThrow(
+      AccessDeniedError,
+    );
     expect(store.audit()[0]?.outcome).toBe("denied");
   });
   it("caps partner-affiliated users at Self scope", () => {
@@ -18,7 +20,10 @@ describe("authorization", () => {
   });
   it("lets a professional see only own or assigned assessments", () => {
     store.reset();
-    const ids = repos.assessments.list({ user: u("u_pro") }).map((a) => a.id).sort();
+    const ids = repos.assessments
+      .list({ user: u("u_pro") })
+      .map((a) => a.id)
+      .sort();
     expect(ids).toEqual(["asm_a", "asm_b", "asm_e"]);
   });
   it("lets a manager see the whole team but not other teams", () => {

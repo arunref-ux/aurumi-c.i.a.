@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, useSyncExternalStore, type Context, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useSyncExternalStore,
+  type Context,
+  type ReactNode,
+} from "react";
 import { seedUsers } from "@/data/seed";
 import { store } from "@/data/store";
 import type { User } from "@/domain/types";
@@ -14,7 +21,15 @@ const DEFAULT_USER_ID = "u_manager";
  * no roles, so no permission check can pass. This only avoids a blank screen
  * during a live reload; it never grants access.
  */
-export const NO_SESSION_USER: User = { id: "u_no_session", organizationId: "org_none", name: "Signed out", email: "", teamId: "team_none", roles: [], affiliation: "partner" };
+export const NO_SESSION_USER: User = {
+  id: "u_no_session",
+  organizationId: "org_none",
+  name: "Signed out",
+  email: "",
+  teamId: "team_none",
+  roles: [],
+  affiliation: "partner",
+};
 const FALLBACK: SessionValue = { user: NO_SESSION_USER, setUserId: () => {} };
 
 /** Prototype identity: switch between seeded users to exercise permissions. */

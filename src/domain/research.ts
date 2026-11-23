@@ -3,10 +3,18 @@
  * when it was researched, how confident we are (or that we don't know) and
  * whether a person has verified it. Record creation time is separate.
  */
-import type { Confidence, ID, ISODate, ResearchEvidence, ResearchFinding, Verification } from "./types";
+import type {
+  Confidence,
+  ID,
+  ISODate,
+  ResearchEvidence,
+  ResearchFinding,
+  Verification,
+} from "./types";
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/;
-const isIso = (v: unknown) => typeof v === "string" && ISO_RE.test(v) && !Number.isNaN(Date.parse(v));
+const isIso = (v: unknown) =>
+  typeof v === "string" && ISO_RE.test(v) && !Number.isNaN(Date.parse(v));
 const filled = (v: unknown) => typeof v === "string" && v.trim().length > 0;
 
 export function validateFinding(f: ResearchFinding): string[] {
@@ -14,18 +22,29 @@ export function validateFinding(f: ResearchFinding): string[] {
   if (!filled(f.attribute)) errors.push("attribute is required");
   if (!filled(f.statement)) errors.push("statement is required");
   if (!isIso(f.researchedAt)) errors.push("researchedAt must be an ISO date");
-  if (!Array.isArray(f.sources)) { errors.push("sources must be a list"); return errors; }
+  if (!Array.isArray(f.sources)) {
+    errors.push("sources must be a list");
+    return errors;
+  }
   for (const s of f.sources) {
     if (!filled(s.title)) errors.push("every source needs a title");
     if (!isIso(s.retrievedAt)) errors.push("every source needs retrievedAt");
-    if (s.observedAt !== undefined && !isIso(s.observedAt)) errors.push("observedAt must be an ISO date");
+    if (s.observedAt !== undefined && !isIso(s.observedAt))
+      errors.push("observedAt must be an ISO date");
   }
   const c = f.confidence as Confidence | undefined;
-  if (!c || !["high", "medium", "low", "unknown"].includes(c.level)) errors.push("confidence level is required");
-  else if (c.level === "unknown") { if (!filled(c.reason)) errors.push("unknown confidence needs a reason"); }
-  else if (c.score !== undefined && (typeof c.score !== "number" || !Number.isFinite(c.score) || c.score < 0 || c.score > 1)) errors.push("confidence score must be a finite number from 0 to 1");
+  if (!c || !["high", "medium", "low", "unknown"].includes(c.level))
+    errors.push("confidence level is required");
+  else if (c.level === "unknown") {
+    if (!filled(c.reason)) errors.push("unknown confidence needs a reason");
+  } else if (
+    c.score !== undefined &&
+    (typeof c.score !== "number" || !Number.isFinite(c.score) || c.score < 0 || c.score > 1)
+  )
+    errors.push("confidence score must be a finite number from 0 to 1");
   const v = f.verification as Verification | undefined;
-  if (!v || !["unverified", "verified", "disputed"].includes(v.state)) errors.push("verification state is required");
+  if (!v || !["unverified", "verified", "disputed"].includes(v.state))
+    errors.push("verification state is required");
   else if (v.state === "verified") {
     if (!filled(v.verifiedBy)) errors.push("verification needs verifiedBy");
     if (!isIso(v.verifiedAt)) errors.push("verification needs a valid verifiedAt");
@@ -40,14 +59,17 @@ export function validateFinding(f: ResearchFinding): string[] {
   switch (f.status) {
     case "confirmed_fact":
       if (v?.state !== "verified") errors.push("a confirmed fact must be verified");
-      if (humanSources.length === 0) errors.push("a confirmed fact needs at least one non-AI source");
+      if (humanSources.length === 0)
+        errors.push("a confirmed fact needs at least one non-AI source");
       break;
     case "research_finding":
-      if (humanSources.length === 0) errors.push("a research finding needs at least one non-AI source");
+      if (humanSources.length === 0)
+        errors.push("a research finding needs at least one non-AI source");
       break;
     case "ai_inference":
       if (!f.generatedBy?.trim()) errors.push("an AI inference must name what generated it");
-      if (v?.state === "verified") errors.push("a verified AI inference must be re-classified as a confirmed fact");
+      if (v?.state === "verified")
+        errors.push("a verified AI inference must be re-classified as a confirmed fact");
       break;
     default:
       break;
@@ -57,17 +79,48 @@ export function validateFinding(f: ResearchFinding): string[] {
 
 export function assertValidFinding(f: ResearchFinding): ResearchFinding {
   const errors = validateFinding(f);
-  if (errors.length) throw new Error(`Invalid research finding (${f.attribute}): ${errors.join("; ")}`);
+  if (errors.length)
+    throw new Error(`Invalid research finding (${f.attribute}): ${errors.join("; ")}`);
   return f;
 }
 
 /** Wrap a finding as an evidence record without losing provenance; createdAt is record time, not research time. */
-export function findingToEvidence(f: ResearchFinding, meta: { id: ID; organizationId: ID; subjectId: ID; actorId: ID; now: ISODate }): ResearchEvidence {
+export function findingToEvidence(
+  f: ResearchFinding,
+  meta: { id: ID; organizationId: ID; subjectId: ID; actorId: ID; now: ISODate },
+): ResearchEvidence {
   assertValidFinding(f);
-  return { ...structuredClone(f), id: meta.id, organizationId: meta.organizationId, subjectId: meta.subjectId, createdAt: meta.now, createdBy: meta.actorId, updatedAt: meta.now, updatedBy: meta.actorId };
+  return {
+    ...structuredClone(f),
+    id: meta.id,
+    organizationId: meta.organizationId,
+    subjectId: meta.subjectId,
+    createdAt: meta.now,
+    createdBy: meta.actorId,
+    updatedAt: meta.now,
+    updatedBy: meta.actorId,
+  };
 }
 
 export function evidenceToFinding(e: ResearchEvidence): ResearchFinding {
-  const { attribute, statement, status, sources, researchedAt, confidence, verification, generatedBy } = structuredClone(e);
-  return { attribute, statement, status, sources, researchedAt, confidence, verification, ...(generatedBy !== undefined ? { generatedBy } : {}) };
+  const {
+    attribute,
+    statement,
+    status,
+    sources,
+    researchedAt,
+    confidence,
+    verification,
+    generatedBy,
+  } = structuredClone(e);
+  return {
+    attribute,
+    statement,
+    status,
+    sources,
+    researchedAt,
+    confidence,
+    verification,
+    ...(generatedBy !== undefined ? { generatedBy } : {}),
+  };
 }

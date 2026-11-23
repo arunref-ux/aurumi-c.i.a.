@@ -78,7 +78,11 @@ function cappedScope(user: User, scope: Scope): Scope {
   return user.affiliation === "partner" ? "self" : scope;
 }
 
-export function can(user: User, permission: Permission, resource?: Pick<ScopedRecord, "organizationId" | "ownerId" | "teamId" | "assignedUserIds">): boolean {
+export function can(
+  user: User,
+  permission: Permission,
+  resource?: Pick<ScopedRecord, "organizationId" | "ownerId" | "teamId" | "assignedUserIds">,
+): boolean {
   const raw = effectiveScope(user, permission);
   if (!raw) return false;
   if (!resource) return true;
@@ -91,7 +95,10 @@ export function can(user: User, permission: Permission, resource?: Pick<ScopedRe
 }
 
 export class AccessDeniedError extends Error {
-  constructor(public readonly permission: Permission, public readonly resourceId?: ID) {
+  constructor(
+    public readonly permission: Permission,
+    public readonly resourceId?: ID,
+  ) {
     super(`Access denied: ${permission}${resourceId ? ` on ${resourceId}` : ""}`);
     this.name = "AccessDeniedError";
   }

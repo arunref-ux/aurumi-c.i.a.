@@ -45,15 +45,31 @@ export const store = {
     if (!db.tables[k]) db.tables[k] = fresh().tables[k];
     return clone(db.tables[k]);
   },
-  replace<K extends keyof Tables>(k: K, rows: Tables[K]) { db.tables[k] = clone(rows); store.emit(); },
-  audit(): AuditEvent[] { return clone(db.audit); },
+  replace<K extends keyof Tables>(k: K, rows: Tables[K]) {
+    db.tables[k] = clone(rows);
+    store.emit();
+  },
+  audit(): AuditEvent[] {
+    return clone(db.audit);
+  },
   log(e: Omit<AuditEvent, "id" | "at">) {
     db.audit = [{ ...clone(e), id: newId("aud"), at: new Date().toISOString() }, ...db.audit];
     store.emit();
   },
-  reset() { db = fresh(); store.emit(); },
-  emit() { version++; listeners.forEach((l) => l()); },
-  subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l); }; },
+  reset() {
+    db = fresh();
+    store.emit();
+  },
+  emit() {
+    version++;
+    listeners.forEach((l) => l());
+  },
+  subscribe(l: () => void) {
+    listeners.add(l);
+    return () => {
+      listeners.delete(l);
+    };
+  },
   version: () => version,
 };
 
