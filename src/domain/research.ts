@@ -15,9 +15,20 @@ import type {
 const ISO_RE =
   /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-](\d{2}):(\d{2}))?)?$/;
 const daysInMonth = (y: number, m: number) =>
-  [31, y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][
-    m - 1
-  ] ?? 0;
+  [
+    31,
+    y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0) ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ][m - 1] ?? 0;
 /**
  * Strict ISO-8601 check with real calendar rules: rejects impossible days
  * (2026-02-30), non-leap Feb 29, and out-of-range hours/minutes/seconds/offsets.

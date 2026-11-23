@@ -103,9 +103,20 @@ export function CollectionEditor<T extends Row>({
           return (
             <div key={f.key} className={cn(wide && "md:col-span-2")}>
               {f.kind === "select" ? (
-                <SelectField label={f.label} value={String(v ?? "")} options={f.options ?? {}} onChange={set} {...(f.help ? { help: f.help } : {})} />
+                <SelectField
+                  label={f.label}
+                  value={String(v ?? "")}
+                  options={f.options ?? {}}
+                  onChange={set}
+                  {...(f.help ? { help: f.help } : {})}
+                />
               ) : f.kind === "multi" ? (
-                <MultiField label={f.label} value={(v as string[]) ?? []} options={f.options ?? {}} onChange={set} />
+                <MultiField
+                  label={f.label}
+                  value={(v as string[]) ?? []}
+                  options={f.options ?? {}}
+                  onChange={set}
+                />
               ) : f.kind === "bool" ? (
                 <label className="flex items-center gap-2 pt-5 text-sm">
                   <input type="checkbox" checked={!!v} onChange={(e) => set(e.target.checked)} />
@@ -141,7 +152,9 @@ export function CollectionEditor<T extends Row>({
 
   return (
     <div className="flex flex-col gap-3">
-      {items.length === 0 && editing !== "new" && <EmptyState title={emptyTitle} {...(emptyBody ? { body: emptyBody } : {})} />}
+      {items.length === 0 && editing !== "new" && (
+        <EmptyState title={emptyTitle} {...(emptyBody ? { body: emptyBody } : {})} />
+      )}
       <ul className="flex flex-col gap-2">
         {items.map((it) =>
           editing === it.id ? (
@@ -152,10 +165,23 @@ export function CollectionEditor<T extends Row>({
                 <div className="min-w-0 flex-1">{summary(it)}</div>
                 {canEdit && (
                   <div className="flex shrink-0 gap-1">
-                    <button className={btnGhost} onClick={() => open(it.id, fromItem ? fromItem(it) : (it as unknown as Record<string, unknown>))} aria-label={`Edit ${itemLabel(it)}`}>
+                    <button
+                      className={btnGhost}
+                      onClick={() =>
+                        open(
+                          it.id,
+                          fromItem ? fromItem(it) : (it as unknown as Record<string, unknown>),
+                        )
+                      }
+                      aria-label={`Edit ${itemLabel(it)}`}
+                    >
                       Edit
                     </button>
-                    <button className={btnDanger} onClick={() => remove(it.id)} aria-label={`Remove ${itemLabel(it)}`}>
+                    <button
+                      className={btnDanger}
+                      onClick={() => remove(it.id)}
+                      aria-label={`Remove ${itemLabel(it)}`}
+                    >
                       Remove
                     </button>
                   </div>
@@ -166,17 +192,15 @@ export function CollectionEditor<T extends Row>({
           ),
         )}
       </ul>
-      {editing === "new" ? (
-        form
-      ) : (
-        canEdit && (
-          <div>
-            <button className={btnGhost} onClick={() => open("new", blank())}>
-              + {addLabel}
-            </button>
-          </div>
-        )
-      )}
+      {editing === "new"
+        ? form
+        : canEdit && (
+            <div>
+              <button className={btnGhost} onClick={() => open("new", blank())}>
+                + {addLabel}
+              </button>
+            </div>
+          )}
       {!editing && <ErrorNote error={error} />}
     </div>
   );

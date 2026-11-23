@@ -228,7 +228,8 @@ export interface QuestionTemplate {
   prompt: string;
   required: boolean;
 }
-export interface CustomQuestion extends ChildRecord, Omit<QuestionTemplate, "assessmentTypes" | "id"> {}
+export interface CustomQuestion
+  extends ChildRecord, Omit<QuestionTemplate, "assessmentTypes" | "id"> {}
 export type AnswerState = "unanswered" | "answered" | "not_applicable";
 export interface Answer {
   questionId: ID;
@@ -276,7 +277,11 @@ export interface AssessmentHandoffSnapshot {
   readonly assessmentId: ID;
   readonly version: number;
   readonly createdAt: ISODate;
-  readonly approval: { readonly approvedBy: ID; readonly approvedAt: ISODate; readonly comment: string };
+  readonly approval: {
+    readonly approvedBy: ID;
+    readonly approvedAt: ISODate;
+    readonly comment: string;
+  };
   readonly assessment: Readonly<
     Pick<Assessment, "id" | "type" | "title" | "subjectName" | "channel" | "crmReferenceId">
   >;
@@ -346,7 +351,13 @@ export function sectionStatuses(
       !filled(ws.overview.primaryContact) && "Primary contact",
     ].filter(Boolean) as string[],
   );
-  const coreProfile: ProfileField[] = ["businessName", "industry", "geography", "employees", "businessModel"];
+  const coreProfile: ProfileField[] = [
+    "businessName",
+    "industry",
+    "geography",
+    "employees",
+    "businessModel",
+  ];
   add(
     "profile",
     "Business profile",
@@ -363,7 +374,11 @@ export function sectionStatuses(
       core.filter((f) => !p || !filled(p[f])).map((f) => PARTNER_FIELDS.find(([k]) => k === f)![1]),
     );
   }
-  add("systems", "Software & systems", ws.systems.length ? [] : ["At least one system or process tool"]);
+  add(
+    "systems",
+    "Software & systems",
+    ws.systems.length ? [] : ["At least one system or process tool"],
+  );
   add(
     "processes",
     "Processes & pain points",
@@ -375,7 +390,9 @@ export function sectionStatuses(
   add(
     "requirements",
     "Goals & requirements",
-    ws.requirements.some((r) => r.basis === "confirmed") ? [] : ["At least one confirmed requirement"],
+    ws.requirements.some((r) => r.basis === "confirmed")
+      ? []
+      : ["At least one confirmed requirement"],
   );
   add("evidence", "Research & evidence", ws.evidence.length ? [] : ["At least one evidence entry"]);
   add(
@@ -386,9 +403,15 @@ export function sectionStatuses(
       .map((f) => FINDING_FIELDS.find(([k]) => k === f)![1]),
   );
   const unanswered = questionsFor(ws, a.type, bank).filter(
-    (q) => q.required && (ws.answers.find((x) => x.questionId === q.id)?.state ?? "unanswered") === "unanswered",
+    (q) =>
+      q.required &&
+      (ws.answers.find((x) => x.questionId === q.id)?.state ?? "unanswered") === "unanswered",
   );
-  add("questions", "Questions", unanswered.map((q) => q.prompt));
+  add(
+    "questions",
+    "Questions",
+    unanswered.map((q) => q.prompt),
+  );
   return out;
 }
 

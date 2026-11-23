@@ -46,13 +46,7 @@ export type AssessmentType = "tenant" | "partner";
  * "completed" is a legacy Phase 1 status kept for existing records.
  */
 export type AssessmentStatus =
-  | "draft"
-  | "in_progress"
-  | "under_review"
-  | "returned"
-  | "approved"
-  | "completed"
-  | "archived";
+  "draft" | "in_progress" | "under_review" | "returned" | "approved" | "completed" | "archived";
 
 export interface Assessment extends ScopedRecord {
   type: AssessmentType;

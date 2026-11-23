@@ -8,6 +8,7 @@
 import { z } from "zod";
 import {
   buildHandoffSnapshot,
+  deepFreeze,
   completeness,
   emptyFindings,
   emptyPartner,
@@ -61,6 +62,7 @@ export interface StudioPermissions {
   canAssign: boolean;
   canApprove: boolean;
   canSubmit: boolean;
+  canReopen: boolean;
 }
 export interface WorkspaceView {
   assessment: Assessment;
@@ -105,7 +107,9 @@ const CHILD_SCHEMAS = {
     vendor: str.default(""),
     category: str.default(""),
     classification: z.enum(["commercial", "custom", "spreadsheet", "manual", "legacy", "unknown"]),
-    deployment: z.enum(["cloud", "on_premise", "hybrid", "desktop", "paper", "unknown"]).default("unknown"),
+    deployment: z
+      .enum(["cloud", "on_premise", "hybrid", "desktop", "paper", "unknown"])
+      .default("unknown"),
     departments: str.default(""),
     processesSupported: str.default(""),
     userCount: str.default(""),
@@ -169,7 +173,12 @@ const CHILD_SCHEMAS = {
     id: childId,
     attribute: z.string().max(200),
     statement: z.string().max(4000),
-    status: z.enum(["confirmed_fact", "research_finding", "ai_inference", "professional_assumption"]),
+    status: z.enum([
+      "confirmed_fact",
+      "research_finding",
+      "ai_inference",
+      "professional_assumption",
+    ]),
     sources: z
       .array(
         z.strictObject({
@@ -255,7 +264,13 @@ const CreateInput = z.strictObject({
   type: z.enum(["tenant", "partner"]),
   title: z.string().trim().min(1, "Assessment name is required").max(200),
   subjectName: z.string().trim().min(1, "Organization / business is required").max(200),
-  channel: z.enum(["direct", "website_self", "website_boss", "partner_referral", "existing_tenant"]),
+  channel: z.enum([
+    "direct",
+    "website_self",
+    "website_boss",
+    "partner_referral",
+    "existing_tenant",
+  ]),
   category: z.string().max(60).default("general"),
   crmReferenceId: z.string().max(100).optional(),
 });
@@ -271,7 +286,9 @@ const AnswerInput = z.strictObject({
 function parse<S extends z.ZodType>(ctx: Ctx, schema: S, input: unknown, id?: ID): z.output<S> {
   const r = schema.safeParse(input);
   if (!r.success) {
-    const msg = r.error.issues.map((i) => (i.path.length ? `${i.path.join(".")}: ` : "") + i.message).join("; ");
+    const msg = r.error.issues
+      .map((i) => (i.path.length ? `${i.path.join(".")}: ` : "") + i.message)
+      .join("; ");
     return reject(ctx, msg, id);
   }
   return r.data;
@@ -295,7 +312,8 @@ function deny(ctx: Ctx, p: Permission, id?: ID): never {
 /** Loads the parent and enforces the permission on it; unknown and unauthorized ids look the same. */
 function parent(ctx: Ctx, id: ID, p: Permission): Assessment {
   const row = store.table("assessments").find((a) => a.id === id);
-  if (!row || !can(ctx.user, "assessment.read", row) || !can(ctx.user, p, row)) return deny(ctx, p, id);
+  if (!row || !can(ctx.user, "assessment.read", row) || !can(ctx.user, p, row))
+    return deny(ctx, p, id);
   return row;
 }
 function workspaceOf(a: Assessment): AssessmentWorkspace {
@@ -329,7 +347,11 @@ function blankWorkspace(a: Assessment, by: ID, at: string, category: string): As
 }
 function editable(ctx: Ctx, a: Assessment) {
   if (!EDITABLE_STATUSES.includes(a.status))
-    reject(ctx, `assessment is ${a.status.replace("_", " ")}; it cannot be edited until returned or reopened`, a.id);
+    reject(
+      ctx,
+      `assessment is ${a.status.replace("_", " ")}; it cannot be edited until returned or reopened`,
+      a.id,
+    );
 }
 function persist(
   ctx: Ctx,
@@ -348,7 +370,9 @@ function persist(
     "assessments",
     store
       .table("assessments")
-      .map((r) => (r.id === a.id ? { ...r, status: nextStatus, updatedAt: at, updatedBy: ctx.user.id } : r)),
+      .map((r) =>
+        r.id === a.id ? { ...r, status: nextStatus, updatedAt: at, updatedBy: ctx.user.id } : r,
+      ),
   );
   audit(ctx, {
     action: status ? `assessment.status.${status}` : "assessment.update",
@@ -360,7 +384,13 @@ function persist(
     outcome: "allowed",
   });
 }
-function stamp<T extends object>(ctx: Ctx, a: Assessment, prefix: string, data: T, existing?: { id: ID; createdAt: string; createdBy: ID }) {
+function stamp<T extends object>(
+  ctx: Ctx,
+  a: Assessment,
+  prefix: string,
+  data: T,
+  existing?: { id: ID; createdAt: string; createdBy: ID },
+) {
   const at = now();
   return {
     ...data,
@@ -373,16 +403,27 @@ function stamp<T extends object>(ctx: Ctx, a: Assessment, prefix: string, data: 
   };
 }
 const isVerifiedEvidence = (e: EvidenceRecord | undefined) =>
-  !!e && e.verification.state === "verified" && (e.status === "confirmed_fact" || e.status === "research_finding");
+  !!e &&
+  e.verification.state === "verified" &&
+  (e.status === "confirmed_fact" || e.status === "research_finding");
 
 /** Positive connector compatibility must be backed by verified evidence in this assessment. */
-function checkCompatibility(ctx: Ctx, a: Assessment, ws: AssessmentWorkspace, c: { status: string; evidenceIds: ID[] }) {
+function checkCompatibility(
+  ctx: Ctx,
+  a: Assessment,
+  ws: AssessmentWorkspace,
+  c: { status: string; evidenceIds: ID[] },
+) {
   if (!POSITIVE_COMPATIBILITY.includes(c.status as never)) return;
   if (!c.evidenceIds.length)
     reject(ctx, `compatibility "${c.status}" requires linked verified evidence`, a.id);
   for (const eid of c.evidenceIds) {
     if (!isVerifiedEvidence(ws.evidence.find((e) => e.id === eid)))
-      reject(ctx, `compatibility "${c.status}" requires verified evidence; "${eid}" is not verified`, a.id);
+      reject(
+        ctx,
+        `compatibility "${c.status}" requires verified evidence; "${eid}" is not verified`,
+        a.id,
+      );
   }
 }
 /** When evidence loses verification or is removed, unsupported compatibility claims fall back to unknown. */
@@ -390,22 +431,46 @@ function downgradeUnsupported(ws: AssessmentWorkspace) {
   for (const s of ws.systems) {
     const c = s.compatibility;
     if (!POSITIVE_COMPATIBILITY.includes(c.status)) continue;
-    const ok = c.evidenceIds.length > 0 && c.evidenceIds.every((id) => isVerifiedEvidence(ws.evidence.find((e) => e.id === id)));
-    if (!ok) s.compatibility = { status: "unknown", evidenceIds: [], note: "Reset: supporting evidence no longer verified." };
+    const ok =
+      c.evidenceIds.length > 0 &&
+      c.evidenceIds.every((id) => isVerifiedEvidence(ws.evidence.find((e) => e.id === id)));
+    if (!ok)
+      s.compatibility = {
+        status: "unknown",
+        evidenceIds: [],
+        note: "Reset: supporting evidence no longer verified.",
+      };
   }
 }
-function checkRefs(ctx: Ctx, a: Assessment, ws: AssessmentWorkspace, kind: ChildKind, d: Record<string, unknown>) {
-  const has = (list: { id: ID }[], v: unknown) => typeof v === "string" && list.some((x) => x.id === v);
+function checkRefs(
+  ctx: Ctx,
+  a: Assessment,
+  ws: AssessmentWorkspace,
+  kind: ChildKind,
+  d: Record<string, unknown>,
+) {
+  const has = (list: { id: ID }[], v: unknown) =>
+    typeof v === "string" && list.some((x) => x.id === v);
   const all = (list: { id: ID }[], v: unknown) => !Array.isArray(v) || v.every((x) => has(list, x));
-  if ("evidenceIds" in d && !all(ws.evidence, d["evidenceIds"])) reject(ctx, "unknown evidence reference", a.id);
-  if ("relatedSystemIds" in d && !all(ws.systems, d["relatedSystemIds"])) reject(ctx, "unknown system reference", a.id);
-  if (kind === "painPoints" && !has(ws.processes, d["processId"])) reject(ctx, "unknown process for pain point", a.id);
+  if ("evidenceIds" in d && !all(ws.evidence, d["evidenceIds"]))
+    reject(ctx, "unknown evidence reference", a.id);
+  if ("relatedSystemIds" in d && !all(ws.systems, d["relatedSystemIds"]))
+    reject(ctx, "unknown system reference", a.id);
+  if (kind === "painPoints" && !has(ws.processes, d["processId"]))
+    reject(ctx, "unknown process for pain point", a.id);
   if (kind === "evidence") {
-    const lists = { system: ws.systems, process: ws.processes, pain_point: ws.painPoints, requirement: ws.requirements };
+    const lists = {
+      system: ws.systems,
+      process: ws.processes,
+      pain_point: ws.painPoints,
+      requirement: ws.requirements,
+    };
     for (const l of d["links"] as { kind: string; id: ID }[]) {
       if (l.kind === "finding") {
-        if (!FINDING_FIELDS.some(([k]) => k === l.id)) reject(ctx, `unknown finding "${l.id}"`, a.id);
-      } else if (!has(lists[l.kind as keyof typeof lists], l.id)) reject(ctx, `unknown ${l.kind} "${l.id}"`, a.id);
+        if (!FINDING_FIELDS.some(([k]) => k === l.id))
+          reject(ctx, `unknown finding "${l.id}"`, a.id);
+      } else if (!has(lists[l.kind as keyof typeof lists], l.id))
+        reject(ctx, `unknown ${l.kind} "${l.id}"`, a.id);
     }
   }
 }
@@ -415,13 +480,20 @@ function permissionsFor(ctx: Ctx, a: Assessment): StudioPermissions {
   return {
     canEdit: can(ctx.user, "assessment.update", a) && EDITABLE_STATUSES.includes(a.status),
     canAssign: can(ctx.user, "assessment.assign", a),
-    canApprove: can(ctx.user, "assessment.approve", a) && !isOwnerOrAssignee && a.status === "under_review",
+    canApprove:
+      can(ctx.user, "assessment.approve", a) && !isOwnerOrAssignee && a.status === "under_review",
     canSubmit: can(ctx.user, "assessment.update", a) && EDITABLE_STATUSES.includes(a.status),
+    canReopen: can(ctx.user, "assessment.update", a) && a.status === "approved",
   };
 }
 
 function snapshotsOf(a: Assessment) {
-  return store.table("snapshots").filter((s) => s.assessmentId === a.id).sort((x, y) => y.version - x.version);
+  // Snapshots are returned deep-frozen; the store keeps its own copy, so neither can be altered.
+  return store
+    .table("snapshots")
+    .filter((s) => s.assessmentId === a.id)
+    .sort((x, y) => y.version - x.version)
+    .map((s) => deepFreeze(s));
 }
 
 // ---------- Service ----------
@@ -516,13 +588,20 @@ export const assessmentStudio: AssessmentStudioService = {
     const d = parse(ctx, OverviewInput, input, id);
     const ws = workspaceOf(a);
     const { category, ...overview } = defined(d);
-    persist(ctx, a, { ...ws, ...(category ? { category } : {}), overview: { ...ws.overview, ...overview } }, "Saved overview");
+    persist(
+      ctx,
+      a,
+      { ...ws, ...(category ? { category } : {}), overview: { ...ws.overview, ...overview } },
+      "Saved overview",
+    );
   },
   async saveProfile(ctx, id, input) {
     await tick();
     const a = parent(ctx, id, "assessment.update");
     editable(ctx, a);
-    const d = defined(parse(ctx, ProfileInput, input, id)) as Partial<AssessmentWorkspace["profile"]>;
+    const d = defined(parse(ctx, ProfileInput, input, id)) as Partial<
+      AssessmentWorkspace["profile"]
+    >;
     const ws = workspaceOf(a);
     persist(ctx, a, { ...ws, profile: { ...ws.profile, ...d } }, "Saved business profile");
   },
@@ -536,7 +615,10 @@ export const assessmentStudio: AssessmentStudioService = {
     persist(
       ctx,
       a,
-      { ...ws, partner: { ...(ws.partner ?? emptyPartner()), ...d, relationshipStatus: "prospective" } },
+      {
+        ...ws,
+        partner: { ...(ws.partner ?? emptyPartner()), ...d, relationshipStatus: "prospective" },
+      },
       "Saved partner details",
     );
   },
@@ -569,18 +651,36 @@ export const assessmentStudio: AssessmentStudioService = {
         v.state === "verified"
           ? prev?.verification.state === "verified" && prev.verification.method === v.method
             ? prev.verification
-            : { state: "verified" as const, verifiedBy: ctx.user.id, verifiedAt: now(), method: v.method ?? "" }
+            : {
+                state: "verified" as const,
+                verifiedBy: ctx.user.id,
+                verifiedAt: now(),
+                method: v.method ?? "",
+              }
           : v.state === "disputed"
-            ? { state: "disputed" as const, reviewedBy: ctx.user.id, reviewedAt: now(), note: v.note ?? "" }
+            ? {
+                state: "disputed" as const,
+                reviewedBy: ctx.user.id,
+                reviewedAt: now(),
+                note: v.note ?? "",
+              }
             : { state: "unverified" as const };
       record = { ...data, verification };
       const errors = validateFinding(record as never);
       if (errors.length) reject(ctx, `invalid evidence: ${errors.join("; ")}`, id);
     }
     checkRefs(ctx, a, ws, kind, record);
-    if (kind === "systems") checkCompatibility(ctx, a, ws, record["compatibility"] as { status: string; evidenceIds: ID[] });
+    if (kind === "systems")
+      checkCompatibility(
+        ctx,
+        a,
+        ws,
+        record["compatibility"] as { status: string; evidenceIds: ID[] },
+      );
     const stamped = stamp(ctx, a, ID_PREFIX[kind], record, existing);
-    const nextList = existing ? list.map((x) => (x.id === existing.id ? stamped : x)) : [...list, stamped];
+    const nextList = existing
+      ? list.map((x) => (x.id === existing.id ? stamped : x))
+      : [...list, stamped];
     (ws as unknown as Record<string, unknown>)[kind] = nextList;
     if (kind === "evidence") downgradeUnsupported(ws);
     persist(ctx, a, ws, `${existing ? "Updated" : "Added"} ${kind} record`);
@@ -623,7 +723,8 @@ export const assessmentStudio: AssessmentStudioService = {
     const ws = clone(workspaceOf(a));
     const known = [...QUESTION_BANK.map((q) => q.id), ...ws.customQuestions.map((q) => q.id)];
     if (!known.includes(d.questionId)) reject(ctx, "unknown question", id);
-    if (d.state === "answered" && !d.value.trim()) reject(ctx, "an answered question needs an answer", id);
+    if (d.state === "answered" && !d.value.trim())
+      reject(ctx, "an answered question needs an answer", id);
     const at = now();
     const answer = {
       questionId: d.questionId,
@@ -640,7 +741,8 @@ export const assessmentStudio: AssessmentStudioService = {
     editable(ctx, a);
     const ws = clone(workspaceOf(a));
     const ans = ws.answers.find((x) => x.questionId === questionId);
-    if (!ans || ans.state !== "answered") reject(ctx, "only answered questions can be verified", id);
+    if (!ans || ans.state !== "answered")
+      reject(ctx, "only answered questions can be verified", id);
     ans!.verifiedBy = ctx.user.id;
     ans!.verifiedAt = now();
     persist(ctx, a, ws, "Verified answer");
@@ -670,7 +772,12 @@ export const assessmentStudio: AssessmentStudioService = {
     const a = parent(ctx, id, "assessment.read");
     return store
       .table("users")
-      .filter((u) => u.organizationId === a.organizationId && u.id !== a.ownerId && can(u, "assessment.approve", a))
+      .filter(
+        (u) =>
+          u.organizationId === a.organizationId &&
+          u.id !== a.ownerId &&
+          can(u, "assessment.approve", a),
+      )
       .map((u) => ({ id: u.id, name: directory.displayName(ctx, u.id) }));
   },
   async assigneeCandidates(ctx, id) {
@@ -685,7 +792,8 @@ export const assessmentStudio: AssessmentStudioService = {
     await tick();
     const a = parent(ctx, id, "assessment.assign");
     const reviewer = store.table("users").find((u) => u.id === reviewerId);
-    if (!reviewer || reviewer.organizationId !== a.organizationId) reject(ctx, "unknown reviewer", id);
+    if (!reviewer || reviewer.organizationId !== a.organizationId)
+      reject(ctx, "unknown reviewer", id);
     if (reviewer!.id === a.ownerId || !can(reviewer!, "assessment.approve", a))
       reject(ctx, "reviewer must be able to approve this assessment and must not own it", id);
     const ws = workspaceOf(a);
@@ -694,20 +802,29 @@ export const assessmentStudio: AssessmentStudioService = {
   async addComment(ctx, id, body) {
     await tick();
     const a = parent(ctx, id, "assessment.read");
-    const canComment = can(ctx.user, "assessment.update", a) || can(ctx.user, "assessment.approve", a);
+    const canComment =
+      can(ctx.user, "assessment.update", a) || can(ctx.user, "assessment.approve", a);
     if (!canComment) deny(ctx, "assessment.update", id);
     if (!body.trim()) reject(ctx, "comment is empty", id);
     const ws = clone(workspaceOf(a));
-    ws.reviewComments.push(stamp(ctx, a, "rc", { kind: "comment" as const, body: body.slice(0, 4000) }));
+    ws.reviewComments.push(
+      stamp(ctx, a, "rc", { kind: "comment" as const, body: body.slice(0, 4000) }),
+    );
     persist(ctx, a, ws, "Added review comment", a.status);
   },
 
   async submitForReview(ctx, id, note) {
     await tick();
     const a = parent(ctx, id, "assessment.update");
-    if (!EDITABLE_STATUSES.includes(a.status)) reject(ctx, `cannot submit an assessment that is ${a.status}`, id);
+    if (!EDITABLE_STATUSES.includes(a.status))
+      reject(ctx, `cannot submit an assessment that is ${a.status}`, id);
     const ws = clone(workspaceOf(a));
-    ws.reviewComments.push(stamp(ctx, a, "rc", { kind: "submitted" as const, body: note?.trim() || "Submitted for review." }));
+    ws.reviewComments.push(
+      stamp(ctx, a, "rc", {
+        kind: "submitted" as const,
+        body: note?.trim() || "Submitted for review.",
+      }),
+    );
     persist(ctx, a, ws, "Submitted for review", "under_review");
   },
   async approve(ctx, id, comment = "") {
@@ -715,12 +832,16 @@ export const assessmentStudio: AssessmentStudioService = {
     const a = parent(ctx, id, "assessment.approve");
     if (a.ownerId === ctx.user.id || a.assignedUserIds.includes(ctx.user.id))
       deny(ctx, "assessment.approve", id); // separation of duties
-    if (a.status !== "under_review") reject(ctx, `only assessments in review can be approved (is ${a.status})`, id);
+    if (a.status !== "under_review")
+      reject(ctx, `only assessments in review can be approved (is ${a.status})`, id);
     const ws = clone(workspaceOf(a));
     const missing = sectionStatuses(a, ws, QUESTION_BANK).filter((s) => !s.complete);
-    if (missing.length) reject(ctx, `incomplete sections: ${missing.map((s) => s.label).join(", ")}`, id);
+    if (missing.length)
+      reject(ctx, `incomplete sections: ${missing.map((s) => s.label).join(", ")}`, id);
     const at = now();
-    ws.reviewComments.push(stamp(ctx, a, "rc", { kind: "approved" as const, body: comment.trim() || "Approved." }));
+    ws.reviewComments.push(
+      stamp(ctx, a, "rc", { kind: "approved" as const, body: comment.trim() || "Approved." }),
+    );
     persist(ctx, a, ws, "Approved — ready for Solution Studio", "approved");
     const approved = store.table("assessments").find((r) => r.id === id)!;
     const snap = buildHandoffSnapshot(approved, workspaceOf(approved), {
@@ -740,16 +861,20 @@ export const assessmentStudio: AssessmentStudioService = {
       summary: `Generated hand-off snapshot v${snap.version}`,
       outcome: "allowed",
     });
-    return clone(snap);
+    return deepFreeze(clone(snap));
   },
   async returnForRevision(ctx, id, comment) {
     await tick();
     const a = parent(ctx, id, "assessment.approve");
-    if (a.ownerId === ctx.user.id || a.assignedUserIds.includes(ctx.user.id)) deny(ctx, "assessment.approve", id);
-    if (a.status !== "under_review") reject(ctx, `only assessments in review can be returned (is ${a.status})`, id);
+    if (a.ownerId === ctx.user.id || a.assignedUserIds.includes(ctx.user.id))
+      deny(ctx, "assessment.approve", id);
+    if (a.status !== "under_review")
+      reject(ctx, `only assessments in review can be returned (is ${a.status})`, id);
     if (!comment.trim()) reject(ctx, "say what needs revising", id);
     const ws = clone(workspaceOf(a));
-    ws.reviewComments.push(stamp(ctx, a, "rc", { kind: "returned" as const, body: comment.trim() }));
+    ws.reviewComments.push(
+      stamp(ctx, a, "rc", { kind: "returned" as const, body: comment.trim() }),
+    );
     persist(ctx, a, ws, "Returned for revision", "returned");
   },
   async reopen(ctx, id, reason) {

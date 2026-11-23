@@ -367,7 +367,11 @@ export const seedWorkspaces: AssessmentWorkspace[] = [
         apiAvailability: "unknown",
         notes: "Vendor says an API exists — not verified.",
         evidenceIds: ["ev_b1"],
-        compatibility: { status: "unknown", evidenceIds: [], note: "No Aurumi connector verified." },
+        compatibility: {
+          status: "unknown",
+          evidenceIds: [],
+          note: "No Aurumi connector verified.",
+        },
       },
     ],
     processes: [
@@ -434,7 +438,10 @@ export const seedWorkspaces: AssessmentWorkspace[] = [
         notes: "",
       },
     ],
-    findings: { ...emptyFindings(), environment: "Single resort, mixed spreadsheets and one cloud PMS." },
+    findings: {
+      ...emptyFindings(),
+      environment: "Single resort, mixed spreadsheets and one cloud PMS.",
+    },
     customQuestions: [],
     answers: [
       {

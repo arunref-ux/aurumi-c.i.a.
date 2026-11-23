@@ -30,10 +30,18 @@ export function OverviewSection({ view }: { view: WorkspaceView }) {
       <Panel title="Assessment">
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           {[
-            ["Assessment ID", <code key="id" className="font-mono text-xs">{a.id}</code>],
+            [
+              "Assessment ID",
+              <code key="id" className="font-mono text-xs">
+                {a.id}
+              </code>,
+            ],
             ["Type", TYPE_LABEL[a.type]],
             ["Organization / business", a.subjectName],
-            ["Assigned professional", [a.ownerId, ...a.assignedUserIds].map((u) => names[u] ?? "Colleague").join(", ")],
+            [
+              "Assigned professional",
+              [a.ownerId, ...a.assignedUserIds].map((u) => names[u] ?? "Colleague").join(", "),
+            ],
             ["Status", a.status.replace("_", " ")],
             ["CRM reference", a.crmReferenceId ?? "Not linked"],
             ["Created", fmt(a.createdAt)],
@@ -78,7 +86,11 @@ export function OverviewSection({ view }: { view: WorkspaceView }) {
           blank={() => ({ text: "", resolved: false })}
           summary={(q) => (
             <p className="text-sm">
-              {q.resolved ? <StatusPill tone="success">Resolved</StatusPill> : <StatusPill tone="warning">Open</StatusPill>}{" "}
+              {q.resolved ? (
+                <StatusPill tone="success">Resolved</StatusPill>
+              ) : (
+                <StatusPill tone="warning">Open</StatusPill>
+              )}{" "}
               {q.text}
             </p>
           )}
@@ -106,9 +118,18 @@ function AssignmentPanel({ view }: { view: WorkspaceView }) {
           {permissions.canAssign ? (
             people ? (
               <>
-                <MultiField label="Assigned professionals" value={assignees} options={people} onChange={setAssignees} />
+                <MultiField
+                  label="Assigned professionals"
+                  value={assignees}
+                  options={people}
+                  onChange={setAssignees}
+                />
                 <div>
-                  <button className={btnPrimary} disabled={assign.isPending} onClick={() => assign.mutate([a.id, { assignedUserIds: assignees }])}>
+                  <button
+                    className={btnPrimary}
+                    disabled={assign.isPending}
+                    onClick={() => assign.mutate([a.id, { assignedUserIds: assignees }])}
+                  >
                     Save assignment
                   </button>
                 </div>
@@ -129,7 +150,9 @@ function AssignmentPanel({ view }: { view: WorkspaceView }) {
               </div>
             )
           ) : (
-            <p className="text-xs text-muted-foreground">You can edit this assessment but not reassign it.</p>
+            <p className="text-xs text-muted-foreground">
+              You can edit this assessment but not reassign it.
+            </p>
           )}
         </div>
         {permissions.canEdit && (
@@ -141,7 +164,11 @@ function AssignmentPanel({ view }: { view: WorkspaceView }) {
               help="Links to an existing lead, contact or deal. Contact details stay in the CRM."
             />
             <div>
-              <button className={btnGhost} disabled={link.isPending} onClick={() => link.mutate([a.id, crmId])}>
+              <button
+                className={btnGhost}
+                disabled={link.isPending}
+                onClick={() => link.mutate([a.id, crmId])}
+              >
                 {link.isPending ? "Linking…" : "Link CRM record"}
               </button>
             </div>
@@ -160,7 +187,8 @@ export function ProfileSection({ view }: { view: WorkspaceView }) {
   return (
     <Panel title="Business profile">
       <p className="mb-4 text-xs text-muted-foreground">
-        Leave a field blank if it hasn't been assessed yet, or mark it Unknown. Never fill gaps with guesses.
+        Leave a field blank if it hasn't been assessed yet, or mark it Unknown. Never fill gaps with
+        guesses.
       </p>
       <FormSection
         key={`${a.id}-${ws.updatedAt}`}
@@ -183,8 +211,8 @@ export function PartnerSection({ view }: { view: WorkspaceView }) {
   return (
     <Panel title="Partner / opportunity details">
       <p className="mb-4 rounded-md bg-warning-soft px-3 py-2 text-xs">
-        Prospective partner. No partnership, connector or commercial agreement exists unless verified separately.
-        Commercial terms are managed in Pricing Studio, not here.
+        Prospective partner. No partnership, connector or commercial agreement exists unless
+        verified separately. Commercial terms are managed in Pricing Studio, not here.
       </p>
       <FormSection
         key={`${a.id}-${ws.updatedAt}`}
@@ -203,7 +231,8 @@ export function FindingsSection({ view }: { view: WorkspaceView }) {
   return (
     <Panel title="Findings & assessment summary">
       <p className="mb-4 text-xs text-muted-foreground">
-        Professional summary of what you found. Solution design and commercial proposals come in later studios.
+        Professional summary of what you found. Solution design and commercial proposals come in
+        later studios.
       </p>
       <FormSection
         key={`${a.id}-${ws.updatedAt}`}
@@ -252,7 +281,15 @@ export function QuestionsSection({ view }: { view: WorkspaceView }) {
       <Panel title={`Questions (${qs.length})`}>
         <ul className="flex flex-col gap-3">
           {qs.map((q) => (
-            <QuestionRow key={q.id} assessmentId={a.id} question={q} answer={ws.answers.find((x) => x.questionId === q.id)} canEdit={permissions.canEdit} names={names} isCustom={"createdAt" in q} />
+            <QuestionRow
+              key={q.id}
+              assessmentId={a.id}
+              question={q}
+              answer={ws.answers.find((x) => x.questionId === q.id)}
+              canEdit={permissions.canEdit}
+              names={names}
+              isCustom={"createdAt" in q}
+            />
           ))}
         </ul>
       </Panel>
@@ -265,14 +302,20 @@ export function QuestionsSection({ view }: { view: WorkspaceView }) {
           itemLabel={(q) => q.prompt}
           fields={[
             { key: "prompt", label: "Question", kind: "text", required: true, wide: true },
-            { key: "section", label: "Linked section", kind: "select", options: SECTION_LABEL as Record<string, string> },
+            {
+              key: "section",
+              label: "Linked section",
+              kind: "select",
+              options: SECTION_LABEL as Record<string, string>,
+            },
             { key: "required", label: "Required before approval", kind: "bool" },
           ]}
           blank={() => ({ prompt: "", section: "overview", required: false })}
           toInput={(v) => ({ ...v, category: ws.category })}
           summary={(q) => (
             <p className="text-sm">
-              {q.prompt} <span className="text-xs text-muted-foreground">· {SECTION_LABEL[q.section]}</span>
+              {q.prompt}{" "}
+              <span className="text-xs text-muted-foreground">· {SECTION_LABEL[q.section]}</span>
             </p>
           )}
           onSave={(d) => addQ.mutateAsync([a.id, "customQuestions", d as never])}
@@ -315,10 +358,20 @@ function QuestionRow({
           {isCustom ? " · custom" : ""}
         </span>
       </div>
-      <div className="mt-2 flex flex-wrap gap-3 text-xs" role="radiogroup" aria-label="Answer state">
+      <div
+        className="mt-2 flex flex-wrap gap-3 text-xs"
+        role="radiogroup"
+        aria-label="Answer state"
+      >
         {(["unanswered", "answered", "not_applicable"] as const).map((s) => (
           <label key={s} className="flex items-center gap-1">
-            <input type="radio" name={`st-${question.id}`} checked={state === s} disabled={!canEdit} onChange={() => setState(s)} />
+            <input
+              type="radio"
+              name={`st-${question.id}`}
+              checked={state === s}
+              disabled={!canEdit}
+              onChange={() => setState(s)}
+            />
             {s === "not_applicable" ? "Not applicable" : s[0]!.toUpperCase() + s.slice(1)}
           </label>
         ))}
@@ -335,13 +388,19 @@ function QuestionRow({
       )}
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
         {canEdit && (
-          <button className={btnGhost} disabled={!dirty || save.isPending} onClick={() => save.mutate([assessmentId, { questionId: question.id, state, value }])}>
+          <button
+            className={btnGhost}
+            disabled={!dirty || save.isPending}
+            onClick={() => save.mutate([assessmentId, { questionId: question.id, state, value }])}
+          >
             Save answer
           </button>
         )}
         {answer?.answeredBy && <span>Answered by {names[answer.answeredBy] ?? "Colleague"}</span>}
         {answer?.verifiedBy ? (
-          <StatusPill tone="success">Verified by {names[answer.verifiedBy] ?? "Colleague"}</StatusPill>
+          <StatusPill tone="success">
+            Verified by {names[answer.verifiedBy] ?? "Colleague"}
+          </StatusPill>
         ) : (
           answer?.state === "answered" &&
           canEdit && (

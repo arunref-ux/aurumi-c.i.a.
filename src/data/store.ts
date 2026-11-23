@@ -68,7 +68,11 @@ function fresh(): { tables: Tables; audit: AuditEvent[] } {
 let db = fresh();
 let version = 0;
 let backend: PersistenceBackend | null = null;
-let persistState: { mode: "none" | "browser" | "memory"; lastSavedAt: string | null; error: string | null } = {
+let persistState: {
+  mode: "none" | "browser" | "memory";
+  lastSavedAt: string | null;
+  error: string | null;
+} = {
   mode: "none",
   lastSavedAt: null,
   error: null,
@@ -97,7 +101,11 @@ function load() {
   const raw = backend.read(STORAGE_KEY);
   if (!raw) return;
   try {
-    const parsed = JSON.parse(raw) as { savedAt?: string; tables?: Partial<Tables>; audit?: AuditEvent[] };
+    const parsed = JSON.parse(raw) as {
+      savedAt?: string;
+      tables?: Partial<Tables>;
+      audit?: AuditEvent[];
+    };
     for (const k of PERSISTED) {
       const rows = parsed.tables?.[k];
       if (Array.isArray(rows)) (db.tables as unknown as Record<string, unknown>)[k] = rows;

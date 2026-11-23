@@ -53,8 +53,9 @@ export function SystemsSection({ view }: { view: WorkspaceView }) {
   return (
     <Panel title={`Current software & systems (${ws.systems.length})`}>
       <p className="mb-4 rounded-md bg-info-soft px-3 py-2 text-xs">
-        Listing a system here never means Aurumi has a connector for it. Connector compatibility is tracked
-        separately and stays <strong>Unknown</strong> until verified evidence says otherwise.
+        Listing a system here never means Aurumi has a connector for it. Connector compatibility is
+        tracked separately and stays <strong>Unknown</strong> until verified evidence says
+        otherwise.
       </p>
       <CollectionEditor<InventorySystem>
         items={ws.systems}
@@ -66,7 +67,12 @@ export function SystemsSection({ view }: { view: WorkspaceView }) {
         fields={[
           { key: "name", label: "Product / system name", kind: "text", required: true },
           { key: "vendor", label: "Vendor / provider (if known)", kind: "text" },
-          { key: "classification", label: "Classification", kind: "select", options: SYSTEM_CLASSIFICATIONS },
+          {
+            key: "classification",
+            label: "Classification",
+            kind: "select",
+            options: SYSTEM_CLASSIFICATIONS,
+          },
           { key: "category", label: "Category / function", kind: "text" },
           { key: "deployment", label: "Deployment model", kind: "select", options: DEPLOYMENTS },
           { key: "departments", label: "Departments using it", kind: "text" },
@@ -74,14 +80,35 @@ export function SystemsSection({ view }: { view: WorkspaceView }) {
           { key: "userCount", label: "Approximate user count", kind: "text" },
           { key: "usage", label: "Current usage", kind: "text" },
           { key: "satisfaction", label: "Satisfaction", kind: "select", options: SATISFACTION },
-          { key: "apiAvailability", label: "Existing API / integration availability", kind: "select", options: API_AVAILABILITY },
+          {
+            key: "apiAvailability",
+            label: "Existing API / integration availability",
+            kind: "select",
+            options: API_AVAILABILITY,
+          },
           { key: "limitations", label: "Known limitations", kind: "textarea" },
           { key: "integrationNeeds", label: "Integration needs", kind: "textarea" },
           { key: "notes", label: "Notes", kind: "textarea" },
-          { key: "evidenceIds", label: "Research / evidence references", kind: "multi", options: opts(ws.evidence, (e: EvidenceRecord) => e.statement.slice(0, 60)) },
-          { key: "compatStatus", label: "Aurumi connector compatibility", kind: "select", options: COMPATIBILITY, help: "Planned, beta or supported require linked verified evidence." },
+          {
+            key: "evidenceIds",
+            label: "Research / evidence references",
+            kind: "multi",
+            options: opts(ws.evidence, (e: EvidenceRecord) => e.statement.slice(0, 60)),
+          },
+          {
+            key: "compatStatus",
+            label: "Aurumi connector compatibility",
+            kind: "select",
+            options: COMPATIBILITY,
+            help: "Planned, beta or supported require linked verified evidence.",
+          },
           { key: "compatNote", label: "Compatibility note", kind: "text" },
-          { key: "compatEvidence", label: "Verified evidence for compatibility", kind: "multi", options: opts(verified, (e: EvidenceRecord) => e.statement.slice(0, 60)) },
+          {
+            key: "compatEvidence",
+            label: "Verified evidence for compatibility",
+            kind: "multi",
+            options: opts(verified, (e: EvidenceRecord) => e.statement.slice(0, 60)),
+          },
         ]}
         blank={() => ({
           name: "",
@@ -103,10 +130,16 @@ export function SystemsSection({ view }: { view: WorkspaceView }) {
           compatNote: s.compatibility.note,
         })}
         toInput={({ compatStatus, compatEvidence, compatNote, ...rest }) => {
-          const clean = Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, v ?? (k === "evidenceIds" ? [] : "")]));
+          const clean = Object.fromEntries(
+            Object.entries(rest).map(([k, v]) => [k, v ?? (k === "evidenceIds" ? [] : "")]),
+          );
           return {
             ...clean,
-            compatibility: { status: compatStatus ?? "unknown", evidenceIds: compatEvidence ?? [], note: compatNote ?? "" },
+            compatibility: {
+              status: compatStatus ?? "unknown",
+              evidenceIds: compatEvidence ?? [],
+              note: compatNote ?? "",
+            },
           };
         }}
         summary={(s) => (
@@ -119,27 +152,46 @@ export function SystemsSection({ view }: { view: WorkspaceView }) {
               </StatusPill>
             </div>
             <p className="text-xs text-muted-foreground">
-              {[s.vendor || "Vendor unknown", s.category, s.departments && `Used by ${s.departments}`, s.userCount && `${s.userCount} users`]
+              {[
+                s.vendor || "Vendor unknown",
+                s.category,
+                s.departments && `Used by ${s.departments}`,
+                s.userCount && `${s.userCount} users`,
+              ]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
             {s.limitations && <p className="text-xs">Limitations: {s.limitations}</p>}
           </div>
         )}
-        extra={(s) => (permissions.canEdit ? <ResearchHelper assessmentId={a.id} system={s} /> : null)}
+        extra={(s) =>
+          permissions.canEdit ? <ResearchHelper assessmentId={a.id} system={s} /> : null
+        }
         onSave={(d) => up.mutateAsync([a.id, "systems", d as never])}
         onRemove={(id) => rm.mutateAsync([a.id, "systems", id])}
       />
       {ws.systems.some((s) => POSITIVE_COMPATIBILITY.includes(s.compatibility.status)) && (
-        <p className="mt-3 text-[11px] text-muted-foreground">Positive compatibility shown above is backed by verified evidence.</p>
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Positive compatibility shown above is backed by verified evidence.
+        </p>
       )}
     </Panel>
   );
 }
 
 /** Simulated AI research: results are AI inferences / unverified findings until a person verifies them. */
-function ResearchHelper({ assessmentId, system }: { assessmentId: string; system: InventorySystem }) {
-  const [state, setState] = useState<{ busy: boolean; findings: ResearchFinding[] | null; error: string | null }>({
+function ResearchHelper({
+  assessmentId,
+  system,
+}: {
+  assessmentId: string;
+  system: InventorySystem;
+}) {
+  const [state, setState] = useState<{
+    busy: boolean;
+    findings: ResearchFinding[] | null;
+    error: string | null;
+  }>({
     busy: false,
     findings: null,
     error: null,
@@ -148,7 +200,11 @@ function ResearchHelper({ assessmentId, system }: { assessmentId: string; system
   const run = async () => {
     setState({ busy: true, findings: null, error: null });
     const r = await research.lookupSoftware(system.name);
-    setState(r.ok ? { busy: false, findings: r.data.findings, error: null } : { busy: false, findings: null, error: r.error });
+    setState(
+      r.ok
+        ? { busy: false, findings: r.data.findings, error: null }
+        : { busy: false, findings: null, error: r.error },
+    );
   };
   return (
     <div className="mt-2 border-t pt-2">
@@ -160,7 +216,9 @@ function ResearchHelper({ assessmentId, system }: { assessmentId: string; system
       {state.error && <p className="text-xs text-destructive">{state.error}</p>}
       {state.findings && (
         <ul className="mt-1 flex flex-col gap-1.5">
-          <li className="text-[11px] text-muted-foreground">Simulated research results — not verified.</li>
+          <li className="text-[11px] text-muted-foreground">
+            Simulated research results — not verified.
+          </li>
           {state.findings.map((f, i) => (
             <li key={i} className="flex flex-wrap items-center gap-2 text-xs">
               <EvidenceBadge e={f} />
@@ -220,12 +278,19 @@ export function ProcessesSection({ view }: { view: WorkspaceView }) {
             { key: "relatedSystemIds", label: "Related systems", kind: "multi", options: systems },
             { key: "evidenceIds", label: "Supporting evidence", kind: "multi", options: evidence },
           ]}
-          blank={() => ({ name: "", department: "", currentProcess: "", relatedSystemIds: [], evidenceIds: [] })}
+          blank={() => ({
+            name: "",
+            department: "",
+            currentProcess: "",
+            relatedSystemIds: [],
+            evidenceIds: [],
+          })}
           summary={(p) => (
             <div>
               <p className="font-medium">{p.name}</p>
               <p className="text-xs text-muted-foreground">
-                {p.department || "Department not set"} · {ws.painPoints.filter((x) => x.processId === p.id).length} pain point(s)
+                {p.department || "Department not set"} ·{" "}
+                {ws.painPoints.filter((x) => x.processId === p.id).length} pain point(s)
               </p>
               {p.currentProcess && <p className="mt-1 text-xs">{p.currentProcess}</p>}
             </div>
@@ -236,7 +301,9 @@ export function ProcessesSection({ view }: { view: WorkspaceView }) {
       </Panel>
       <Panel title={`Pain points (${ws.painPoints.length})`}>
         {ws.processes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Add a process first, then record its pain points.</p>
+          <p className="text-sm text-muted-foreground">
+            Add a process first, then record its pain points.
+          </p>
         ) : (
           <CollectionEditor
             items={ws.painPoints}
@@ -245,16 +312,36 @@ export function ProcessesSection({ view }: { view: WorkspaceView }) {
             addLabel="Add pain point"
             itemLabel={(p) => p.description}
             fields={[
-              { key: "processId", label: "Process", kind: "select", options: opts(ws.processes, (p: { name: string }) => p.name) },
-              { key: "description", label: "Pain point or inefficiency", kind: "textarea", required: true },
+              {
+                key: "processId",
+                label: "Process",
+                kind: "select",
+                options: opts(ws.processes, (p: { name: string }) => p.name),
+              },
+              {
+                key: "description",
+                label: "Pain point or inefficiency",
+                kind: "textarea",
+                required: true,
+              },
               { key: "impact", label: "Operational impact", kind: "text" },
               { key: "frequency", label: "Frequency", kind: "select", options: FREQUENCY },
               { key: "severity", label: "Severity", kind: "select", options: LEVELS },
               { key: "priority", label: "Priority", kind: "select", options: LEVELS },
               { key: "desiredOutcome", label: "Desired outcome", kind: "text" },
               { key: "workaround", label: "Current workaround", kind: "text" },
-              { key: "relatedSystemIds", label: "Related systems", kind: "multi", options: systems },
-              { key: "evidenceIds", label: "Supporting evidence", kind: "multi", options: evidence },
+              {
+                key: "relatedSystemIds",
+                label: "Related systems",
+                kind: "multi",
+                options: systems,
+              },
+              {
+                key: "evidenceIds",
+                label: "Supporting evidence",
+                kind: "multi",
+                options: evidence,
+              },
             ]}
             blank={() => ({
               processId: ws.processes[0]?.id ?? "",
@@ -269,7 +356,9 @@ export function ProcessesSection({ view }: { view: WorkspaceView }) {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium">{p.description}</p>
-                  <StatusPill tone={p.severity === "high" || p.severity === "critical" ? "danger" : "neutral"}>
+                  <StatusPill
+                    tone={p.severity === "high" || p.severity === "critical" ? "danger" : "neutral"}
+                  >
                     {LEVELS[p.severity]} severity
                   </StatusPill>
                 </div>
@@ -295,9 +384,13 @@ export function RequirementsSection({ view }: { view: WorkspaceView }) {
   const rm = useStudioMutation((s) => s.removeChild);
   const confirmed = ws.requirements.filter((r) => r.basis === "confirmed").length;
   return (
-    <Panel title={`Goals & requirements (${confirmed} confirmed · ${ws.requirements.length - confirmed} assumptions)`}>
+    <Panel
+      title={`Goals & requirements (${confirmed} confirmed · ${ws.requirements.length - confirmed} assumptions)`}
+    >
       <CollectionEditor
-        items={[...ws.requirements].sort((x, y) => (x.basis === y.basis ? 0 : x.basis === "confirmed" ? -1 : 1))}
+        items={[...ws.requirements].sort((x, y) =>
+          x.basis === y.basis ? 0 : x.basis === "confirmed" ? -1 : 1,
+        )}
         canEdit={permissions.canEdit}
         emptyTitle="No requirements yet"
         emptyBody="Capture objectives, capabilities, budget, timeline and constraints."
@@ -305,19 +398,40 @@ export function RequirementsSection({ view }: { view: WorkspaceView }) {
         itemLabel={(r) => r.statement}
         fields={[
           { key: "category", label: "Type", kind: "select", options: REQUIREMENT_CATEGORIES },
-          { key: "basis", label: "Basis", kind: "select", options: { confirmed: "Confirmed by the business", assumption: "Assumption (not confirmed)" } },
+          {
+            key: "basis",
+            label: "Basis",
+            kind: "select",
+            options: {
+              confirmed: "Confirmed by the business",
+              assumption: "Assumption (not confirmed)",
+            },
+          },
           { key: "statement", label: "Requirement", kind: "textarea", required: true },
           { key: "priority", label: "Priority", kind: "select", options: LEVELS },
-          { key: "evidenceIds", label: "Supporting evidence", kind: "multi", options: opts(ws.evidence, (e: EvidenceRecord) => e.statement.slice(0, 60)) },
+          {
+            key: "evidenceIds",
+            label: "Supporting evidence",
+            kind: "multi",
+            options: opts(ws.evidence, (e: EvidenceRecord) => e.statement.slice(0, 60)),
+          },
         ]}
-        blank={() => ({ category: "required_capability", basis: "confirmed", statement: "", priority: "medium", evidenceIds: [] })}
+        blank={() => ({
+          category: "required_capability",
+          basis: "confirmed",
+          statement: "",
+          priority: "medium",
+          evidenceIds: [],
+        })}
         summary={(r) => (
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <StatusPill tone={r.basis === "confirmed" ? "success" : "warning"}>
                 {r.basis === "confirmed" ? "Confirmed" : "Assumption"}
               </StatusPill>
-              <span className="text-xs text-muted-foreground">{REQUIREMENT_CATEGORIES[r.category]} · {LEVELS[r.priority]}</span>
+              <span className="text-xs text-muted-foreground">
+                {REQUIREMENT_CATEGORIES[r.category]} · {LEVELS[r.priority]}
+              </span>
             </div>
             <p className="mt-1 text-sm">{r.statement}</p>
           </div>
@@ -340,15 +454,27 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
   const linkOptions: Record<string, string> = {
     ...Object.fromEntries(ws.systems.map((s) => [`system:${s.id}`, `System · ${s.name}`])),
     ...Object.fromEntries(ws.processes.map((p) => [`process:${p.id}`, `Process · ${p.name}`])),
-    ...Object.fromEntries(ws.painPoints.map((p) => [`pain_point:${p.id}`, `Pain point · ${p.description.slice(0, 40)}`])),
-    ...Object.fromEntries(ws.requirements.map((r) => [`requirement:${r.id}`, `Requirement · ${r.statement.slice(0, 40)}`])),
+    ...Object.fromEntries(
+      ws.painPoints.map((p) => [
+        `pain_point:${p.id}`,
+        `Pain point · ${p.description.slice(0, 40)}`,
+      ]),
+    ),
+    ...Object.fromEntries(
+      ws.requirements.map((r) => [
+        `requirement:${r.id}`,
+        `Requirement · ${r.statement.slice(0, 40)}`,
+      ]),
+    ),
     ...Object.fromEntries(FINDING_FIELDS.map(([k, l]) => [`finding:${k}`, `Finding · ${l}`])),
   };
   const today = new Date().toISOString().slice(0, 10);
   return (
     <Panel title={`Research & evidence (${ws.evidence.length})`}>
       <div className="mb-4 flex flex-wrap gap-2 text-xs">
-        {(["confirmed_fact", "research_finding", "ai_inference", "professional_assumption"] as const).map((s) => (
+        {(
+          ["confirmed_fact", "research_finding", "ai_inference", "professional_assumption"] as const
+        ).map((s) => (
           <span key={s} className="flex items-center gap-1">
             <EvidenceBadge e={{ status: s, verification: { state: "unverified" } }} />
             {ws.evidence.filter((e) => e.status === s).length}
@@ -364,7 +490,12 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
         itemLabel={(e) => e.statement}
         fields={[
           { key: "statement", label: "Claim or finding", kind: "textarea", required: true },
-          { key: "attribute", label: "About (e.g. vendor, API availability)", kind: "text", required: true },
+          {
+            key: "attribute",
+            label: "About (e.g. vendor, API availability)",
+            kind: "text",
+            required: true,
+          },
           {
             key: "status",
             label: "Evidence classification",
@@ -376,14 +507,44 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
               professional_assumption: "Professional assumption",
             },
           },
-          { key: "sourceType", label: "Source type", kind: "select", options: { interview: "Interview", vendor_site: "Vendor website", vendor_documentation: "Vendor documentation", third_party: "Third party", curated_catalog: "Curated catalog", ai_model: "AI model" } },
+          {
+            key: "sourceType",
+            label: "Source type",
+            kind: "select",
+            options: {
+              interview: "Interview",
+              vendor_site: "Vendor website",
+              vendor_documentation: "Vendor documentation",
+              third_party: "Third party",
+              curated_catalog: "Curated catalog",
+              ai_model: "AI model",
+            },
+          },
           { key: "sourceTitle", label: "Source name", kind: "text" },
           { key: "sourceUrl", label: "URL / reference", kind: "text" },
           { key: "researchedAt", label: "Research date (YYYY-MM-DD)", kind: "text" },
           { key: "retrievedAt", label: "Retrieval date (YYYY-MM-DD)", kind: "text" },
-          { key: "confidence", label: "Confidence", kind: "select", options: { high: "High", medium: "Medium", low: "Low", unknown: "Unknown" } },
-          { key: "confidenceNote", label: "Confidence rationale (required if unknown)", kind: "text" },
-          { key: "verification", label: "Verification status", kind: "select", options: { unverified: "Unverified", verified: "Verified (by me, now)", disputed: "Disputed" } },
+          {
+            key: "confidence",
+            label: "Confidence",
+            kind: "select",
+            options: { high: "High", medium: "Medium", low: "Low", unknown: "Unknown" },
+          },
+          {
+            key: "confidenceNote",
+            label: "Confidence rationale (required if unknown)",
+            kind: "text",
+          },
+          {
+            key: "verification",
+            label: "Verification status",
+            kind: "select",
+            options: {
+              unverified: "Unverified",
+              verified: "Verified (by me, now)",
+              disputed: "Disputed",
+            },
+          },
           { key: "verificationNote", label: "Verification method / dispute note", kind: "text" },
           { key: "generatedBy", label: "Generated by (for AI inferences)", kind: "text" },
           { key: "links", label: "Linked to", kind: "multi", options: linkOptions },
@@ -418,9 +579,17 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
             researchedAt: toDate(e.researchedAt),
             retrievedAt: toDate(src?.retrievedAt),
             confidence: e.confidence.level,
-            confidenceNote: e.confidence.level === "unknown" ? e.confidence.reason : (e.confidence.rationale ?? ""),
+            confidenceNote:
+              e.confidence.level === "unknown"
+                ? e.confidence.reason
+                : (e.confidence.rationale ?? ""),
             verification: e.verification.state,
-            verificationNote: e.verification.state === "verified" ? e.verification.method : e.verification.state === "disputed" ? e.verification.note : "",
+            verificationNote:
+              e.verification.state === "verified"
+                ? e.verification.method
+                : e.verification.state === "disputed"
+                  ? e.verification.note
+                  : "",
             generatedBy: e.generatedBy ?? "",
             links: e.links.map((l) => `${l.kind}:${l.id}`),
             notes: e.notes,
@@ -445,8 +614,19 @@ export function EvidenceSection({ view }: { view: WorkspaceView }) {
                 ]
               : [],
             researchedAt: toIso(v["researchedAt"]),
-            confidence: conf === "unknown" ? { level: "unknown", reason: s("confidenceNote") } : { level: conf, ...(s("confidenceNote") ? { rationale: s("confidenceNote") } : {}) },
-            verification: ver === "verified" ? { state: "verified", method: s("verificationNote") } : ver === "disputed" ? { state: "disputed", note: s("verificationNote") } : { state: "unverified" },
+            confidence:
+              conf === "unknown"
+                ? { level: "unknown", reason: s("confidenceNote") }
+                : {
+                    level: conf,
+                    ...(s("confidenceNote") ? { rationale: s("confidenceNote") } : {}),
+                  },
+            verification:
+              ver === "verified"
+                ? { state: "verified", method: s("verificationNote") }
+                : ver === "disputed"
+                  ? { state: "disputed", note: s("verificationNote") }
+                  : { state: "unverified" },
             ...(s("generatedBy") ? { generatedBy: s("generatedBy") } : {}),
             links: ((v["links"] as string[]) ?? []).map((x) => {
               const [kind, ...rest] = x.split(":");

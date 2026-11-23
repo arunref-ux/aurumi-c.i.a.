@@ -39,3 +39,7 @@ use the editor.
 - Dashboard numbers are derived from records in `src/domain/metrics.ts`, never stored counters.
 - Primary navigation is defined once in `src/components/app/nav.ts`.
 - Work proceeds in phases; do not start a new phase without explicit user approval.
+- Assessment Studio uses the Promise-based service in `src/data/assessment-studio.ts` (screens use the hooks in `src/lib/assessment-queries.ts`), so a production API can replace the simulated store without UI changes.
+- Assessment child records live in one workspace per assessment and inherit the parent's authorization; review statuses (under_review/approved/returned) change only through the service workflow, never via generic updates.
+- Approved assessments produce versioned, deep-frozen hand-off snapshots (`src/domain/assessment.ts`) that are never edited, so Solution Studio consumes a stable record.
+- Simulated persistence saves work tables to browser storage behind `store.attach()`; directory tables always reload from seed, and saved work always wins over seed.

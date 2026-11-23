@@ -34,7 +34,10 @@ export function Field({
       </label>
       {children(id, hid)}
       {(help || error) && (
-        <p id={hid} className={cn("text-[11px]", error ? "text-destructive" : "text-muted-foreground")}>
+        <p
+          id={hid}
+          className={cn("text-[11px]", error ? "text-destructive" : "text-muted-foreground")}
+        >
           {error ?? help}
         </p>
       )}
@@ -55,7 +58,12 @@ export function TextField(p: {
   className?: string;
 }) {
   return (
-    <Field label={p.label + (p.required ? " *" : "")} help={p.help} error={p.error} className={p.className}>
+    <Field
+      label={p.label + (p.required ? " *" : "")}
+      help={p.help}
+      error={p.error}
+      className={p.className}
+    >
       {(id, d) =>
         p.multiline ? (
           <textarea
