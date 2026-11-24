@@ -9,6 +9,7 @@ import {
   validateDefinition,
   answerText,
   effectiveResponses,
+  visibleQuestions,
   identifiedSystems,
   type BusinessFitIntakeRecord,
   type BusinessFitQuestionnaireVersion,
@@ -87,6 +88,16 @@ function linkedSnapshot(row: BusinessFitIntakeRecord) {
   if (!snapshot) throw new Error("Submission relationships need recovery.");
   return snapshot;
 }
+function validateConversionView(row: BusinessFitIntakeRecord) {
+  const conversion = store.table("fitConversions").find((c) => c.intakeId === row.id);
+  if (row.assessmentId && conversion?.state !== "complete")
+    throw new Error("Completed conversion relationships need recovery.");
+  if (conversion) {
+    const problems = conversionRelationshipProblems(conversion, fitTables());
+    if (problems.length) throw new Error(problems.join("; "));
+  }
+  return conversion;
+}
 function audit(ctx: Ctx, row: BusinessFitIntakeRecord, action: string, summary: string) {
   store.log({
     actorId: ctx.user.id,
@@ -136,6 +147,7 @@ export const businessFitInternal = {
       .filter((row) => can(ctx.user, "business_fit.read", row))
       .map((row) => {
         const snapshot = linkedSnapshot(row);
+        validateConversionView(row);
         return {
           intake: row,
           businessName: answerText(snapshot.responses["businessName"]),
@@ -148,19 +160,12 @@ export const businessFitInternal = {
   get(ctx: Ctx, id: string) {
     const row = intake(ctx, id, "read");
     const snapshot = linkedSnapshot(row);
-    if (row.assessmentId) {
-      const completed = store
-        .table("fitConversions")
-        .find((c) => c.intakeId === id && c.state === "complete");
-      if (!completed) throw new Error("Completed conversion relationships need recovery.");
-      const problems = conversionRelationshipProblems(completed, fitTables());
-      if (problems.length) throw new Error(problems.join("; "));
-    }
+    const conversion = validateConversionView(row);
     return {
       intake: row,
       snapshot: deepFreeze(snapshot),
       assurance: snapshotAssurance(snapshot),
-      conversion: store.table("fitConversions").find((c) => c.intakeId === id),
+      conversion,
       audit: store
         .audit()
         .filter((a) => a.resourceId === id && a.organizationId === ctx.user.organizationId),
@@ -263,11 +268,20 @@ export const businessFitInternal = {
     const pending = conversions.get(id);
     if (pending)
       return pending.then((result) => {
-        intake(ctx, id, "convert");
+        const latest = intake(ctx, id, "convert");
+        const completed = validateConversionView(latest);
+        const assessment = store.table("assessments").find((a) => a.id === result);
+        if (completed?.state !== "complete" || completed.assessmentId !== result || !assessment)
+          throw new Error("Completed conversion relationships need recovery.");
+        if (!can(ctx.user, "assessment.read", assessment))
+          throw new AccessDeniedError("assessment.read");
         return result;
       });
     const operation = (async () => {
       const effective = effectiveResponses(sourceSnapshot.questionnaire, sourceSnapshot.responses);
+      const applicablePrompts = new Set(
+        visibleQuestions(sourceSnapshot.questionnaire, effective).map((q) => q.prompt),
+      );
       // Import only applicable source information, while leaving the historical report untouched.
       const original = {
         ...sourceSnapshot,
@@ -275,6 +289,10 @@ export const businessFitInternal = {
         systems: identifiedSystems(effective),
         report: {
           ...sourceSnapshot.report,
+          dimensions: sourceSnapshot.report.dimensions.map((dimension) => ({
+            ...dimension,
+            gaps: dimension.gaps.filter((gap) => applicablePrompts.has(gap)),
+          })),
           opportunities: sourceSnapshot.report.opportunities.filter((o) =>
             o.responseRefs.every((ref) => effective[ref] !== undefined),
           ),

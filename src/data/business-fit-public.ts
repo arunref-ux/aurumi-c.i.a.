@@ -18,6 +18,7 @@ import {
 } from "@/domain/business-fit";
 import {
   sessionValue,
+  sessionProblems,
   snapshotValue,
   snapshotProblems,
   intakeRelationshipProblems,
@@ -39,7 +40,10 @@ const locked = new Map<
 function session(handle: SessionHandle): BusinessFitSession {
   const s = store.table("fitSessions").find((s) => s.id === handle.id && s.token === handle.token);
   if (!s) throw new Error("This Business Fit session is unavailable. Start a new check.");
-  return SessionSchema.parse(s);
+  const parsed = SessionSchema.parse(s);
+  const problems = sessionProblems(parsed);
+  if (problems.length) throw new Error(problems.join("; "));
+  return parsed;
 }
 function save(s: BusinessFitSession) {
   store.replace(

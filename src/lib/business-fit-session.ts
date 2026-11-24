@@ -22,13 +22,22 @@ export function useBusinessFitSession() {
         setHandle(null);
       }
     } catch (e) {
+      setSession(null);
+      setHandle(null);
       setError(e instanceof Error ? e.message : "Session unavailable");
     } finally {
       setReady(true);
     }
   }, [version]);
   const refresh = (h = handle) => {
-    if (h) setSession(businessFitPublic.get(h));
+    if (!h) return;
+    try {
+      setSession(businessFitPublic.get(h));
+    } catch (e) {
+      setSession(null);
+      setHandle(null);
+      throw e;
+    }
   };
   const begin = () => {
     const h = businessFitPublic.begin();

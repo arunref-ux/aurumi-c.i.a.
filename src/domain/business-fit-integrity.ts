@@ -1,6 +1,9 @@
 /** Browser-local consistency, not cryptographic authentication of customer data. */
 import { canonical } from "./assessment";
-import { evaluateHistorical } from "./business-fit-historical";
+import {
+  evaluateHistorical,
+  validateDefinition as validateHistoricalDefinition,
+} from "./business-fit-historical";
 import {
   FIT_SCHEMA,
   FIT_HASH_CONTRACT,
@@ -65,7 +68,11 @@ export function snapshotProblems(s: BusinessFitSubmissionSnapshot): string[] {
         throw Error("Immutable snapshot integrity mismatch");
     } else if (Object.hasOwn(s, "integrityContract") || Object.hasOwn(s, "integrityValue"))
       throw Error("Unsupported historical integrity marker");
-    const errors = validateDefinition(s.questionnaire, s.rules, s.report.catalog);
+    const errors = (current ? validateDefinition : validateHistoricalDefinition)(
+      s.questionnaire,
+      s.rules,
+      s.report.catalog,
+    );
     if (errors.length) throw Error(errors.join("; "));
     validateResponses(s.questionnaire, s.responses);
     if (
@@ -98,7 +105,9 @@ export function snapshotProblems(s: BusinessFitSubmissionSnapshot): string[] {
 }
 export function sessionProblems(s: BusinessFitSession): string[] {
   try {
-    const errors = validateDefinition(s.questionnaire, s.rules, s.catalog);
+    const errors = (
+      s.evaluationContract === FIT_EVALUATION ? validateDefinition : validateHistoricalDefinition
+    )(s.questionnaire, s.rules, s.catalog);
     if (errors.length) throw Error(errors.join("; "));
     validateResponses(s.questionnaire, s.responses);
     if (s.report) {
