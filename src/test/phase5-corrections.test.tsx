@@ -20,6 +20,7 @@ import {
   visibleQuestions,
   FIT_SCHEMA,
   FIT_HASH_CONTRACT,
+  SnapshotSchema,
   type FitRule,
   type BusinessFitSubmissionSnapshot,
   type BusinessFitResponse,
@@ -930,5 +931,83 @@ describe("Genuine ebe4033 historical compatibility", () => {
     expect(store.table("fitSnapshots")).toEqual(saved);
     expect(store.table("fitSnapshots").find((s) => s.id === old.id)).toEqual(old);
     expect(store.persistence().quarantined).toBe(0);
+  });
+});
+describe("F01–F06 sibling flow sweep", () => {
+  it("list and detail both reject a completed conversion linked to a missing assessment", async () => {
+    const { id } = await submit();
+    I.status(M, id, "qualified");
+    await I.convert(M, id, input);
+    store.replace(
+      "fitConversions",
+      store.table("fitConversions").map((c) => ({ ...c, assessmentId: "missing" })),
+    );
+    expect(() => I.list(M)).toThrow("recovery");
+    expect(() => I.get(M, id)).toThrow("recovery");
+  });
+  it("public reads and repeat generation reject an altered pinned report", () => {
+    const h = ready();
+    store.replace(
+      "fitSessions",
+      store.table("fitSessions").map((s) => ({
+        ...s,
+        ...(s.report ? { report: { ...s.report, ruleSetVersionId: "wrong" } } : {}),
+      })),
+    );
+    expect(() => P.get(h)).toThrow("pinned");
+    expect(() => P.generate(h)).toThrow("pinned");
+  });
+  it.each(["questionnaire", "rules"] as const)(
+    "failed %s publication leaves the draft and persisted version unchanged",
+    (kind) => {
+      const f = faultBackend();
+      store.attach(f.backend);
+      const draft =
+        kind === "questionnaire"
+          ? I.draftQuestionnaire(ADMIN, Q.id)
+          : I.draftRules(ADMIN, R.id, Q.id);
+      const key = kind === "questionnaire" ? "fitQuestionnaires" : "fitRules";
+      f.fail((t) => t[key].some((r) => r.id === draft.id && r.status === "published"));
+      expect(() => I.publish(ADMIN, kind, draft.id)).toThrow("Unable to save");
+      expect(store.table(key).find((r) => r.id === draft.id)?.status).toBe("draft");
+      f.healthy();
+      store.attach(f.backend);
+      expect(store.table(key).find((r) => r.id === draft.id)?.status).toBe("draft");
+      I.publish(ADMIN, kind, draft.id);
+      expect(store.table(key).find((r) => r.id === draft.id)?.status).toBe("published");
+    },
+  );
+  it("new historical conversion omits hidden-question gaps without changing the settled report", async () => {
+    const fixture = structuredClone(consultationHistory);
+    const source = SnapshotSchema.parse(one(fixture.tables.fitSnapshots));
+    const question = source.questionnaire.questions.find((q) => q.id === "manualReports");
+    if (!question) throw Error("Missing historical question");
+    Object.assign(question, {
+      visibleWhen: { questionId: "industry", operator: "equals", value: "Retail" },
+    });
+    const old = await import("@/domain/business-fit-historical");
+    const responses = JSON.parse(JSON.stringify(source.responses)) as BusinessFitResponse;
+    const report = old.evaluateHistorical(
+      responses,
+      source.questionnaire,
+      source.rules,
+      source.report.catalog,
+      source.report,
+    );
+    Object.assign(source, { report });
+    historical({
+      tables: {
+        fitSnapshots: [source],
+        fitConsultations: fixture.tables.fitConsultations,
+        fitIntakes: fixture.tables.fitIntakes,
+      },
+    });
+    const row = one(store.table("fitIntakes"));
+    I.status(M, row.id, "qualified");
+    I.revalidateHistorical(M, row.id, true);
+    const assessmentId = await I.convert(M, row.id, input);
+    const view = await A.get(M, assessmentId);
+    expect(view.workspace.openQuestions.some((q) => q.text.includes(question.prompt))).toBe(false);
+    expect(firstSnapshot()).toEqual(source);
   });
 });

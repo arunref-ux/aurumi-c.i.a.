@@ -600,7 +600,9 @@ export const businessFitInternal = {
       status: "draft",
       version: Math.max(...store.table("fitQuestionnaires").map((q) => q.version)) + 1,
     };
-    store.replace("fitQuestionnaires", [...store.table("fitQuestionnaires"), draft]);
+    store.durable(() =>
+      store.replace("fitQuestionnaires", [...store.table("fitQuestionnaires"), draft]),
+    );
     return draft;
   },
   editQuestionnaire(
@@ -627,9 +629,11 @@ export const businessFitInternal = {
       updatedAt: now(),
       updatedBy: ctx.user.id,
     });
-    store.replace(
-      "fitQuestionnaires",
-      store.table("fitQuestionnaires").map((x) => (x.id === id ? next : x)),
+    store.durable(() =>
+      store.replace(
+        "fitQuestionnaires",
+        store.table("fitQuestionnaires").map((x) => (x.id === id ? next : x)),
+      ),
     );
   },
   draftRules(ctx: Ctx, sourceId: string, questionnaireVersionId: string) {
@@ -662,7 +666,7 @@ export const businessFitInternal = {
       status: "draft",
       version: Math.max(...store.table("fitRules").map((r) => r.version)) + 1,
     };
-    store.replace("fitRules", [...store.table("fitRules"), draft]);
+    store.durable(() => store.replace("fitRules", [...store.table("fitRules"), draft]));
     return draft;
   },
   editRules(ctx: Ctx, id: string, input: { name: string; rules: FitRule[] }) {
@@ -679,9 +683,11 @@ export const businessFitInternal = {
       })
       .parse(input);
     const next = RuleSetSchema.parse({ ...r, ...d, updatedAt: now(), updatedBy: ctx.user.id });
-    store.replace(
-      "fitRules",
-      store.table("fitRules").map((x) => (x.id === id ? next : x)),
+    store.durable(() =>
+      store.replace(
+        "fitRules",
+        store.table("fitRules").map((x) => (x.id === id ? next : x)),
+      ),
     );
   },
   validate(ctx: Ctx, kind: "questionnaire" | "rules", id: string) {
@@ -724,11 +730,13 @@ export const businessFitInternal = {
         .table("fitQuestionnaires")
         .find((x) => x.id === id && x.organizationId === ctx.user.organizationId);
       if (!q || q.status !== "draft") throw new Error("Only a draft can be published.");
-      store.replace(
-        "fitQuestionnaires",
-        store
-          .table("fitQuestionnaires")
-          .map((x) => (x.id === id ? { ...x, status: "published" } : x)),
+      store.durable(() =>
+        store.replace(
+          "fitQuestionnaires",
+          store
+            .table("fitQuestionnaires")
+            .map((x) => (x.id === id ? { ...x, status: "published" } : x)),
+        ),
       );
     } else {
       const r = store
@@ -741,9 +749,11 @@ export const businessFitInternal = {
           .some((q) => q.id === r.questionnaireVersionId && q.status === "published")
       )
         throw new Error("Publish the referenced questionnaire first.");
-      store.replace(
-        "fitRules",
-        store.table("fitRules").map((x) => (x.id === id ? { ...x, status: "published" } : x)),
+      store.durable(() =>
+        store.replace(
+          "fitRules",
+          store.table("fitRules").map((x) => (x.id === id ? { ...x, status: "published" } : x)),
+        ),
       );
     }
   },
@@ -757,11 +767,13 @@ export const businessFitInternal = {
         !(q.organizationId === "org_public" || q.organizationId === ctx.user.organizationId)
       )
         throw new Error("Published questionnaire unavailable.");
-      store.replace(
-        "fitQuestionnaires",
-        store
-          .table("fitQuestionnaires")
-          .map((x) => (x.id === id ? { ...x, status: "retired" } : x)),
+      store.durable(() =>
+        store.replace(
+          "fitQuestionnaires",
+          store
+            .table("fitQuestionnaires")
+            .map((x) => (x.id === id ? { ...x, status: "retired" } : x)),
+        ),
       );
     } else {
       const r = store.table("fitRules").find((x) => x.id === id);
@@ -771,9 +783,11 @@ export const businessFitInternal = {
         !(r.organizationId === "org_public" || r.organizationId === ctx.user.organizationId)
       )
         throw new Error("Published rule set unavailable.");
-      store.replace(
-        "fitRules",
-        store.table("fitRules").map((x) => (x.id === id ? { ...x, status: "retired" } : x)),
+      store.durable(() =>
+        store.replace(
+          "fitRules",
+          store.table("fitRules").map((x) => (x.id === id ? { ...x, status: "retired" } : x)),
+        ),
       );
     }
   },

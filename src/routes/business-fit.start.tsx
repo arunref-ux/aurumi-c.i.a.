@@ -5,6 +5,7 @@ import { businessFitPublic } from "@/data/business-fit-public";
 import { FitQuestions } from "@/components/business-fit/questionnaire";
 import { FitError, ResponseSummary } from "@/components/business-fit/shared";
 import { FIT_SCENARIOS } from "@/data/business-fit-seed";
+import { effectiveResponses } from "@/domain/business-fit";
 const title = "Check Your Business Fit — Aurumi";
 const description =
   "Describe your business, systems and improvement priorities in a short, anonymous Business Fit questionnaire.";
@@ -125,7 +126,10 @@ function Start() {
       <FitError error={s.error} />
       {session.step === 4 ? (
         <>
-          <ResponseSummary responses={session.responses} questionnaire={session.questionnaire} />
+          <ResponseSummary
+            responses={effectiveResponses(session.questionnaire, session.responses)}
+            questionnaire={session.questionnaire}
+          />
           <div className="mt-6 flex flex-wrap gap-2">
             {session.questionnaire.sections.map((label, i) => (
               <Button

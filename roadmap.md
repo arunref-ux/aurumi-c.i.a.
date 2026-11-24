@@ -1,5 +1,5 @@
 # Phase 5 — F01–F06 corrective implementation
-- [ ] Scoped flow sweep: read all Business Fit surfaces and shared boundaries; correct any sibling paths without changing settled history or earlier phases.
+- [x] Scoped flow sweep: public session/read/review, report/print, intake lists/detail, configuration, conversion/Assessment Studio commitment, catalog/evaluation, persistence/recovery and historical interpretation read; sibling gaps corrected without changing settled history or earlier phases.
 - [x] Genuine reviewed historical fixtures before schema changes.
 - [x] A: acknowledged durable consultation/conversion operations and guarded lifecycle commitments (F01–F02).
 - [x] B: effective responses, compatible definitions and structured catalog claims (F03–F05).
