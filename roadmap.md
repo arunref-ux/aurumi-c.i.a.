@@ -1,3 +1,13 @@
+# Phase 5 — F01–F06 corrective implementation
+- [x] Genuine reviewed historical fixtures before schema changes.
+- [x] A: acknowledged durable consultation/conversion operations and guarded lifecycle commitments (F01–F02).
+- [x] B: effective responses, compatible definitions and structured catalog claims (F03–F05).
+- [x] C: versioned immutable integrity, associated relationships and historical-only assurance (F06).
+- [x] Dedicated regressions, full suite, lint, automatic validation and failed-save/reload customer-flow verification.
+- [x] Completion matrix and commit prepared; standalone typecheck/build are prohibited in this environment.
+- [ ] Successful Actions run for the corrective commit: waits for automatic repository synchronization after this turn.
+- [ ] Independent Codex review of F01–F06: waits for reviewer; Phase 5 remains open and Phase 6 excluded.
+
 # Phase 5 — Public Business Fit
 Phases 1–4 closed by independent verification per Phase 5 authorization. Phase 6 is excluded.
 - [x] Official Aurumi actions point to the user-confirmed https://www.aurumi.ai/cia.

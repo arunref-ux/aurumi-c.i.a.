@@ -17,6 +17,7 @@ import type {
 import type { AuditEvent, BaseRecord } from "@/domain/types";
 import { sanitizeTable, type QuarantineEntry } from "./persisted-schema";
 import * as seed from "./seed";
+import { sanitizeFitRelationships } from "./business-fit-recovery";
 import { FIT_QUESTIONNAIRE, FIT_RULES } from "./business-fit-seed";
 import type {
   BusinessFitSession,
@@ -26,6 +27,7 @@ import type {
   BusinessFitConsultationRequest,
   BusinessFitIntakeRecord,
   BusinessFitAssessmentConversion,
+  BusinessFitOperation,
 } from "@/domain/business-fit";
 
 export interface Tables {
@@ -51,6 +53,7 @@ export interface Tables {
   fitConsultations: BusinessFitConsultationRequest[];
   fitIntakes: BusinessFitIntakeRecord[];
   fitConversions: BusinessFitAssessmentConversion[];
+  fitOperations: BusinessFitOperation[];
 }
 
 /** Tables that represent user work and survive reloads; directory tables always come from seed. */
@@ -73,6 +76,7 @@ const PERSISTED = [
   "fitConsultations",
   "fitIntakes",
   "fitConversions",
+  "fitOperations",
 ] as const;
 export const STORAGE_KEY = "aurumi.cia.simulated-store.v1";
 /** Saved entries that failed validation are kept here for recovery, never deleted. */
@@ -124,6 +128,7 @@ function fresh(): { tables: Tables; audit: AuditEvent[] } {
       fitConsultations: [],
       fitIntakes: [],
       fitConversions: [],
+      fitOperations: [],
     }),
     audit: clone(seed.seedAudit),
   };
@@ -159,6 +164,7 @@ let persistState: {
 let pending: { raw: string; reason: string; entries: QuarantineEntry[] } | null = null;
 /** Saved work could not even be read; writing would risk overwriting it. */
 let readFailed = false;
+let atomicDepth = 0;
 const listeners = new Set<() => void>();
 
 export class StorageProtectedError extends Error {
@@ -309,6 +315,7 @@ function load() {
     setAside.push(...r.quarantined);
     (db.tables as unknown as Record<string, unknown>)[k] = r.rows;
   }
+  setAside.push(...sanitizeFitRelationships(db.tables, parsed.tables ?? {}));
   if (Array.isArray(parsed.audit)) db.audit = parsed.audit as AuditEvent[];
   persistState = { ...persistState, lastSavedAt: parsed.savedAt ?? null, error: null };
   if (setAside.length)
@@ -332,6 +339,53 @@ export const store = {
     db.tables[k] = clone(rows);
     dataVersion++;
     store.emit();
+  },
+  /** Explicit acknowledged synchronous local transaction. No await inside; rollback work and audit on failure.
+   * A persistence backend must be explicitly attached; no fictitious durability acknowledgment.
+   * Existing ordinary save callers retain their best-effort behavior. */
+  durable<T>(commit: () => T): T {
+    if (isProtected()) throw new StorageProtectedError();
+    if (atomicDepth) throw new Error("Nested durable operations are unsupported");
+    if (!backend)
+      throw new Error(
+        "Unable to save — persistent storage is unavailable. Retry after storage is available.",
+      );
+    const prior = clone(db),
+      priorVersion = dataVersion;
+    atomicDepth++;
+    let result: T;
+    let written = false;
+    try {
+      result = commit();
+      if (result instanceof Promise) throw new Error("Durable commitment must be synchronous");
+      const payload = JSON.stringify({
+        savedAt: new Date().toISOString(),
+        tables: Object.fromEntries(PERSISTED.map((k) => [k, db.tables[k]])),
+        audit: db.audit,
+      });
+      backend.write(STORAGE_KEY, payload);
+      written = true;
+      if (backend.read(STORAGE_KEY) !== payload)
+        throw new Error("Storage did not acknowledge the saved copy");
+      persistState = { ...persistState, lastSavedAt: new Date().toISOString(), error: null };
+    } catch (e) {
+      db = prior;
+      dataVersion = priorVersion;
+      if (written) readFailed = true;
+      persistState = {
+        ...persistState,
+        protected: isProtected(),
+        error: "Unable to save. Incomplete operation can be retried; no completion was recorded.",
+      };
+      throw new Error(
+        `Unable to save — retry available: ${e instanceof Error ? e.message : "storage failure"}`,
+      );
+    } finally {
+      atomicDepth--;
+    }
+    version++;
+    listeners.forEach((l) => l());
+    return result;
   },
   /** Synchronous multi-table commit: one persistence write, no partial consultation records. */
   batch(changes: Partial<Tables>) {
@@ -396,6 +450,7 @@ export const store = {
     store.emit();
   },
   emit() {
+    if (atomicDepth) return;
     version++;
     save();
     listeners.forEach((l) => l());

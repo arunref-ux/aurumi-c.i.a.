@@ -71,7 +71,7 @@ async function submitted(index = 0) {
 }
 beforeEach(() => {
   vi.restoreAllMocks();
-  store.attach(null);
+  store.attach(memoryBackend());
   store.reset();
   studioConfig.latencyMs = 0;
   businessFitLeadConfig.failNext = false;
@@ -417,7 +417,7 @@ describe("Phase 5 consultation and simulated lead", () => {
   it("snapshot is self-contained and contacts are not duplicated into it", async () => {
     const { id } = await submitted();
     const { snapshot } = I.get(MGR, id);
-    expect(snapshot.schema).toBe("aurumi.cia.business-fit-submission/1");
+    expect(snapshot.schema).toBe("aurumi.cia.business-fit-submission/2");
     expect(snapshot.questionnaire.questions.length).toBeGreaterThan(0);
     expect(snapshot.rules.rules.length).toBeGreaterThan(0);
     expect(JSON.stringify(snapshot)).not.toContain(contact.email);

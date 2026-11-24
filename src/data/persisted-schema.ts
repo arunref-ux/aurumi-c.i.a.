@@ -15,6 +15,7 @@ import {
   ConsultationSchema,
   IntakeSchema,
   ConversionSchema,
+  FitOperationSchema,
   evaluate,
   validateDefinition,
   validateResponses,
@@ -22,6 +23,8 @@ import {
   type BusinessFitSession,
   type BusinessFitSubmissionSnapshot,
 } from "@/domain/business-fit";
+
+import { snapshotProblems, sessionProblems } from "@/domain/business-fit-integrity";
 
 const id = z.string().min(1);
 const str = z.string();
@@ -197,6 +200,7 @@ const ROW = {
   fitConsultations: ConsultationSchema,
   fitIntakes: IntakeSchema,
   fitConversions: ConversionSchema,
+  fitOperations: FitOperationSchema,
   assessments: z.looseObject({
     ...audited,
     organizationId: str,
@@ -643,32 +647,11 @@ export function sanitizeTable(
           if (problems.length) throw new Error(problems.join("; "));
         }
         if (table === "fitSessions" || table === "fitSnapshots") {
-          const v = row as BusinessFitSession | BusinessFitSubmissionSnapshot;
-          const problems = validateDefinition(
-            v.questionnaire,
-            v.rules,
-            table === "fitSessions" ? (v as BusinessFitSession).catalog : (v.report?.catalog ?? []),
-          );
-          // Snapshots embed the complete public catalog in their report for self-contained validation.
+          const problems =
+            table === "fitSnapshots"
+              ? snapshotProblems(row as BusinessFitSubmissionSnapshot)
+              : sessionProblems(row as BusinessFitSession);
           if (problems.length) throw new Error(problems.join("; "));
-          validateResponses(v.questionnaire, v.responses);
-          if (v.report) {
-            const report = evaluate(
-              v.responses,
-              v.questionnaire,
-              v.rules,
-              table === "fitSessions" ? (v as BusinessFitSession).catalog : v.report.catalog,
-              v.report,
-            );
-            if (JSON.stringify(report) !== JSON.stringify(v.report))
-              throw new Error("Report does not match pinned responses and rules");
-          }
-          if (
-            table === "fitSnapshots" &&
-            JSON.stringify(identifiedSystems(v.responses)) !==
-              JSON.stringify((v as BusinessFitSubmissionSnapshot).systems)
-          )
-            throw new Error("Snapshot systems disagree with responses");
         }
       } catch (error) {
         quarantined.push({

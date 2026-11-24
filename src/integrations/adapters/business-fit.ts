@@ -32,6 +32,10 @@ export function publicFitCatalog(): PublicCapability[] {
         i.kind === "connector"
           ? "Illustrative catalog entry only. Compatibility with your installation, interfaces and required operations must be validated."
           : "Illustrative capability; suitability, deployment and access requirements need validation.",
+      published: true,
+      verifiedAt: i.verifiedAt,
+      actions: [...i.actions],
+      ...(i.connector ? { connector: structuredClone(i.connector) } : {}),
       source: "Aurumi demonstration catalog — simulated, not a live availability commitment",
     }));
 }

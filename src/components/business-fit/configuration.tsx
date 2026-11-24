@@ -681,6 +681,99 @@ function RulesEditor({
             </label>
             <div className="space-y-3 sm:col-span-2">
               <p className="text-sm font-medium">Conditions (all must match)</p>
+              {rule.catalogId && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-xs">
+                    Catalog applicability
+                    <select
+                      className={`${fitInput} mt-1`}
+                      disabled={disabled}
+                      value={rule.applicability?.assurance ?? "advisory"}
+                      onChange={(e) => {
+                        if (e.target.value === "advisory") {
+                          const { applicability: _removed, ...rest } = rule;
+                          setRules(rules.map((x) => (x.id === id ? rest : x)));
+                        } else
+                          patch({
+                            applicability: {
+                              assurance: e.target.value as "supported" | "potential",
+                              responseQuestionId: rule.evidenceRequirements[0] ?? "systems",
+                              operations: ["read"],
+                            },
+                          });
+                      }}
+                    >
+                      <option value="advisory">Advisory only</option>
+                      <option value="potential">Potential · Validation required</option>
+                      <option value="supported">Published catalog scope</option>
+                    </select>
+                  </label>
+                  {rule.applicability && (
+                    <>
+                      <Field
+                        label="External product identity"
+                        disabled={disabled}
+                        value={rule.applicability.system ?? ""}
+                        onChange={(system) =>
+                          patch({
+                            applicability: { ...rule.applicability, system } as NonNullable<
+                              FitRule["applicability"]
+                            >,
+                          })
+                        }
+                      />
+                      <label className="text-xs">
+                        Direction
+                        <select
+                          className={`${fitInput} mt-1`}
+                          disabled={disabled}
+                          value={rule.applicability.direction ?? "inbound"}
+                          onChange={(e) =>
+                            patch({
+                              applicability: {
+                                ...rule.applicability,
+                                direction: e.target.value as
+                                  "inbound" | "outbound" | "bidirectional",
+                              } as NonNullable<FitRule["applicability"]>,
+                            })
+                          }
+                        >
+                          <option value="inbound">Inbound</option>
+                          <option value="outbound">Outbound</option>
+                          <option value="bidirectional">Two-way</option>
+                        </select>
+                      </label>
+                      <Field
+                        label="Operations (one per line)"
+                        multiline
+                        disabled={disabled}
+                        value={rule.applicability.operations.join("\n")}
+                        onChange={(v) =>
+                          patch({
+                            applicability: {
+                              ...rule.applicability,
+                              operations: v.split("\n").filter(Boolean),
+                            } as NonNullable<FitRule["applicability"]>,
+                          })
+                        }
+                      />
+                      <Field
+                        label="Supporting response question ID"
+                        disabled={disabled}
+                        value={rule.applicability.responseQuestionId}
+                        onChange={(responseQuestionId) =>
+                          patch({
+                            applicability: {
+                              ...rule.applicability,
+                              responseQuestionId,
+                            } as NonNullable<FitRule["applicability"]>,
+                          })
+                        }
+                      />
+                    </>
+                  )}
+                </div>
+              )}
               {rule.conditions.map((c, i) => (
                 <div key={i} className="grid gap-2 sm:grid-cols-3">
                   <select

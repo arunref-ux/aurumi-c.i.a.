@@ -3,6 +3,11 @@ import {
   ContactSchema,
   evaluate,
   FIT_SCHEMA,
+  FIT_HASH_CONTRACT,
+  FIT_EVALUATION,
+  effectiveResponses,
+  validateDefinition,
+  type BusinessFitOperation,
   identifiedSystems,
   SessionSchema,
   SnapshotSchema,
@@ -11,6 +16,13 @@ import {
   type BusinessFitSession,
   type FitContact,
 } from "@/domain/business-fit";
+import {
+  sessionValue,
+  snapshotValue,
+  snapshotProblems,
+  intakeRelationshipProblems,
+} from "@/domain/business-fit-integrity";
+import { evaluateHistorical } from "@/domain/business-fit-historical";
 import { deepFreeze } from "@/domain/assessment";
 import { businessFitLead, publicFitCatalog } from "@/integrations/adapters/business-fit";
 import { newId, store } from "./store";
@@ -44,12 +56,22 @@ export const businessFitPublic = {
       .find((q) =>
         store
           .table("fitRules")
-          .some((r) => r.status === "published" && r.questionnaireVersionId === q.id),
+          .some(
+            (r) =>
+              r.status === "published" &&
+              r.questionnaireVersionId === q.id &&
+              !validateDefinition(q, r, publicFitCatalog()).length,
+          ),
       );
     if (!q) throw new Error("No published Business Fit questionnaire is available.");
     const rules = store
       .table("fitRules")
-      .filter((r) => r.status === "published" && r.questionnaireVersionId === q.id)
+      .filter(
+        (r) =>
+          r.status === "published" &&
+          r.questionnaireVersionId === q.id &&
+          !validateDefinition(q, r, publicFitCatalog()).length,
+      )
       .sort((a, b) => b.version - a.version)[0];
     if (!rules) throw new Error("No published recommendation rules are available.");
     const token = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
@@ -60,13 +82,25 @@ export const businessFitPublic = {
       rules,
       catalog: publicFitCatalog(),
       responses: {},
+      evaluationContract: FIT_EVALUATION,
       step: 0,
     });
     store.replace("fitSessions", [...store.table("fitSessions"), s]);
     return { id: s.id, token };
   },
   get(handle: SessionHandle) {
-    return deepFreeze(session(handle));
+    const s = session(handle);
+    if (s.consultationId) {
+      const row = store.table("fitIntakes").find((r) => r.consultationId === s.consultationId);
+      if (!row) throw new Error("Consultation relationships need recovery.");
+      const problems = intakeRelationshipProblems(row, {
+        fitSnapshots: store.table("fitSnapshots"),
+        fitConsultations: store.table("fitConsultations"),
+        fitOperations: store.table("fitOperations"),
+      } as import("./store").Tables);
+      if (problems.length) throw new Error(problems.join("; "));
+    }
+    return deepFreeze(s);
   },
   save(handle: SessionHandle, responses: unknown, step: number) {
     const s = session(handle);
@@ -93,7 +127,7 @@ export const businessFitPublic = {
     const s = session(handle);
     if (s.report) return deepFreeze(s.report);
     for (let i = 0; i < 4; i++) validateResponses(s.questionnaire, s.responses, i);
-    const report = evaluate(
+    const report = (s.evaluationContract === FIT_EVALUATION ? evaluate : evaluateHistorical)(
       s.responses,
       s.questionnaire,
       s.rules,
@@ -116,7 +150,14 @@ export const businessFitPublic = {
     if (!s.report) throw new Error("Generate your report before requesting a consultation.");
     if (s.consultationId) {
       const existing = store.table("fitConsultations").find((c) => c.id === s.consultationId);
-      if (!existing) throw new Error("Consultation reference needs recovery.");
+      const row = store.table("fitIntakes").find((r) => r.consultationId === s.consultationId);
+      if (!existing || !row) throw new Error("Consultation reference needs recovery.");
+      const problems = intakeRelationshipProblems(row, {
+        fitSnapshots: store.table("fitSnapshots"),
+        fitConsultations: store.table("fitConsultations"),
+        fitOperations: store.table("fitOperations"),
+      } as import("./store").Tables);
+      if (problems.length) throw new Error(problems.join("; "));
       return Promise.resolve({
         reference: existing.reference,
         leadReference: existing.leadReference,
@@ -126,58 +167,122 @@ export const businessFitPublic = {
     const pending = locked.get(s.id);
     if (pending) return pending;
     const operation = (async () => {
-      const fingerprint = JSON.stringify(s);
-      const result = await businessFitLead.createOrAssociate(s.id, contact);
-      if (!result.ok) throw new Error(result.error);
+      if (s.evaluationContract !== FIT_EVALUATION)
+        throw new Error(
+          "This historical report is preserved. Start a new check before a new consultation.",
+        );
+      const sourceValue = sessionValue(s);
+      const opId = `fit-consult:${ORG}:${s.id}`;
+      let intent: BusinessFitOperation | undefined = store
+        .table("fitOperations")
+        .find((o) => o.id === opId);
+      if (
+        intent &&
+        (intent.sourceValue !== sourceValue ||
+          JSON.stringify(intent.contact) !== JSON.stringify(contact))
+      )
+        throw new Error(
+          "The pending request is pinned to its original report and consent. Retry with the original details.",
+        );
+      if (!intent) {
+        const submissionId = newId("fit-submission");
+        intent = {
+          ...stamp(opId, ORG),
+          kind: "consultation",
+          sessionId: s.id,
+          sourceValue,
+          snapshotId: newId("fit-snapshot"),
+          consultationId: newId("fit-consult"),
+          intakeId: newId("fit-intake"),
+          submissionId,
+          reference: `BF-${submissionId.slice(-8).toUpperCase()}`,
+          contact,
+          state: "pending",
+        };
+        const initial = intent;
+        // No adapter invocation until this intent is acknowledged by storage.
+        store.durable(() =>
+          store.batch({ fitOperations: [...store.table("fitOperations"), initial] }),
+        );
+      }
+      let leadReference = intent.leadReference;
+      if (!leadReference) {
+        const result = await businessFitLead.createOrAssociate(intent.id, intent.contact);
+        if (!result.ok) throw new Error(result.error);
+        leadReference = result.data.reference;
+        intent = { ...intent, leadReference, state: "lead_created" };
+        const leadIntent = intent;
+        store.durable(() =>
+          store.batch({
+            fitOperations: store
+              .table("fitOperations")
+              .map((o) => (o.id === leadIntent.id ? leadIntent : o)),
+          }),
+        );
+      }
       const current = session(handle);
-      if (JSON.stringify(current) !== fingerprint)
+      if (sessionValue(current) !== sourceValue || !current.report)
         throw new Error("The session changed while submitting. Please retry.");
-      if (!current.report) throw new Error("Report unavailable.");
-      const snapshotId = newId("fit-snapshot"),
-        consultationId = newId("fit-consult"),
-        submissionId = newId("fit-submission"),
-        reference = `BF-${submissionId.slice(-8).toUpperCase()}`;
-      const snapshot = SnapshotSchema.parse({
-        ...stamp(snapshotId, ORG),
+      const effective = effectiveResponses(s.questionnaire, s.responses);
+      const draft = SnapshotSchema.parse({
+        ...stamp(intent.snapshotId, ORG),
         schema: FIT_SCHEMA,
-        submissionId,
+        integrityContract: FIT_HASH_CONTRACT,
+        submissionId: intent.submissionId,
+        operationId: intent.id,
+        sessionId: s.id,
         questionnaire: s.questionnaire,
         rules: s.rules,
         responses: s.responses,
-        systems: identifiedSystems(s.responses),
+        effectiveResponses: effective,
+        businessContext: effective,
+        systems: identifiedSystems(effective),
         report: current.report,
         provenance: "self-reported-unverified",
       });
+      const snapshot = SnapshotSchema.parse({ ...draft, integrityValue: snapshotValue(draft) });
+      const problems = snapshotProblems(snapshot);
+      if (problems.length) throw new Error(problems.join("; "));
       const consultation = {
-        ...stamp(consultationId, ORG),
-        snapshotId,
-        reference,
-        contact,
-        consentAt: now(),
-        leadReference: result.data.reference,
+        ...stamp(intent.consultationId, ORG),
+        snapshotId: snapshot.id,
+        operationId: intent.id,
+        reference: intent.reference,
+        contact: intent.contact,
+        consentAt: intent.createdAt,
+        leadReference,
         integrationStatus: "simulated" as const,
       };
-      // Intake organization/initial queue are configured by the prototype, never supplied by respondents.
       const intake = {
-        ...stamp(newId("fit-intake"), ORG),
+        ...stamp(intent.intakeId, ORG),
         ownerId: "queue_business_fit",
         teamId: "team_advisory",
         assignedUserIds: [],
-        snapshotId,
-        consultationId,
-        reference,
+        snapshotId: snapshot.id,
+        consultationId: consultation.id,
+        operationId: intent.id,
+        reference: intent.reference,
         status: "new" as const,
         notes: [],
+        revision: 0,
       };
-      store.batch({
-        fitSnapshots: [...store.table("fitSnapshots"), snapshot],
-        fitConsultations: [...store.table("fitConsultations"), consultation],
-        fitIntakes: [...store.table("fitIntakes"), intake],
-        fitSessions: store
-          .table("fitSessions")
-          .map((x) => (x.id === s.id ? { ...current, consultationId, updatedAt: now() } : x)),
-      });
-      return { reference, leadReference: result.data.reference, simulated: true as const };
+      const completed = { ...intent, state: "complete" as const, leadReference };
+      store.durable(() =>
+        store.batch({
+          fitSnapshots: [...store.table("fitSnapshots"), snapshot],
+          fitConsultations: [...store.table("fitConsultations"), consultation],
+          fitIntakes: [...store.table("fitIntakes"), intake],
+          fitOperations: store
+            .table("fitOperations")
+            .map((o) => (o.id === completed.id ? completed : o)),
+          fitSessions: store
+            .table("fitSessions")
+            .map((x) =>
+              x.id === s.id ? { ...current, consultationId: consultation.id, updatedAt: now() } : x,
+            ),
+        }),
+      );
+      return { reference: intent.reference, leadReference, simulated: true as const };
     })();
     locked.set(s.id, operation);
     void operation.finally(() => locked.delete(s.id)).catch(() => {});

@@ -39,13 +39,14 @@ function Detail({ id }: { id: string }) {
       await q.refetch();
     } catch (e) {
       setError(e);
+      await q.refetch();
     } finally {
       setPending(false);
     }
   };
   if (q.isPending) return <p>Loading submission…</p>;
   if (!q.data) return <FitError error={q.error} />;
-  const { intake, snapshot, audit } = q.data;
+  const { intake, snapshot, audit, assurance, conversion } = q.data;
   let contact: ReturnType<typeof service.contact> | null = null;
   let people: ReturnType<typeof service.people> = [];
   try {
@@ -78,6 +79,11 @@ function Detail({ id }: { id: string }) {
             </details>
             <p className="mt-3 font-mono text-xs text-muted-foreground">
               {snapshot.id} · {snapshot.schema} · {snapshot.provenance}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {assurance === "historical-consistency"
+                ? "Historical consistency only · Original report preserved"
+                : "Immutable content consistency checked"}
             </p>
           </section>
           <div className="mt-8">
@@ -207,6 +213,11 @@ function Detail({ id }: { id: string }) {
           </section>
           <section className="border-t pt-4">
             <h2 className="mb-3 text-xl">Assessment Studio</h2>
+            {conversion && conversion.state !== "complete" && (
+              <p role="status" className="mb-3 text-sm text-warning">
+                Incomplete conversion · Retry available
+              </p>
+            )}
             {intake.assessmentId ? (
               <Button asChild variant="outline">
                 <Link
@@ -235,6 +246,16 @@ function Detail({ id }: { id: string }) {
                       <option value="partner">Partner / Opportunity</option>
                     </select>
                   </label>
+                  {assurance === "historical-consistency" && !intake.historicalReview && (
+                    <Button
+                      variant="outline"
+                      className="mt-3"
+                      disabled={!confirm || pending}
+                      onClick={() => void run(() => service.revalidateHistorical(ctx, id, true))}
+                    >
+                      Review and revalidate historical source
+                    </Button>
+                  )}
                   <label className="mt-3 flex gap-2 text-xs">
                     <input
                       type="checkbox"
@@ -258,7 +279,11 @@ function Detail({ id }: { id: string }) {
                       )
                     }
                   >
-                    {pending ? "Creating…" : "Create Assessment"}
+                    {pending
+                      ? "Processing and saving…"
+                      : conversion
+                        ? "Retry Assessment"
+                        : "Create Assessment"}
                   </Button>
                 </>
               )

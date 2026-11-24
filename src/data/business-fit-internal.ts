@@ -8,6 +8,8 @@ import {
   RuleSchema,
   validateDefinition,
   answerText,
+  effectiveResponses,
+  identifiedSystems,
   type BusinessFitIntakeRecord,
   type BusinessFitQuestionnaireVersion,
   type BusinessFitRuleSetVersion,
@@ -15,12 +17,28 @@ import {
   type FitQuestion,
   type FitRule,
 } from "@/domain/business-fit";
+import {
+  snapshotValue,
+  snapshotProblems,
+  snapshotAssurance,
+  intakeRelationshipProblems,
+  conversionRelationshipProblems,
+  fitContentValue,
+} from "@/domain/business-fit-integrity";
 import { deepFreeze } from "@/domain/assessment";
 import { publicFitCatalog } from "@/integrations/adapters/business-fit";
 import type { Ctx } from "./repositories";
 import { assessmentStudio } from "./assessment-studio";
-import { newId, store } from "./store";
+import { newId, store, type Tables } from "./store";
 const now = () => new Date().toISOString();
+const stampConversion = (id: string, ctx: Ctx) => ({
+  id,
+  organizationId: ctx.user.organizationId,
+  createdAt: now(),
+  createdBy: ctx.user.id,
+  updatedAt: now(),
+  updatedBy: ctx.user.id,
+});
 function identity(ctx: Ctx): Ctx {
   const user = store.table("users").find((u) => u.id === ctx.user.id);
   if (!user || JSON.stringify(user) !== JSON.stringify(ctx.user))
@@ -50,18 +68,23 @@ function intake(ctx: Ctx, id: string, action: FitAction) {
   if (!row) throw new Error("Submission unavailable.");
   return row;
 }
+function fitTables(): Tables {
+  return {
+    fitSnapshots: store.table("fitSnapshots"),
+    fitConsultations: store.table("fitConsultations"),
+    fitOperations: store.table("fitOperations"),
+    fitIntakes: store.table("fitIntakes"),
+    fitConversions: store.table("fitConversions"),
+    assessments: store.table("assessments"),
+    workspaces: store.table("workspaces"),
+  } as Tables;
+}
 function linkedSnapshot(row: BusinessFitIntakeRecord) {
-  const snapshot = store.table("fitSnapshots").find((s) => s.id === row.snapshotId);
-  const contact = store.table("fitConsultations").find((c) => c.id === row.consultationId);
-  if (
-    !snapshot ||
-    !contact ||
-    snapshot.organizationId !== row.organizationId ||
-    contact.organizationId !== row.organizationId ||
-    contact.snapshotId !== snapshot.id ||
-    contact.reference !== row.reference
-  )
-    throw new Error("Submission relationships need recovery.");
+  const tables = fitTables();
+  const problems = intakeRelationshipProblems(row, tables);
+  if (problems.length) throw new Error(problems.join("; "));
+  const snapshot = tables.fitSnapshots.find((s) => s.id === row.snapshotId);
+  if (!snapshot) throw new Error("Submission relationships need recovery.");
   return snapshot;
 }
 function audit(ctx: Ctx, row: BusinessFitIntakeRecord, action: string, summary: string) {
@@ -78,14 +101,32 @@ function audit(ctx: Ctx, row: BusinessFitIntakeRecord, action: string, summary: 
   });
 }
 function persist(ctx: Ctx, row: BusinessFitIntakeRecord, action: string) {
-  store.replace(
-    "fitIntakes",
-    store
-      .table("fitIntakes")
-      .map((x) => (x.id === row.id ? { ...row, updatedAt: now(), updatedBy: ctx.user.id } : x)),
-  );
-  audit(ctx, row, action, `Business Fit ${action}`);
+  store.durable(() => {
+    store.replace(
+      "fitIntakes",
+      store
+        .table("fitIntakes")
+        .map((x) =>
+          x.id === row.id
+            ? { ...row, revision: (x.revision ?? 0) + 1, updatedAt: now(), updatedBy: ctx.user.id }
+            : x,
+        ),
+    );
+    audit(ctx, row, action, `Business Fit ${action}`);
+  });
 }
+const conversionBinding = (row: BusinessFitIntakeRecord, ctx: Ctx) =>
+  fitContentValue({
+    id: row.id,
+    snapshotId: row.snapshotId,
+    organizationId: row.organizationId,
+    ownerId: row.ownerId,
+    assignedUserIds: row.assignedUserIds,
+    teamId: row.teamId,
+    status: row.status,
+    revision: row.revision ?? 0,
+    user: ctx.user,
+  });
 const conversions = new Map<string, Promise<string>>();
 export const businessFitInternal = {
   list(ctx: Ctx) {
@@ -107,9 +148,19 @@ export const businessFitInternal = {
   get(ctx: Ctx, id: string) {
     const row = intake(ctx, id, "read");
     const snapshot = linkedSnapshot(row);
+    if (row.assessmentId) {
+      const completed = store
+        .table("fitConversions")
+        .find((c) => c.intakeId === id && c.state === "complete");
+      if (!completed) throw new Error("Completed conversion relationships need recovery.");
+      const problems = conversionRelationshipProblems(completed, fitTables());
+      if (problems.length) throw new Error(problems.join("; "));
+    }
     return {
       intake: row,
       snapshot: deepFreeze(snapshot),
+      assurance: snapshotAssurance(snapshot),
+      conversion: store.table("fitConversions").find((c) => c.intakeId === id),
       audit: store
         .audit()
         .filter((a) => a.resourceId === id && a.organizationId === ctx.user.organizationId),
@@ -190,150 +241,308 @@ export const businessFitInternal = {
       throw new Error("Conversion source needs recovery.");
     if (prior && prior.type !== d.type)
       throw new Error("This conversion is pinned to its original assessment type.");
-    if (prior?.state === "complete" && prior.assessmentId)
+    if (prior?.state === "complete" && prior.assessmentId) {
+      const problems = conversionRelationshipProblems(prior, fitTables());
+      const a = store.table("assessments").find((a) => a.id === prior.assessmentId);
+      if (problems.length || !a)
+        throw new Error(problems.join("; ") || "Conversion assessment needs recovery");
+      if (!can(ctx.user, "assessment.read", a)) throw new AccessDeniedError("assessment.read");
       return Promise.resolve(prior.assessmentId);
+    }
+    const sourceSnapshot = linkedSnapshot(row);
+    const sourceValue = snapshotValue(sourceSnapshot);
+    if (
+      snapshotAssurance(sourceSnapshot) === "historical-consistency" &&
+      (!row.historicalReview ||
+        row.historicalReview.snapshotId !== sourceSnapshot.id ||
+        row.historicalReview.contentValue !== sourceValue)
+    )
+      throw new Error(
+        "Historical submission requires explicit authorized review and revalidation before conversion.",
+      );
     const pending = conversions.get(id);
-    if (pending) return pending;
+    if (pending)
+      return pending.then((result) => {
+        intake(ctx, id, "convert");
+        return result;
+      });
     const operation = (async () => {
-      const original = this.get(ctx, id).snapshot;
+      const effective = effectiveResponses(sourceSnapshot.questionnaire, sourceSnapshot.responses);
+      // Import only applicable source information, while leaving the historical report untouched.
+      const original = {
+        ...sourceSnapshot,
+        responses: effective,
+        systems: identifiedSystems(effective),
+        report: {
+          ...sourceSnapshot.report,
+          opportunities: sourceSnapshot.report.opportunities.filter((o) =>
+            o.responseRefs.every((ref) => effective[ref] !== undefined),
+          ),
+        },
+      };
+      const opId = prior?.operationId ?? prior?.id ?? `fit-conversion:${row.organizationId}:${id}`;
+      const binding = conversionBinding(row, ctx);
       let conversion: BusinessFitAssessmentConversion = prior ?? {
-        id: newId("fit-conversion"),
-        organizationId: row.organizationId,
-        createdAt: now(),
-        createdBy: ctx.user.id,
-        updatedAt: now(),
-        updatedBy: ctx.user.id,
+        ...stampConversion(opId, ctx),
         intakeId: id,
         snapshotId: row.snapshotId,
         type: d.type,
         state: "pending",
         imported: 0,
       };
+      if (prior?.assessmentId) {
+        const errors = conversionRelationshipProblems(prior, fitTables());
+        if (errors.length) throw new Error(errors.join("; "));
+      }
+      conversion = { ...conversion, operationId: opId, sourceValue, actorId: ctx.user.id, binding };
       const save = () =>
         store.replace("fitConversions", [
           ...store.table("fitConversions").filter((c) => c.id !== conversion.id),
           conversion,
         ]);
-      save();
-      if (!conversion.assessmentId) {
-        intake(ctx, id, "convert");
-        const a = await assessmentStudio.create(ctx, {
-          type: d.type,
-          title: `Business Fit — ${answerText(original.responses["businessName"])}`,
-          subjectName: answerText(original.responses["businessName"]),
-          channel: "website_self",
-          category: "general",
-        });
-        conversion = { ...conversion, assessmentId: a.id, state: "importing" };
+      const guard = () => {
+        const latest = intake(ctx, id, "convert");
+        if (
+          !["under_review", "qualified"].includes(latest.status) ||
+          conversionBinding(latest, ctx) !== binding
+        )
+          throw new Error(
+            "Conversion interrupted: eligibility, assignment or authorization changed. Retry requires current authorization and review.",
+          );
+        if (!can(identity(ctx).user, "assessment.create") || !can(ctx.user, "assessment.update"))
+          throw new AccessDeniedError("assessment.create");
+        const current = linkedSnapshot(latest);
+        if (snapshotValue(current) !== sourceValue || snapshotProblems(current).length)
+          throw new Error("Conversion source needs recovery.");
+      };
+      store.durable(() => {
+        guard();
         save();
+      });
+      const provenance = `BF:${opId}:${sourceValue}`;
+      if (!conversion.assessmentId) {
+        const recovered = store
+          .table("assessments")
+          .filter(
+            (a) => a.crmReferenceId === provenance && a.organizationId === row.organizationId,
+          );
+        if (recovered.length > 1)
+          throw new Error("Multiple conversion assessments need reconciliation.");
+        if (recovered[0]) {
+          conversion = { ...conversion, assessmentId: recovered[0].id, state: "importing" };
+          store.durable(() => {
+            guard();
+            save();
+          });
+        } else {
+          await assessmentStudio.create(
+            ctx,
+            {
+              type: d.type,
+              title: `Business Fit — ${answerText(original.responses["businessName"])}`,
+              subjectName: answerText(original.responses["businessName"]),
+              channel: "website_self",
+              category: "general",
+              crmReferenceId: provenance,
+            },
+            {
+              commit: <T>(write: () => T): T =>
+                store.durable(() => {
+                  guard();
+                  const result = write();
+                  const created = store
+                    .table("assessments")
+                    .find((a) => a.crmReferenceId === provenance);
+                  if (!created)
+                    throw new Error("Conversion creation did not preserve operation provenance");
+                  conversion = { ...conversion, assessmentId: created.id, state: "importing" };
+                  save();
+                  return result;
+                }),
+            },
+          );
+        }
       }
       const assessmentId = conversion.assessmentId;
       if (!assessmentId) throw new Error("Assessment creation is incomplete.");
       const source = `Business Fit ${row.reference}; snapshot ${original.id}; all imported customer responses are self-reported and unverified.`;
+      let importIndex = conversion.imported;
+      const options = {
+        commit: <T>(write: () => T): T =>
+          store.durable(() => {
+            guard();
+            const result = write();
+            conversion = { ...conversion, imported: importIndex + 1, updatedAt: now() };
+            save();
+            return result;
+          }),
+      };
       const tasks: (() => Promise<unknown>)[] = [
         () =>
-          assessmentStudio.saveOverview(ctx, assessmentId, {
-            purpose: "Professional validation of preliminary Business Fit findings",
-            scope: source,
-            summary: source,
-          }),
+          assessmentStudio.saveOverview(
+            ctx,
+            assessmentId,
+            {
+              purpose: "Professional validation of preliminary Business Fit findings",
+              scope: source,
+              summary: source,
+            },
+            options,
+          ),
         () =>
-          assessmentStudio.saveProfile(ctx, assessmentId, {
-            businessName: answerText(original.responses["businessName"]),
-            industry: answerText(original.responses["industry"]),
-            employees: answerText(original.responses["employeeBand"]),
-            geography: `${answerText(original.responses["country"])}; locations: ${answerText(original.responses["locations"])}`,
-            businessModel: answerText(original.responses["operatingModel"]),
-            digitalMaturity: "Self-reported; professional validation required",
-          }),
+          assessmentStudio.saveProfile(
+            ctx,
+            assessmentId,
+            {
+              businessName: answerText(original.responses["businessName"]),
+              industry: answerText(original.responses["industry"]),
+              employees: answerText(original.responses["employeeBand"]),
+              geography: `${answerText(original.responses["country"])}; locations: ${answerText(original.responses["locations"])}`,
+              businessModel: answerText(original.responses["operatingModel"]),
+              digitalMaturity: "Self-reported; professional validation required",
+            },
+            options,
+          ),
         ...original.systems.map(
           (s) => () =>
-            assessmentStudio.upsertChild(ctx, assessmentId, "systems", {
-              name: s.name || s.kind,
-              category: s.function,
-              classification:
-                s.kind === "commercial" ||
-                s.kind === "custom" ||
-                s.kind === "spreadsheet" ||
-                s.kind === "manual"
-                  ? s.kind
-                  : "unknown",
-              notes: source,
-              apiAvailability: "unknown",
-              compatibility: { status: "unknown", evidenceIds: [], note: source },
-            }),
+            assessmentStudio.upsertChild(
+              ctx,
+              assessmentId,
+              "systems",
+              {
+                name: s.name || s.kind,
+                category: s.function,
+                classification:
+                  s.kind === "commercial" ||
+                  s.kind === "custom" ||
+                  s.kind === "spreadsheet" ||
+                  s.kind === "manual"
+                    ? s.kind
+                    : "unknown",
+                notes: source,
+                apiAvailability: "unknown",
+                compatibility: { status: "unknown", evidenceIds: [], note: source },
+              },
+              options,
+            ),
         ),
         ...original.report.opportunities.map(
           (o) => () =>
-            assessmentStudio.upsertChild(ctx, assessmentId, "requirements", {
-              category: "objective",
-              statement: `Self-reported desired improvement: ${o.title}. ${source}`,
-              basis: "assumption",
-              priority: "medium",
-            }),
+            assessmentStudio.upsertChild(
+              ctx,
+              assessmentId,
+              "requirements",
+              {
+                category: "objective",
+                statement: `Self-reported desired improvement: ${o.title}. ${source}`,
+                basis: "assumption",
+                priority: "medium",
+              },
+              options,
+            ),
         ),
         ...original.report.dimensions
           .flatMap((dimension) => dimension.gaps)
           .filter((v, i, a) => a.indexOf(v) === i)
           .map(
             (g) => () =>
-              assessmentStudio.upsertChild(ctx, assessmentId, "openQuestions", {
-                text: `Unverified / information gap: ${g}`,
-                resolved: false,
-              }),
+              assessmentStudio.upsertChild(
+                ctx,
+                assessmentId,
+                "openQuestions",
+                {
+                  text: `Unverified / information gap: ${g}`,
+                  resolved: false,
+                },
+                options,
+              ),
           ),
         () =>
-          assessmentStudio.upsertChild(ctx, assessmentId, "evidence", {
-            attribute: "Business Fit customer responses",
-            statement: JSON.stringify(original.responses).slice(0, 3500),
-            status: "research_finding",
-            sources: [{ title: source, sourceType: "interview", retrievedAt: original.createdAt }],
-            researchedAt: original.createdAt,
-            confidence: {
-              level: "unknown",
-              reason: "Self-reported and not independently verified",
+          assessmentStudio.upsertChild(
+            ctx,
+            assessmentId,
+            "evidence",
+            {
+              attribute: "Business Fit customer responses",
+              statement: JSON.stringify(original.responses).slice(0, 3500),
+              status: "research_finding",
+              sources: [
+                { title: source, sourceType: "interview", retrievedAt: original.createdAt },
+              ],
+              researchedAt: original.createdAt,
+              confidence: {
+                level: "unknown",
+                reason: "Self-reported and not independently verified",
+              },
+              verification: { state: "unverified" },
+              notes: source,
             },
-            verification: { state: "unverified" },
-            notes: source,
-          }),
+            options,
+          ),
       ];
       for (let i = conversion.imported; i < tasks.length; i++) {
-        intake(ctx, id, "convert");
+        guard();
+        importIndex = i;
         const task = tasks[i];
         if (task) await task();
-        conversion = { ...conversion, imported: i + 1, updatedAt: now() };
-        save();
+        guard();
       }
+      guard();
       const latest = intake(ctx, id, "convert");
       conversion = { ...conversion, state: "complete" };
-      store.batch({
-        fitConversions: [
-          ...store.table("fitConversions").filter((c) => c.id !== conversion.id),
-          conversion,
-        ],
-        fitIntakes: store.table("fitIntakes").map((r) =>
-          r.id === id
-            ? {
-                ...latest,
-                assessmentId,
-                status: "assessment_created",
-                updatedAt: now(),
-                updatedBy: ctx.user.id,
-              }
-            : r,
-        ),
+      store.durable(() => {
+        guard();
+        store.batch({
+          fitConversions: [
+            ...store.table("fitConversions").filter((c) => c.id !== conversion.id),
+            conversion,
+          ],
+          fitIntakes: store.table("fitIntakes").map((r) =>
+            r.id === id
+              ? {
+                  ...latest,
+                  assessmentId,
+                  status: "assessment_created",
+                  updatedAt: now(),
+                  updatedBy: ctx.user.id,
+                }
+              : r,
+          ),
+        });
+        audit(
+          ctx,
+          latest,
+          "convert",
+          `Created unapproved assessment ${assessmentId} from ${original.id}`,
+        );
       });
-      audit(
-        ctx,
-        latest,
-        "convert",
-        `Created unapproved assessment ${assessmentId} from ${original.id}`,
-      );
       return assessmentId;
     })();
     conversions.set(id, operation);
     void operation.finally(() => conversions.delete(id)).catch(() => {});
     return operation;
+  },
+  revalidateHistorical(ctx: Ctx, id: string, confirm: unknown) {
+    z.literal(true).parse(confirm);
+    const row = intake(ctx, id, "convert");
+    authorize(ctx, "manage", row);
+    const source = linkedSnapshot(row);
+    if (snapshotAssurance(source) !== "historical-consistency")
+      throw new Error("Only historical submissions require this review.");
+    effectiveResponses(source.questionnaire, source.responses);
+    persist(
+      ctx,
+      {
+        ...row,
+        historicalReview: {
+          snapshotId: source.id,
+          contentValue: snapshotValue(source),
+          by: ctx.user.id,
+          at: now(),
+        },
+      },
+      "historical_review",
+    );
   },
   configuration(ctx: Ctx, kind: "questionnaire" | "rules") {
     authorize(ctx, kind);

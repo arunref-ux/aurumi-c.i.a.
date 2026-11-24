@@ -103,7 +103,7 @@ function Report() {
           </details>
           {confirmation || session.consultationId ? (
             <div role="status" className="mt-5 border border-success/30 bg-success-soft p-5">
-              <h3 className="font-semibold">Consultation request recorded</h3>
+              <h3 className="font-semibold">Consultation request saved</h3>
               <p className="mt-2 text-sm">
                 {confirmation ||
                   "Your earlier request is recorded; submitting again will not create another lead."}
@@ -191,7 +191,11 @@ function Report() {
               </label>
               <FitError error={s.error} />
               <Button className="mt-5" type="submit" disabled={pending}>
-                {pending ? "Recording request…" : "Submit consultation request"}
+                {pending
+                  ? "Processing and saving…"
+                  : s.error
+                    ? "Retry consultation request"
+                    : "Submit consultation request"}
               </Button>
             </form>
           )}

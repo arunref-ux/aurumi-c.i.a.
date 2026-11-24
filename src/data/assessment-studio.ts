@@ -292,6 +292,10 @@ const CreateInput = z.strictObject({
   crmReferenceId: z.string().max(100).optional(),
 });
 export type CreateAssessmentInput = z.input<typeof CreateInput>;
+/** Internal hand-off hook: runs the final synchronous write inside a caller-owned guarded transaction. */
+export interface CommitOptions {
+  commit?: <T>(write: () => T) => T;
+}
 
 const AnswerInput = z.strictObject({
   questionId: z.string().min(1),
@@ -582,16 +586,28 @@ function snapshotsOf(a: Assessment) {
 export interface AssessmentStudioService {
   list(ctx: Ctx): Promise<AssessmentListItem[]>;
   get(ctx: Ctx, id: ID): Promise<WorkspaceView>;
-  create(ctx: Ctx, input: CreateAssessmentInput): Promise<Assessment>;
-  saveOverview(ctx: Ctx, id: ID, input: z.input<typeof OverviewInput>): Promise<void>;
+  create(ctx: Ctx, input: CreateAssessmentInput, options?: CommitOptions): Promise<Assessment>;
+  saveOverview(
+    ctx: Ctx,
+    id: ID,
+    input: z.input<typeof OverviewInput>,
+    options?: CommitOptions,
+  ): Promise<void>;
   saveProfile(
     ctx: Ctx,
     id: ID,
     input: Partial<Record<ProfileField, string>> & { unknown?: ProfileField[] },
+    options?: CommitOptions,
   ): Promise<void>;
   savePartner(ctx: Ctx, id: ID, input: Partial<Record<PartnerField, string>>): Promise<void>;
   saveFindings(ctx: Ctx, id: ID, input: Partial<Record<FindingField, string>>): Promise<void>;
-  upsertChild<K extends ChildKind>(ctx: Ctx, id: ID, kind: K, input: ChildInput<K>): Promise<ID>;
+  upsertChild<K extends ChildKind>(
+    ctx: Ctx,
+    id: ID,
+    kind: K,
+    input: ChildInput<K>,
+    options?: CommitOptions,
+  ): Promise<ID>;
   removeChild(ctx: Ctx, id: ID, kind: ChildKind, childId: ID): Promise<void>;
   saveAnswer(ctx: Ctx, id: ID, input: z.input<typeof AnswerInput>): Promise<void>;
   verifyAnswer(ctx: Ctx, id: ID, questionId: ID): Promise<void>;
@@ -654,44 +670,53 @@ export const assessmentStudio: AssessmentStudioService = {
     };
   },
 
-  async create(ctx, input) {
+  async create(ctx, input, options) {
     await tick();
     const d = parse(ctx, CreateInput, input);
-    const a = repos.assessments.create(ctx, {
-      type: d.type as AssessmentType,
-      title: d.title,
-      subjectName: d.subjectName,
-      channel: d.channel as AcquisitionChannel,
-      ...(d.crmReferenceId ? { crmReferenceId: d.crmReferenceId } : {}),
-    });
-    const ws = blankWorkspace(a, ctx.user.id, a.createdAt, d.category);
-    store.replace("workspaces", [...store.table("workspaces"), ws]);
-    return a;
+    const write = () => {
+      const a = repos.assessments.create(ctx, {
+        type: d.type as AssessmentType,
+        title: d.title,
+        subjectName: d.subjectName,
+        channel: d.channel as AcquisitionChannel,
+        ...(d.crmReferenceId ? { crmReferenceId: d.crmReferenceId } : {}),
+      });
+      const ws = blankWorkspace(a, ctx.user.id, a.createdAt, d.category);
+      store.replace("workspaces", [...store.table("workspaces"), ws]);
+      return a;
+    };
+    return options?.commit ? options.commit(write) : write();
   },
 
-  async saveOverview(ctx, id, input) {
+  async saveOverview(ctx, id, input, options) {
     await tick();
-    const a = parent(ctx, id, "assessment.update");
-    editable(ctx, a);
-    const d = parse(ctx, OverviewInput, input, id);
-    const ws = workspaceOf(a);
-    const { category, ...overview } = defined(d);
-    persist(
-      ctx,
-      a,
-      { ...ws, ...(category ? { category } : {}), overview: { ...ws.overview, ...overview } },
-      "Saved overview",
-    );
+    const write = () => {
+      const a = parent(ctx, id, "assessment.update");
+      editable(ctx, a);
+      const d = parse(ctx, OverviewInput, input, id);
+      const ws = workspaceOf(a);
+      const { category, ...overview } = defined(d);
+      persist(
+        ctx,
+        a,
+        { ...ws, ...(category ? { category } : {}), overview: { ...ws.overview, ...overview } },
+        "Saved overview",
+      );
+    };
+    return options?.commit ? options.commit(write) : write();
   },
-  async saveProfile(ctx, id, input) {
+  async saveProfile(ctx, id, input, options) {
     await tick();
-    const a = parent(ctx, id, "assessment.update");
-    editable(ctx, a);
-    const d = defined(parse(ctx, ProfileInput, input, id)) as Partial<
-      AssessmentWorkspace["profile"]
-    >;
-    const ws = workspaceOf(a);
-    persist(ctx, a, { ...ws, profile: { ...ws.profile, ...d } }, "Saved business profile");
+    const write = () => {
+      const a = parent(ctx, id, "assessment.update");
+      editable(ctx, a);
+      const d = defined(parse(ctx, ProfileInput, input, id)) as Partial<
+        AssessmentWorkspace["profile"]
+      >;
+      const ws = workspaceOf(a);
+      persist(ctx, a, { ...ws, profile: { ...ws.profile, ...d } }, "Saved business profile");
+    };
+    return options?.commit ? options.commit(write) : write();
   },
   async savePartner(ctx, id, input) {
     await tick();
@@ -719,44 +744,47 @@ export const assessmentStudio: AssessmentStudioService = {
     persist(ctx, a, { ...ws, findings: { ...ws.findings, ...d } }, "Saved findings");
   },
 
-  async upsertChild(ctx, id, kind, input) {
+  async upsertChild(ctx, id, kind, input, options) {
     await tick();
-    const a = parent(ctx, id, "assessment.update");
-    editable(ctx, a);
-    const schema = CHILD_SCHEMAS[kind];
-    if (!schema) reject(ctx, `unknown section "${String(kind)}"`, id);
-    const d = parse(ctx, schema, input, id) as Record<string, unknown> & { id?: string };
-    const ws = clone(workspaceOf(a));
-    const list = ws[kind] as unknown as { id: ID; createdAt: string; createdBy: ID }[];
-    const existing = d.id ? list.find((x) => x.id === d.id) : undefined;
-    if (d.id && !existing) reject(ctx, `unknown ${kind} record`, id);
-    const { id: _ignored, ...data } = d;
-    let record: Record<string, unknown> = data;
-    let verificationNote = "";
-    if (kind === "evidence") {
-      const r = resolveVerification(ctx, data, existing as unknown as EvidenceRecord | undefined);
-      record = r.record;
-      verificationNote = r.note;
-      const errors = validateFinding(record as never);
-      if (errors.length) reject(ctx, `invalid evidence: ${errors.join("; ")}`, id);
-    }
-    checkRefs(ctx, a, ws, kind, record);
-    if (kind === "systems")
-      checkCompatibility(
-        ctx,
-        a,
-        ws,
-        record["compatibility"] as { status: string; evidenceIds: ID[] },
-        existing?.id,
-      );
-    const stamped = stamp(ctx, a, ID_PREFIX[kind], record, existing);
-    const nextList = existing
-      ? list.map((x) => (x.id === existing.id ? stamped : x))
-      : [...list, stamped];
-    (ws as unknown as Record<string, unknown>)[kind] = nextList;
-    if (kind === "evidence") downgradeUnsupported(ws);
-    persist(ctx, a, ws, `${existing ? "Updated" : "Added"} ${kind} record${verificationNote}`);
-    return stamped.id;
+    const write = () => {
+      const a = parent(ctx, id, "assessment.update");
+      editable(ctx, a);
+      const schema = CHILD_SCHEMAS[kind];
+      if (!schema) reject(ctx, `unknown section "${String(kind)}"`, id);
+      const d = parse(ctx, schema, input, id) as Record<string, unknown> & { id?: string };
+      const ws = clone(workspaceOf(a));
+      const list = ws[kind] as unknown as { id: ID; createdAt: string; createdBy: ID }[];
+      const existing = d.id ? list.find((x) => x.id === d.id) : undefined;
+      if (d.id && !existing) reject(ctx, `unknown ${kind} record`, id);
+      const { id: _ignored, ...data } = d;
+      let record: Record<string, unknown> = data;
+      let verificationNote = "";
+      if (kind === "evidence") {
+        const r = resolveVerification(ctx, data, existing as unknown as EvidenceRecord | undefined);
+        record = r.record;
+        verificationNote = r.note;
+        const errors = validateFinding(record as never);
+        if (errors.length) reject(ctx, `invalid evidence: ${errors.join("; ")}`, id);
+      }
+      checkRefs(ctx, a, ws, kind, record);
+      if (kind === "systems")
+        checkCompatibility(
+          ctx,
+          a,
+          ws,
+          record["compatibility"] as { status: string; evidenceIds: ID[] },
+          existing?.id,
+        );
+      const stamped = stamp(ctx, a, ID_PREFIX[kind], record, existing);
+      const nextList = existing
+        ? list.map((x) => (x.id === existing.id ? stamped : x))
+        : [...list, stamped];
+      (ws as unknown as Record<string, unknown>)[kind] = nextList;
+      if (kind === "evidence") downgradeUnsupported(ws);
+      persist(ctx, a, ws, `${existing ? "Updated" : "Added"} ${kind} record${verificationNote}`);
+      return stamped.id;
+    };
+    return options?.commit ? options.commit(write) : write();
   },
 
   async removeChild(ctx, id, kind, childId) {
