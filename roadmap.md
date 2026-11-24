@@ -1,12 +1,12 @@
 # Phase 7 — validation and release readiness
 Phases 1–6 are formally closed per user authorization: baseline `47ec5dfbc69003781e338c514a1d991f4127cd7a`, successful Actions `45339261324`. Phase 7 is validation/stabilization only; no production infrastructure or publishing.
-- [ ] Inventory scenarios, handoffs, roles, integrations and deferred defects before functional corrections.
-- [ ] Execute clean cross-studio journeys, authorization, version pinning, historical reload and durable recovery regressions.
-- [ ] Execute desktop/public mobile/internal browser flows, responsive and practical accessibility checks.
-- [ ] Generate and inspect Business Fit, proposal and completion A4 PDFs.
-- [ ] Correct demonstrated defects and retest; preserve all 643 baseline tests and integrity contracts.
-- [ ] Complete validation/defect registers, architecture, demo guide, readiness matrix, release notes and report.
-- [ ] Run full tests/lint and inspect automatic types/build; record standalone execution limitation honestly.
+- [x] Inventory scenarios, handoffs, roles, integrations and deferred defects before functional corrections.
+- [x] Execute clean cross-studio journeys, authorization, version pinning, historical reload and durable recovery regressions.
+- [x] Execute desktop/public mobile/internal browser flows, responsive and practical accessibility checks.
+- [x] Generate and inspect Business Fit, proposal and completion A4 PDFs.
+- [x] Correct demonstrated defects and retest; preserve all 643 baseline tests and integrity contracts.
+- [x] Complete validation/defect registers, architecture, demo guide, readiness matrix, release notes and report.
+- [x] Run full tests/lint and inspect automatic types/build; record standalone execution limitation honestly.
 - [ ] Commit and verify exact-SHA Actions if available after synchronization; independent Codex exit review remains required.
 
 # Phase 6 — F01–F07 targeted corrections (closed)

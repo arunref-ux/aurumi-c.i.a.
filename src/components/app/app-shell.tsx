@@ -85,9 +85,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!open) return;
     const panel = navigation.current;
     if (!panel) return;
+    const opener = trigger.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const focusable = () => Array.from(panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled]):not([tabindex="-1"])'));
+    const focusable = () =>
+      Array.from(
+        panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled]):not([tabindex="-1"])'),
+      );
     focusable()[0]?.focus();
     const keyboard = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -95,11 +99,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         setOpen(false);
       }
       if (event.key === "Tab") {
-        const controls = focusable(), first = controls[0], last = controls.at(-1);
+        const controls = focusable(),
+          first = controls[0],
+          last = controls.at(-1);
         if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault(); last?.focus();
+          event.preventDefault();
+          last?.focus();
         } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault(); first?.focus();
+          event.preventDefault();
+          first?.focus();
         }
       }
     };
@@ -107,7 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => {
       panel.removeEventListener("keydown", keyboard);
       document.body.style.overflow = previousOverflow;
-      trigger.current?.focus();
+      opener?.focus();
     };
   }, [open]);
   return (
@@ -134,7 +142,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={() => setOpen(false)}
           />
           <aside className="relative h-full w-72 bg-sidebar">
-            <Button variant="ghost" size="icon"
+            <Button
+              variant="ghost"
+              size="icon"
               className="absolute right-3 top-3 rounded-md p-1.5 text-sidebar-foreground hover:bg-sidebar-accent"
               aria-label="Close navigation"
               onClick={() => setOpen(false)}
@@ -148,7 +158,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/90 px-4 py-3 backdrop-blur md:px-8">
-          <Button ref={trigger} variant="ghost" size="icon"
+          <Button
+            ref={trigger}
+            variant="ghost"
+            size="icon"
             className="rounded-md p-1.5 hover:bg-muted lg:hidden"
             onClick={() => setOpen(true)}
             aria-label="Open navigation"

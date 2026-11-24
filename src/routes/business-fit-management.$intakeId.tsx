@@ -125,6 +125,7 @@ function Detail({ id }: { id: string }) {
             <label className="text-xs">
               Intake status
               <select
+                aria-label="Intake status"
                 className={`${fitInput} mt-1`}
                 value={intake.status}
                 disabled={
@@ -154,6 +155,7 @@ function Detail({ id }: { id: string }) {
                 <label className="text-xs">
                   Professional
                   <select
+                    aria-label="Professional"
                     className={`${fitInput} mt-1`}
                     value={assigned}
                     onChange={(e) => setAssigned(e.target.value)}
@@ -238,6 +240,7 @@ function Detail({ id }: { id: string }) {
                   <label className="text-xs">
                     Assessment type
                     <select
+                      aria-label="Assessment type"
                       className={`${fitInput} mt-1`}
                       value={type}
                       onChange={(e) => setType(e.target.value)}

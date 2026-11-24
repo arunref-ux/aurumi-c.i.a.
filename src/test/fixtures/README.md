@@ -41,6 +41,20 @@ ec0f8fbaf31fc9a1712ce5bec7a5dcb32565a3c4e06edd1ee6ba47f9bdf05f65  legacy-8da73f4
 
 ## Assurance boundary
 
+## Additional Phase 7 released-source captures
+
+On 2026-11-24, each source/configuration file was read using permitted `git show <SHA>:<path>` into its own isolated `/tmp/phase7-released/<revision>` folder. Installed test dependencies were shared; no current domain/service overlay was used. One capture test per release executed its original services and passed. Captured JSON is copied byte-for-byte, never rehashed or synthesized. `phase7-released-history.test.ts` checks original immutable values and failed operations across three reloads and source-bound recovery.
+
+| File prefix `phase7-released-` | Original source | SHA-256 |
+|---|---|---|
+| `25909e3-issued.json` | `25909e3519c27b53d16a9837037e002280a9606d` | `9737522ac50eb8b960c67ce352273b89c4635ccdc3655282ead142d7d1467b4e` |
+| `aa406c5-issued.json` | `aa406c53293585e97a717f00c1dc4d3ae9aa6a85` | `392d78cd4906ef658a8052dc465af18417faa0afb1764cd21bf123291a715f48` |
+| `e49e770-issued.json` | `e49e770050c35403178c5b51a0e384db5df988cc` | `b6ce700e0555a94391af2df6cc853a99ce6cfdeb06a2ecb11c95eae16ad2d288` |
+| `9e19f209-business-fit.json` | `9e19f209b70827e59851c19818a85697af4e8b39` | `7845a689b29b7ebbb0179251b4528e4848f0f2ebc20bba59ff1f0bd24234d780` |
+| `47ec5df-delivery.json` | `47ec5dfbc69003781e338c514a1d991f4127cd7a` | `953beb2d20e1642e0e5692266d9ce24e64c86e4612ce1dd9fc8e7f6d239301d7` |
+
+These include actual approved Assessment/Solution hand-offs, issued proposal formats, consented Business Fit and strengthened completed/recoverable delivery records. Existing genuine `e696c05`, `8da73f4`, `ebe4033` and `9ce518a` fixtures remain untouched. Isolated capture tests are supporting execution evidence, not added to the application suite count.
+
 Only a truly absent marker permits the two historical consistency checks. Unknown,
 null, undefined-present and explicitly unsupported `/1` markers fail closed. Explicit
 `/2` never falls back to `/1`. Exactly one historical match is required, along with

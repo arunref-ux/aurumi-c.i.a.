@@ -6,6 +6,7 @@
  */
 import { z } from "zod";
 import { FINDING_FIELDS, PARTNER_FIELDS, PROFILE_FIELDS } from "@/domain/assessment";
+import { PARTNER_SOLUTION_FIELDS, emptyPartnerSolution } from "@/domain/solution";
 import { versionIntegrityProblems, type ProposalVersionRecord } from "@/domain/proposal";
 import {
   QuestionnaireSchema,
@@ -689,6 +690,68 @@ export function sanitizeTable(
     }
     if (table === "solutionWorkspaces") {
       const sw = { ...(row as Record<string, unknown>) };
+      if (sw["partner"] !== undefined) {
+        const original = sw["partner"] as Record<string, unknown>,
+          partner = { ...original };
+        for (const [key] of PARTNER_SOLUTION_FIELDS) {
+          if (typeof partner[key] !== "string") {
+            quarantined.push({
+              table,
+              path: `${table}[${i}].partner.${key}`,
+              reason: "expected text",
+              value: partner[key],
+            });
+            partner[key] = "";
+          }
+        }
+        if (partner["partnershipStatus"] !== "not_agreed") {
+          quarantined.push({
+            table,
+            path: `${table}[${i}].partner`,
+            reason: "invalid proposed partnership status",
+            value: original,
+          });
+          sw["partner"] = emptyPartnerSolution();
+        } else sw["partner"] = partner;
+      }
+      const revisionSchema = z.looseObject({
+        revision: z.number().int().positive(),
+        baseline: z.looseObject({
+          snapshotId: id,
+          snapshotVersion: z.number().int().positive(),
+          schema: str,
+          approvedAt: str,
+        }),
+        archivedAt: str,
+        archivedBy: id,
+        reason: str,
+        workspace: z.looseObject({
+          ...audited,
+          solutionId: id,
+          organizationId: id,
+          overview: ROW.solutionWorkspaces.shape.overview,
+          partner: z
+            .looseObject({
+              ...Object.fromEntries(PARTNER_SOLUTION_FIELDS.map(([key]) => [key, str])),
+              partnershipStatus: z.literal("not_agreed"),
+            })
+            .optional(),
+          ...Object.fromEntries(
+            Object.entries(SOLUTION_CHILD).map(([key, schema]) => [key, z.array(schema)]),
+          ),
+        }),
+      });
+      sw["revisions"] = (sw["revisions"] as unknown[]).filter((revision, j) => {
+        const parsed = revisionSchema.safeParse(revision);
+        if (!parsed.success)
+          quarantined.push({
+            table,
+            path: `${table}[${i}].revisions[${j}]`,
+            reason: reasonOf(parsed.error),
+            value: revision,
+          });
+        return parsed.success;
+      });
       for (const [kind, schema] of Object.entries(SOLUTION_CHILD)) {
         const list = sw[kind];
         if (list === undefined) {

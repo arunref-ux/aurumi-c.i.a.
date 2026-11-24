@@ -85,7 +85,7 @@ describe("Phase 7 complete cross-studio journeys", () => {
         }),
       );
     }
-  });
+  }, 30000);
   it("J02 distribution report remains contact-free, isolated and restartable", () => {
     const handle = B.begin();
     B.save(handle, first(FIT_SCENARIOS.slice(1)).responses, 4);

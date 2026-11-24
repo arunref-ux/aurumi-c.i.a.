@@ -151,13 +151,38 @@
 }
 
 @media print {
-  @page { size: A4; margin: 14mm; }
-  #proposal-print, #delivery-print, #business-fit-print { overflow-wrap: anywhere; }
-  #proposal-print h2, #delivery-print h2, #business-fit-print h2 { break-after: avoid; }
-  #proposal-print tr, #delivery-print section > div { break-inside: avoid; }
-  body.printing-delivery * { visibility: hidden; }
-  body.printing-delivery #delivery-print, body.printing-delivery #delivery-print * { visibility: visible; }
-  body.printing-delivery #delivery-print { position: absolute; inset: 0 auto auto 0; width: 100%; border: 0; box-shadow: none; }
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  #proposal-print,
+  #delivery-print,
+  #business-fit-print {
+    overflow-wrap: anywhere;
+  }
+  #proposal-print h2,
+  #delivery-print h2,
+  #business-fit-print h2 {
+    break-after: avoid;
+  }
+  #proposal-print tr,
+  #delivery-print section > div {
+    break-inside: avoid;
+  }
+  body.printing-delivery * {
+    visibility: hidden;
+  }
+  body.printing-delivery #delivery-print,
+  body.printing-delivery #delivery-print * {
+    visibility: visible;
+  }
+  body.printing-delivery #delivery-print {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border: 0;
+    box-shadow: none;
+  }
   body.printing-proposal * {
     visibility: hidden;
   }

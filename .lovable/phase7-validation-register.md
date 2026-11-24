@@ -49,3 +49,31 @@ Common precondition: clean isolated browser/storage or memory backend, seeded fi
 ## Handoff inventory
 
 Business Fit session/report → immutable submission/consultation/lead → intake/conversion → assessment workspace/handoff → solution pinned baseline/handoff → proposal frozen version/share response → engagement initiation/original scope/authorization → obligations/exact-version acceptance/outcome evidence → state-bound review → immutable completion → authorized simulated ShopTalk continuation. Network uses existing identity references for assignments. Demand receives explicitly authorized unmet requirements, not delivery promises. Detailed cross-phase assertions and adapter inventory follow execution.
+
+## Executed results — 2026-11-24
+
+Final suite: **667/667 tests, 27 files; 643 baseline retained, 24 new tests; no skips/failures**. ESLint: **0 errors, 31 existing warnings**. Harness latest entry `2026-11-24T07:22:45Z`: **build OK**. Standalone TypeScript/production-build execution is prohibited in this environment; these are automatic validation results, not a claimed standalone run. Exact final-SHA Actions remains pending platform synchronization.
+
+| Scenario | Actual service result | Actual browser/print result | Final status |
+|---|---|---|---|
+| J01 | Clean hotel completes all studios, exact immutable source chain, three reloads | Fresh hotel questionnaire/report/consent → intake assignment/qualification/conversion → linked assessment after reload; downstream clean service-generated records rendered and printed. Entire downstream workflow was not clicked through | Passed service; partial browser |
+| J02 | Contact-free isolated distribution report, no intake/lead | Mobile questionnaire/report/A4/reload/restart | Passed |
+| J03 | Specialist artifact/independent acceptance/removal; authorship retained; subsequent task denied | Partner direct-ID denial and mobile task tested; specialist full workflow not clicked | Passed service; partial browser |
+| J04 | Actual partner assessment→solution→reseller issued proposal→authorized assigned reseller delivery/review; three reloads, commercial projection and unrelated-org rejection | Full reseller browser journey not executed | Passed service; browser not executed |
+| J05 | Direct advisory completion via mapped service review, no invented artifacts | Full direct browser journey not executed | Passed service |
+| J06 | Recurring review history, health/demand/renewal mock references; no automatic closure/obligation | Full recurring browser journey not executed | Passed service |
+| J07 | Independent supersession, originals preserved, idempotent apply, stale closure blocked | Full amendment browser journey not executed | Passed service |
+| J08 | 120 baseline→80→180 observations, exact verification, stale review rejection, fresh honest unsuccessful completion and reload | Outcomes pages responsive; full change/review browser sequence not executed this pass | Passed service; partial browser |
+| J09 | Unknown ERP stays conditional through assessment/solution/proposal | Unknown ERP full browser journey not executed | Passed service |
+| J10 | New task fault/reload/same-key retry; baseline suites cover consultation/conversion/issue/create/amend/verify/complete/continuation and protected quarantine | Mobile task save/read-back and denial; fault injection service-only | Passed service; partial browser |
+| H01 | Genuine released fixtures from all requested source eras; three reload equality; strengthened failed operation recovered with stable ID; initial /1 historical-only checks retained | Not a browser-history claim | Passed |
+| A01 | Six-role grant/source inspection plus baseline and new authorization tests; commercial service projection; no production-auth claim | Prototype identity, partner direct-ID denial, task read-back | Passed prototype scope |
+| B01 | Maintained script `scripts/phase7_browser_validation.py` | Chromium 147.0.7727.15, localhost:8080; 1440×900,1280×800,768×1024,390×844,360×800: no overflow/page errors; mobile Tab containment, Escape and opener focus; consultation reveal focus; labels | Passed practical checks; not WCAG certification |
+| P01 | Actual anonymous report | A4 PDF 5 pages; all rasterized/viewed, nonblank | Passed |
+| P02 | Actual issued exact version; separate INR one-time/monthly/annual tax and USD | Regular 3-page and long-table 5-page A4 PDFs; all 8 pages viewed; tax values 39,600/450/1,728 and USD 99 distinct | Passed |
+| P03 | Actual clean completed source; noncommercial callers get no report per baseline tests | 2-page A4 completion, all pages viewed; scope/obligations/outcome/concerns/author visible | Passed sampled report; amended/180-minute PDF not generated |
+| T01 | 667 tests, lint 0/31, latest automatic build OK | Exact corrective-SHA Actions pending | Blocked for full exit |
+
+Browser evidence is local exact working-source validation (baseline 47ec5df plus Phase 7 changes, intermediate platform commit edcee02), not hosted production. Logs/screenshots/PDFs under `/tmp/browser/phase7/` are temporary. Maintained public/mobile checks are checked in; service-generated capture uses `PHASE7_CAPTURE=1` on journey/print tests. No screenshot or storage-state file is a production credential. Five isolated release-source capture tests passed separately and are not counted in 667.
+
+No new integrity contract or hash algorithm was introduced. Genuine absent-marker history remains history-only for fresh approval/issue; explicit unknown markers fail closed. Phase 6 /1 stays historical, /2 remains content-bound. New restoration validation concerns mutable partner/revision fields only, preserving valid siblings and original quarantine payloads.

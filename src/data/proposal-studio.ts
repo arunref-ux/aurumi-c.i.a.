@@ -1499,11 +1499,7 @@ export const proposalStudio: ProposalStudioService = {
     if (!input.recipient.name.trim()) reject(ctx, "name the recipient", id);
     const expiresAt = input.expiresAt ?? v.issue.expiresAt;
     const exp = validityEnd(expiresAt);
-    if (
-      typeof expiresAt !== "string" ||
-      exp === null ||
-      !/^\d{4}-\d{2}-\d{2}T/.test(expiresAt)
-    )
+    if (typeof expiresAt !== "string" || exp === null || !/^\d{4}-\d{2}-\d{2}T/.test(expiresAt))
       reject(ctx, "enter a valid expiry date and time", id);
     if (exp > Date.parse(v.issue.expiresAt))
       reject(ctx, "a share cannot outlive the issued version's validity", id);

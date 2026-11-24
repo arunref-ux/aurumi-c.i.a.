@@ -7,6 +7,7 @@
  */
 import { z } from "zod";
 import {
+  canonical,
   deepFreeze,
   materialEvidenceKey,
   type AssessmentHandoffSnapshot,
@@ -364,6 +365,23 @@ function snapshotById(id: ID) {
 function baselineOf(s: SolutionDesign) {
   return snapshotById(s.baseline.snapshotId);
 }
+/** Ignore audit-only events, but reject any change to the decision's source or authority. */
+function decisionState(ctx: Ctx, s: SolutionDesign) {
+  const actor = store.table("users").find((u) => u.id === ctx.user.id);
+  if (!actor || canonical(actor) !== canonical(ctx.user)) deny(ctx, "solution.read", s.id);
+  return canonical({
+    actor,
+    solution: s,
+    workspace: workspaceOf(s),
+    baseline: baselineOf(s),
+    snapshots: store.table("solutionSnapshots").filter((x) => x.solutionId === s.id),
+  });
+}
+function assertDecision(ctx: Ctx, id: ID, permission: Permission, expected: string) {
+  const current = parent(ctx, id, permission);
+  if (decisionState(ctx, current) !== expected)
+    reject(ctx, "solution or authority changed while waiting; reload and retry", id);
+}
 function persist(
   ctx: Ctx,
   s: SolutionDesign,
@@ -541,10 +559,10 @@ export const solutionStudio: SolutionStudioService = {
 
   async get(ctx, id) {
     await tick();
+    const catalog = await catalogNow();
     const s = parent(ctx, id, "solution.read");
     const ws = workspaceOf(s);
     const baseline = baselineOf(s);
-    const catalog = await catalogNow();
     const latest = latestCompatible(s.assessmentId);
     const readiness = solutionReadiness(s, ws, baseline, catalog);
     const people = new Set<ID>([s.ownerId, s.createdBy, s.updatedBy, ...s.assignedUserIds]);
@@ -681,7 +699,9 @@ export const solutionStudio: SolutionStudioService = {
     const ws = clone(workspaceOf(s));
     const snap = baselineOf(s);
     if (!snap) return reject(ctx, "baseline snapshot is missing", id);
+    const expected = decisionState(ctx, s);
     const catalog = await catalogNow();
+    assertDecision(ctx, id, "solution.update", expected);
     const list = ws[kind] as unknown as ({ id: ID; createdAt: string; createdBy: ID } & Record<
       string,
       unknown
@@ -906,7 +926,10 @@ export const solutionStudio: SolutionStudioService = {
       reject(ctx, `only solutions in review can be approved (is ${s.status})`, id);
     const ws = clone(workspaceOf(s));
     const snap = baselineOf(s);
+    if (!snap) return reject(ctx, "baseline snapshot is missing", id);
+    const expected = decisionState(ctx, s);
     const catalog = await catalogNow();
+    assertDecision(ctx, id, "solution.approve", expected);
     const failing = solutionReadiness(s, ws, snap, catalog).filter((i) => !i.ok);
     if (failing.length) reject(ctx, `not ready: ${failing.map((f) => f.label).join(", ")}`, id);
     const at = now();
@@ -968,7 +991,7 @@ export const solutionStudio: SolutionStudioService = {
         retrievedAt: catalog.retrievedAt,
         items: catalog.items.filter((i) => closure.has(i.id)).map((i) => clone(i)),
       },
-      sourceAssessment: clone(snap!),
+      sourceAssessment: clone(snap),
       evidence: (snap?.evidence ?? []).filter((e) => cited.has(e.id)).map((e) => clone(e)),
       dependencies: analyzeDependencies(dependencyInput(ws), catalog),
     });
@@ -1038,7 +1061,12 @@ export const solutionStudio: SolutionStudioService = {
     const c = snapshotCompatibility(to);
     if (!c.ok) return reject(ctx, c.reason, id);
     if (to.id === from.id) reject(ctx, "the solution is already on that snapshot", id);
+    const expected = decisionState(ctx, s),
+      target = canonical(to);
     const catalog = await catalogNow();
+    assertDecision(ctx, id, "solution.update", expected);
+    if (canonical(snapshotById(targetSnapshotId)) !== target)
+      reject(ctx, "target baseline changed while waiting; reload and retry", id);
     const ws = clone(workspaceOf(s));
     const diff = diffSnapshots(from, to, ws);
     const { revisions, ...current } = ws;

@@ -1,0 +1,15 @@
+# C.I.A. Workspace consolidated architecture
+
+Authoritative rules remain root `AGENTS.md` and `src/data/AGENTS.md`; this document summarizes rather than replaces them.
+
+Foundation supplies shared shell/navigation, immutable audit identities, scoped repositories and derived dashboard metrics. Promise-based services and query hooks isolate Assessment, Solution, Proposal, Business Fit and Delivery/Network from the simulated store.
+
+Business Fit pins questionnaire/rules/public-safe catalog and effective self-reported responses; consented mock lead/intake conversion carries unverified provenance into Assessment. Assessment independently approved hand-offs embed evidence and complete question definitions. Solution pins the baseline and versioned catalog, validates claims/dependency closure and embeds the assessment in its approved hand-off. Proposal pins the solution, illustrative price references and exact submitted document; independent approval/issue/sharing are version-bound. Engagement initiation derives exact obligations from the issued source or direct scope, needs bound commencement authorization, maps exact-version acceptance and applies only independently approved obligation amendments. Versioned outcomes/measurements feed material-state reviews and immutable completion; continuation is a recommendation, not an obligation. Network references existing identities and independently governed qualifications/affiliations.
+
+Repositories/service boundaries enforce six-role organization/team/self scope; commercials and Business Fit contacts are separate grants. Noncommercial delivery projections suppress nested commercial source/completion content without rewriting canonical data. Client-side mock identity is not production security.
+
+Shared browser persistence validates restored data, confirms intact quarantine backup before allowing unsafe recovery/writes, and retains valid siblings. Business Fit and Phase 6 material operations use acknowledged durable commits and stable adapter intent keys. Solution catalog-await writes fingerprint/re-authorize current actor/source/content before synchronous commitment. Mutable malformed partner fields/revisions are quarantined separately.
+
+No Phase 7 integrity algorithm changed: Assessment/Solution /2 hand-offs; Proposal explicit strengthened /2 with genuinely absent historical original/strengthened matching; Business Fit released /1 history and current /2; Delivery original /1 history-only and strengthened /2 obligation/commencement/outcome/review/completion contracts. Explicit unknown markers fail closed; historical source-bound prospective revalidation never retroactively certifies history. Local hashes prove consistency, not external authenticity.
+
+Typed adapters remain mocks owned by their upstream Aurumi products. No production API/database/auth, deployment, new reporting engine or new domain workflow was added. SSR-visible date/number output is deterministic; browser-local Overview renders after hydration. Existing report panels print actual A4 output.
