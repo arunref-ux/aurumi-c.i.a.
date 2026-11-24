@@ -3,6 +3,12 @@ import { z } from "zod";
 import { canonical } from "./assessment";
 import { versionIntegrityProblems, type ProposalVersionRecord } from "./proposal";
 import type { BaseRecord } from "./types";
+import { STRONG_CONTRACT, strongSeal, checkStrong, strictInstant, timestampInstant, metricFor, validateMetric,
+  OutcomeEvidenceSchema, MeasurementBindingSchema, VerificationBindingSchema, AuthorizationSchema,
+  ObligationSchema, ObligationMappingSchema, ObligationAmendmentSchema, ReviewBindingSchema,
+  MetricSchema, type MeasurementDefinition } from "./delivery-evidence";
+import { HistoricalRevalidationSchema, LifecycleEventSchema } from "./delivery-evidence";
+export { STRONG_CONTRACT, strongSeal, timestampInstant, metricFor, validateMetric } from "./delivery-evidence";
 
 export const DELIVERY_SCHEMA = "aurumi.cia.engagement/1" as const;
 export const INTEGRITY_CONTRACT = "aurumi.cia.delivery-content/1" as const;
@@ -48,7 +54,7 @@ const date = z
       new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v,
     "Invalid calendar date",
   );
-const instant = z.iso.datetime({ offset: true });
+const instant = strictInstant;
 const base = {
   id,
   organizationId: id,
@@ -59,7 +65,7 @@ const base = {
 };
 type Entity<S extends z.ZodType> = BaseRecord & Omit<z.infer<S>, keyof BaseRecord>;
 const evidence = z.array(id);
-const sealFields = { integrityContract: z.literal(INTEGRITY_CONTRACT), integrityValue: id };
+const sealFields = { integrityContract: z.enum([INTEGRITY_CONTRACT, STRONG_CONTRACT]), integrityValue: id };
 export const ApprovalSchema = z.strictObject({
   by: id,
   at: instant,
@@ -86,11 +92,12 @@ export const TermsSchema = z.strictObject({
 export type ServiceTerms = z.infer<typeof TermsSchema>;
 export const ScopeSchema = z.strictObject({
   ...base,
-  schema: z.literal("aurumi.cia.engagement-scope/1"),
+  schema: z.enum(["aurumi.cia.engagement-scope/1", "aurumi.cia.engagement-scope/2"]),
   engagementId: id,
   number: z.number().int().positive(),
   terms: TermsSchema,
   changeId: text,
+  obligationIds: evidence.optional(),
   approval: ApprovalSchema,
   ...sealFields,
 });
@@ -311,6 +318,8 @@ export const MeasurementSchema = z.strictObject({
   ]),
   evidence,
   verification: ApprovalSchema.nullable(),
+  binding: MeasurementBindingSchema.optional(),
+  verificationBinding: VerificationBindingSchema.optional(),
 });
 export type OutcomeMeasurement = Entity<typeof MeasurementSchema>;
 export const OutcomeSchema = z.strictObject({
@@ -341,6 +350,9 @@ export const OutcomeSchema = z.strictObject({
   ]),
   feedback: text,
   measurements: z.array(MeasurementSchema),
+  workstreamId: text.optional(),
+  measurementDefinition: MetricSchema.optional(),
+  evidenceHistory: OutcomeEvidenceSchema.optional(),
 });
 export type DeliveryOutcome = Entity<typeof OutcomeSchema>;
 export const ChangeSchema = z.strictObject({
@@ -359,11 +371,12 @@ export const ChangeSchema = z.strictObject({
   status: z.enum(["draft", "submitted", "approved", "rejected", "withdrawn", "applied"]),
   approval: ApprovalSchema.nullable(),
   scopeVersionId: text,
+  obligationAmendments: z.array(ObligationAmendmentSchema).optional(),
 });
 export type ScopeChange = Entity<typeof ChangeSchema>;
 export const ReviewSchema = z.strictObject({
   ...base,
-  schema: z.literal("aurumi.cia.engagement-review/1"),
+  schema: z.enum(["aurumi.cia.engagement-review/1", "aurumi.cia.engagement-review/2"]),
   engagementId: id,
   kind: z.enum(["mobilization", "weekly", "monthly", "quarterly", "completion", "custom"]),
   scheduledAt: instant,
@@ -375,6 +388,8 @@ export const ReviewSchema = z.strictObject({
   milestoneResults: z.array(z.strictObject({ id, status: text })),
   deliverableResults: z.array(z.strictObject({ id, versionId: text, status: text })),
   measurementIds: evidence,
+  binding: ReviewBindingSchema.optional(),
+  outcomeEvidence: z.array(OutcomeSchema).optional(),
   concernIds: evidence,
   approval: ApprovalSchema,
   ...sealFields,
@@ -432,11 +447,13 @@ export const SourceSchema = z.discriminatedUnion("kind", [
     previousEngagementId: id,
     previousInitiationValue: id,
     customerReference: id,
+    historicalReview: HistoricalRevalidationSchema.optional(),
+    historicalSource: z.unknown().optional(),
   }),
 ]);
 export const InitiationSchema = z.strictObject({
   ...base,
-  schema: z.literal("aurumi.cia.engagement-initiation/1"),
+  schema: z.enum(["aurumi.cia.engagement-initiation/1", "aurumi.cia.engagement-initiation/2"]),
   engagementId: id,
   customer: z.strictObject({
     reference: id,
@@ -449,12 +466,13 @@ export const InitiationSchema = z.strictObject({
   terms: TermsSchema,
   deliverables: z.array(z.strictObject({ title: id, criteria: id })),
   authorizingEvidence: id,
+  obligations: z.array(ObligationSchema).optional(),
   ...sealFields,
 });
 export type Initiation = Entity<typeof InitiationSchema>;
 export const CompletionSchema = z.strictObject({
   ...base,
-  schema: z.literal("aurumi.cia.engagement-completion/1"),
+  schema: z.enum(["aurumi.cia.engagement-completion/1", "aurumi.cia.engagement-completion/2"]),
   engagementId: id,
   initiation: InitiationSchema,
   scopes: z.array(ScopeSchema),
@@ -470,6 +488,12 @@ export const CompletionSchema = z.strictObject({
   outstandingResponsibilities: id,
   executiveSummary: id,
   decision: ApprovalSchema,
+  authorization: AuthorizationSchema.optional(),
+  lifecycleHistory: z.array(LifecycleEventSchema).optional(),
+  obligations: z.array(ObligationSchema).optional(),
+  obligationMappings: z.array(ObligationMappingSchema).optional(),
+  changes: z.array(ChangeSchema).optional(),
+  completionRequirements: z.strictObject({ customerFeedback: text, outstandingResponsibilities: id }).optional(),
   ...sealFields,
 });
 export type Completion = Entity<typeof CompletionSchema>;
@@ -477,7 +501,7 @@ export const WorkspaceSchema = z.strictObject({
   ...base,
   engagementId: id,
   initiation: InitiationSchema,
-  authorization: ApprovalSchema.nullable(),
+  authorization: z.union([ApprovalSchema, AuthorizationSchema]).nullable(),
   scopes: z.array(ScopeSchema).min(1),
   assignments: z.array(AssignmentSchema),
   workstreams: z.array(WorkstreamSchema),
@@ -494,6 +518,12 @@ export const WorkspaceSchema = z.strictObject({
   holdBy: text,
   completion: CompletionSchema.nullable(),
   cancellation: ApprovalSchema.nullable(),
+  historicalRevalidation: HistoricalRevalidationSchema.optional(),
+  lifecycleHistory: z.array(LifecycleEventSchema).optional(),
+  integrityContract: z.literal(STRONG_CONTRACT).optional(),
+  obligations: z.array(ObligationSchema).optional(),
+  obligationMappings: z.array(ObligationMappingSchema).optional(),
+  completionRequirements: z.strictObject({ customerFeedback: text, outstandingResponsibilities: id }).optional(),
 });
 export type DeliveryWorkspace = Entity<typeof WorkspaceSchema>;
 export const EngagementSchema = z.strictObject({
@@ -531,7 +561,7 @@ export function seal<T extends object>(
   return { ...body, integrityValue: contentValue(body) };
 }
 export function checkSeal(value: { integrityContract: string; integrityValue: string }): void {
-  if (value.integrityContract !== INTEGRITY_CONTRACT || sealedValue(value) !== value.integrityValue)
+  if (![INTEGRITY_CONTRACT, STRONG_CONTRACT].includes(value.integrityContract as typeof INTEGRITY_CONTRACT) || sealedValue(value) !== value.integrityValue)
     throw Error("Unsupported or altered immutable delivery record");
 }
 export function changeValue(c: ScopeChange): string {
@@ -600,9 +630,11 @@ export function improvement(o: DeliveryOutcome, value: number | null): number | 
     value === null ||
     !Number.isFinite(value) ||
     !o.definition ||
+    metricFor(o, o.measurementDefinition).comparison !== "relative" ||
     o.direction === "qualitative"
   )
     return null;
+  try { validateMetric(metricFor(o, o.measurementDefinition), value); } catch { return null; }
   return (
     ((o.direction === "decrease" ? o.baseline - value : value - o.baseline) / o.baseline) * 100
   );
@@ -630,6 +662,12 @@ export function completionProblems(w: DeliveryWorkspace): string[] {
   )
     p.push("Record actual outcome results or limitations");
   if (!w.reviews.some((r) => r.kind === "completion")) p.push("Completion review is required");
+  if (w.integrityContract === STRONG_CONTRACT) {
+    try { validateAuthorization(w); } catch (e) { p.push(e instanceof Error ? e.message : "Invalid commencement authorization"); }
+    for (const obligation of obligationStates(w)) if (obligation.required && !["satisfied", "removed_by_amendment", "superseded_by_amendment"].includes(obligation.status)) p.push(`Required obligation ${obligation.description}: ${obligation.status}`);
+    const review = w.reviews.filter((r) => r.kind === "completion").at(-1);
+    if (!review?.binding || review.binding.stateValue !== contentValue(completionState(w))) p.push("Completion review is stale; review the current material state");
+  }
   return p;
 }
 const unique = (rows: readonly { id: string }[]) => {
@@ -640,7 +678,15 @@ const unique = (rows: readonly { id: string }[]) => {
 export function workspaceProblems(raw: unknown): string[] {
   try {
     const w = WorkspaceSchema.parse(raw);
+    if(w.authorization === null && (w.reviews.length || w.deliverables.some((d) => d.versions.length) || w.completion)) throw Error("Commenced delivery evidence lacks original authorization");
     checkSeal(w.initiation);
+    if(w.historicalRevalidation) {
+      checkStrong(w.historicalRevalidation);
+      if(w.historicalRevalidation.engagementId!==w.engagementId || w.historicalRevalidation.organizationId!==w.organizationId || w.historicalRevalidation.initiationValue!==w.initiation.integrityValue) throw Error("Historical revalidation source changed");
+    }
+    const strengthened = w.integrityContract === STRONG_CONTRACT;
+    if (!strengthened && (w.initiation.integrityContract === STRONG_CONTRACT || w.obligations || w.obligationMappings)) throw Error("Stripped strengthened workspace contract");
+    if (strengthened) validateStrengthened(w);
     if (
       w.initiation.engagementId !== w.engagementId ||
       w.initiation.id !== `init_${w.engagementId}`
@@ -659,6 +705,11 @@ export function workspaceProblems(raw: unknown): string[] {
         v.organizationId !== w.organizationId
       )
         throw Error("Invalid embedded issued proposal");
+    }
+    if(w.initiation.source.kind==="follow_on" && w.initiation.source.historicalReview) {
+      const source=w.initiation.source, review=source.historicalReview;
+      const historical=WorkspaceSchema.parse(source.historicalSource); checkStrong(review);
+      if(workspaceProblems(historical).length || review.engagementId!==source.previousEngagementId || historical.engagementId!==source.previousEngagementId || historical.initiation.integrityValue!==source.previousInitiationValue || historical.organizationId!==w.organizationId || review.sourceValue!==historicalSourceValue(historical)) throw Error("Pinned historical revalidation source is inconsistent");
     }
     if (w.initiation.terms.end < w.initiation.terms.start) throw Error("Invalid service period");
     if (
@@ -773,8 +824,12 @@ export function workspaceProblems(raw: unknown): string[] {
     }
     const measurementIds = new Set<string>();
     for (const o of w.outcomes) {
+      const metric = metricFor(o, o.measurementDefinition, !strengthened);
+      validateMetric(metric, o.baseline); validateMetric(metric, o.target);
       unique(o.measurements);
       for (const m of o.measurements) {
+        validateMetric(metric, m.value, metric.unit, o.type === "quantitative");
+        if (timestampInstant(m.observedAt) > Date.now()) throw Error("Future observed measurement");
         if (
           m.outcomeId !== o.id ||
           m.engagementId !== w.engagementId ||
@@ -794,7 +849,7 @@ export function workspaceProblems(raw: unknown): string[] {
       if (o.status === "achieved") {
         const m = o.measurements.at(-1);
         if (
-          !m ||
+          !m || (strengthened && m.binding?.definitionId!==o.evidenceHistory?.currentDefinitionId) ||
           m.provenance === "estimate" ||
           !m.evidence.length ||
           (o.type === "quantitative" &&
@@ -852,6 +907,7 @@ export function workspaceProblems(raw: unknown): string[] {
       if (completionProblems(w).length)
         throw Error("Completed engagement has incomplete delivery obligations");
       checkSeal(w.completion);
+      if (strengthened && (w.completion.integrityContract !== STRONG_CONTRACT || canonical(w.completion.authorization) !== canonical(w.authorization) || canonical(w.completion.lifecycleHistory) !== canonical(w.lifecycleHistory) || canonical(w.completion.obligations) !== canonical(w.obligations) || canonical(w.completion.obligationMappings) !== canonical(w.obligationMappings) || canonical(w.completion.changes) !== canonical(w.changes) || canonical(w.completion.completionRequirements) !== canonical(w.completionRequirements))) throw Error("Completion authorization or obligation content mismatch");
       if (
         w.completion.engagementId !== w.engagementId ||
         w.completion.organizationId !== w.organizationId ||
@@ -875,5 +931,179 @@ export function workspaceProblems(raw: unknown): string[] {
     return [];
   } catch (e) {
     return [e instanceof Error ? e.message : "Invalid delivery workspace"];
+  }
+}
+
+export function proposalScopeTerms(v: ProposalVersionRecord) {
+  const section = (key: string) => v.document.sections.find((s) => s.key === key)?.body ?? "";
+  return {
+    included: section("scope") || v.document.deliverables.filter((d) => d.inclusion === "included").map((d) => d.description).join("\n"),
+    excluded: v.document.deliverables.filter((d) => d.inclusion === "excluded").map((d) => d.description).join("\n"),
+    assumptions: section("assumptions"),
+    customerResponsibilities: section("responsibilities"),
+    professionalResponsibilities: section("implementation") || section("responsibilities"),
+  };
+}
+export function sourceObligations(i: Pick<Initiation, "id" | "organizationId" | "engagementId" | "source" | "terms" | "deliverables">) {
+  const sourceValue = contentValue(i.source.kind === "proposal" ? i.source : { source: i.source, terms: i.terms, deliverables: i.deliverables });
+  const version = i.source.kind === "proposal" ? i.source.version as ProposalVersionRecord : null;
+  const rows = version ? version.document.deliverables.filter((d) => d.inclusion !== "excluded").map((d) => ({ reference: d.id, description: d.description, criteria: d.acceptanceCriterion, required: d.inclusion === "included", acceptance: "customer_acceptance" as const })) : i.deliverables.length ? i.deliverables.map((d, n) => ({ reference: `deliverable:${n}`, description: d.title, criteria: d.criteria, required: true, acceptance: "customer_acceptance" as const })) : [{ reference: "service-commitment", description: i.terms.included, criteria: i.terms.professionalResponsibilities, required: true, acceptance: "review_evidence" as const }];
+  return rows.map((r) => strongSeal({ id: `obligation_${i.engagementId}_${contentValue(r.reference)}`, organizationId: i.organizationId, engagementId: i.engagementId, sourceId: version?.id ?? i.id, sourceValue, sourceReference: r.reference, description: r.description, criteria: r.criteria, required: r.required, acceptance: r.acceptance, amendmentId: "", replacesId: "" }));
+}
+export function obligationStates(w: DeliveryWorkspace) {
+  return (w.obligations ?? sourceObligations(w.initiation)).map((o) => {
+    const amendment = w.changes.find((c) => c.status === "applied" && c.obligationAmendments?.some((a) => a.obligationId === o.id));
+    const action = amendment?.obligationAmendments?.find((a) => a.obligationId === o.id)?.action;
+    const mapping = w.obligationMappings?.find((m) => m.obligationId === o.id);
+    let status = action === "remove" ? "removed_by_amendment" : action === "supersede" ? "superseded_by_amendment" : "unmapped";
+    if (!action && mapping) {
+      status = "mapped";
+      if (o.acceptance === "review_evidence") {
+        if (mapping.reviewIds.length && mapping.reviewIds.every((id) => w.reviews.some((r) => r.id === id && r.kind !== "completion" && r.approval.evidence))) status = "satisfied";
+      } else if (mapping.deliverableIds.length) {
+        const ds = mapping.deliverableIds.map((id) => w.deliverables.find((d) => d.id === id));
+        status = ds.every((d) => d && acceptedVersion(d)?.criteria.includes(o.criteria) && mapping.coverage === o.criteria && d.acceptanceKind === o.acceptance) ? "satisfied" : ds.some((d) => d && d.versions.length) ? "awaiting_acceptance" : "in_progress";
+      }
+    }
+    return { ...o, status, mapping, amendmentId: amendment?.id ?? o.amendmentId };
+  });
+}
+export function validateAuthorization(w: DeliveryWorkspace) {
+  if (!w.authorization) throw Error("Explicit commencement authorization is required");
+  if (w.integrityContract !== STRONG_CONTRACT) return;
+  const a = AuthorizationSchema.parse(w.authorization); checkStrong(a);
+  const original = w.scopes[0];
+  if (!original || a.engagementId !== w.engagementId || a.organizationId !== w.organizationId || a.initiationId !== w.initiation.id || a.initiationValue !== w.initiation.integrityValue || a.scopeId !== original.id || a.scopeValue !== original.integrityValue || a.commercialValue !== contentValue(original.terms) || a.authorizationType !== w.initiation.source.kind) throw Error("Commencement authorization does not match original source and scope");
+}
+export function lifecycleAuthorizationProblems(status: string, w: DeliveryWorkspace): string[] {
+  if(w.integrityContract===STRONG_CONTRACT && (w.lifecycleHistory?.at(-1)?.to ?? "draft")!==status) return ["Lifecycle history does not match the engagement state"];
+  if (["authorized", "mobilizing", "active", "on_hold", "completion_review", "completed"].includes(status) || (status === "cancelled" && (w.authorization || w.reviews.length || w.deliverables.some((d) => d.versions.length)))) {
+    try { validateAuthorization(w); } catch (e) { return [e instanceof Error ? e.message : "Invalid commencement authorization"]; }
+  }
+  return [];
+}
+/** Presentation and assignment acknowledgement metadata are excluded. Scope, acceptance, all outcome evidence,
+ * concerns and completion responsibilities are material; previous reviews remain immutable when stale. */
+export function completionState(w: DeliveryWorkspace): Record<string, unknown> {
+  const operational = <T extends { updatedAt: string; updatedBy: string }>(rows: T[]) => rows.map(({ updatedAt: _at, updatedBy: _by, ...r }) => r);
+  return { engagementId: w.engagementId, organizationId: w.organizationId, authorization: w.authorization, scopes: w.scopes, obligations: obligationStates(w).map(({ mapping: _mapping, ...o }) => o), mappings: w.obligationMappings ?? [], milestones: operational(w.milestones.filter((m) => m.required)), deliverables: operational(w.deliverables.filter((d) => d.required || w.obligationMappings?.some((m) => m.deliverableIds.includes(d.id)))), outcomes: operational(w.outcomes), concerns: operational(w.concerns), requirements: w.completionRequirements ?? null };
+}
+export function measurementContent(m: OutcomeMeasurement): Record<string, unknown> {
+  const { binding: _binding, verification: _verification, verificationBinding: _vb, updatedAt: _at, updatedBy: _by, ...content } = m;
+  return content;
+}
+export function measurementChange(o: DeliveryOutcome, m: OutcomeMeasurement): { value:number; kind:MeasurementDefinition["comparison"]; unit:string } | null {
+  const definition=o.evidenceHistory?.definitions.find((d) => d.id===m.binding?.definitionId), baseline=o.evidenceHistory?.baselines.find((b) => b.id===m.binding?.baselineId);
+  if(!definition || !baseline || baseline.value===null || m.value===null) return null;
+  const metric=definition.metric;
+  try { validateMetric(metric,baseline.value,baseline.unit); validateMetric(metric,m.value); } catch { return null; }
+  if(metric.kind==="qualitative" || metric.comparison==="qualitative") return null;
+  const difference=metric.direction==="decrease" ? baseline.value-m.value : m.value-baseline.value;
+  if(metric.comparison==="relative") {
+    if(baseline.value<=0 || ["signed","currency"].includes(metric.kind)) return null;
+    return {value:difference/baseline.value*100,kind:"relative",unit:"%"};
+  }
+  return {value:difference,kind:metric.comparison,unit:metric.comparison==="percentage_points"?"percentage points":metric.unit};
+}
+export function historicalSourceValue(w: DeliveryWorkspace) {
+  const { historicalRevalidation:_review, updatedAt:_at, updatedBy:_by, ...content }=w;
+  return contentValue(content);
+}
+export function historicalObligationProblems(w: DeliveryWorkspace) {
+  return sourceObligations(w.initiation).filter((o) => o.required && !w.deliverables.some((d) => d.acceptanceKind===o.acceptance && acceptedVersion(d)?.criteria.includes(o.criteria))).map((o) => `Historical obligation lacks applicable acceptance evidence: ${o.description}`);
+}
+export function establishOutcomeEvidence(o: DeliveryOutcome, approval: Approval, reason = "Initial authorized outcome definition") {
+  const prior = o.evidenceHistory;
+  const number = (prior?.definitions.length ?? 0) + 1;
+  const definitionId = `definition_${o.id}_${number}`;
+  const baselineId = o.baseline !== null || o.baselineDescription ? `baseline_${o.id}_${(prior?.baselines.length ?? 0) + 1}` : "";
+  const metric = metricFor(o, o.measurementDefinition);
+  validateMetric(metric, o.baseline); validateMetric(metric, o.target);
+  const identity = { organizationId:o.organizationId, engagementId:o.engagementId, outcomeId:o.id, createdAt:approval.at, createdBy:approval.by };
+  const definition = strongSeal({ ...identity, id:definitionId, number, metric, objective:o.objective, definition:o.definition, target:o.target, targetDescription:o.targetDescription, frequency:o.frequency, baselineId, previousId:prior?.currentDefinitionId ?? "", reason });
+  const baseline = baselineId ? strongSeal({ ...identity, id:baselineId, number:(prior?.baselines.length ?? 0)+1, definitionId, value:o.baseline, unit:o.unit, description:o.baselineDescription, observedAt:approval.at, source:o.baselineDescription || "Established baseline", evidence:o.baselineEvidence, previousId:prior?.currentBaselineId ?? "", reason, approval }) : null;
+  o.measurementDefinition=metric;
+  o.evidenceHistory = OutcomeEvidenceSchema.parse({ definitions:[...(prior?.definitions ?? []),definition], baselines:[...(prior?.baselines ?? []),...(baseline ? [baseline] : [])], currentDefinitionId:definitionId, currentBaselineId:baselineId });
+}
+function validateStrengthened(w: DeliveryWorkspace) {
+  if (w.initiation.integrityContract !== STRONG_CONTRACT || w.initiation.schema !== "aurumi.cia.engagement-initiation/2" || !w.obligations || !w.obligationMappings || !w.initiation.obligations) throw Error("Missing strengthened authorized obligations");
+  if (canonical(w.initiation.obligations) !== canonical(sourceObligations(w.initiation))) throw Error("Authorized source obligations were substituted");
+  unique(w.obligations);
+  for (const original of w.initiation.obligations) if (!w.obligations.some((o) => canonical(o) === canonical(original))) throw Error("Original obligation history was removed");
+  for (const o of w.obligations) {
+    checkStrong(o);
+    if (o.engagementId !== w.engagementId || o.organizationId !== w.organizationId) throw Error("Obligation source identity mismatch");
+    if (o.amendmentId) {
+      const c = w.changes.find((c) => c.id === o.amendmentId && c.status === "applied");
+      const a = c?.obligationAmendments?.find((a) => a.obligationId === o.replacesId && a.action === "supersede");
+      if (!c?.approval || !a || a.description !== o.description || a.criteria !== o.criteria || !w.obligations.some((p) => p.id === o.replacesId)) throw Error("Revised obligation lacks applicable authorized amendment");
+    } else if (!w.initiation.obligations.some((r) => canonical(r) === canonical(o))) throw Error("Unauthorized added obligation");
+  }
+  const active = obligationStates(w).filter((o) => !["removed_by_amendment", "superseded_by_amendment"].includes(o.status)).map((o) => o.id).sort();
+  if (canonical(w.scopes.at(-1)?.obligationIds?.slice().sort()) !== canonical(active)) throw Error("Effective scope obligation register mismatch");
+  const mapped = new Set<string>();
+  for (const m of w.obligationMappings) {
+    checkStrong(m);
+    const o = w.obligations.find((o) => o.id === m.obligationId);
+    if (!o || mapped.has(o.id) || m.deliverableIds.some((id) => !w.deliverables.some((d) => d.id === id)) || m.milestoneIds.some((id) => !w.milestones.some((d) => d.id === id)) || m.workstreamIds.some((id) => !w.workstreams.some((d) => d.id === id)) || m.reviewIds.some((id) => !w.reviews.some((d) => d.id === id))) throw Error("Obligation mapping references unavailable delivery evidence");
+    mapped.add(o.id);
+  }
+  for (const c of w.changes) {
+    const seen = new Set<string>();
+    for (const a of c.obligationAmendments ?? []) {
+      if (seen.has(a.obligationId) || !w.obligations.some((o) => o.id === a.obligationId) || (a.action === "supersede" && (!a.description.trim() || !a.criteria.trim()))) throw Error("Amendment obligation reference mismatch");
+      seen.add(a.obligationId);
+    }
+  }
+  if (w.authorization) validateAuthorization(w);
+  if(!w.lifecycleHistory) throw Error("Missing commencement lifecycle history");
+  let state="draft",commenced=false;
+  unique(w.lifecycleHistory);
+  for(const event of w.lifecycleHistory) {
+    checkStrong(event);
+    if(event.engagementId!==w.engagementId || event.organizationId!==w.organizationId || event.from!==state) throw Error("Lifecycle authorization history mismatch");
+    if(event.to==="authorized") commenced=true;
+    if(commenced) {
+      validateAuthorization(w);
+      const authorization=AuthorizationSchema.parse(w.authorization);
+      if(event.authorizationValue!==authorization.integrityValue) throw Error("Lifecycle commencement authorization changed");
+    } else if(event.authorizationValue) throw Error("Unauthorized commencement history");
+    state=event.to;
+  }
+  for (const o of w.outcomes) {
+    const history = o.evidenceHistory;
+    if (!history || !o.measurementDefinition || o.workstreamId === undefined) throw Error("Outcome lacks versioned definition or operational scope");
+    unique(history.definitions); unique(history.baselines);
+    const d = history.definitions.find((d) => d.id === history.currentDefinitionId), b = history.baselines.find((b) => b.id === history.currentBaselineId);
+    if (!d || canonical(d.metric) !== canonical(o.measurementDefinition) || d.objective !== o.objective || d.definition !== o.definition || d.target !== o.target || d.targetDescription !== o.targetDescription || d.frequency !== o.frequency || (b?.value ?? null) !== o.baseline || (b?.description ?? "") !== o.baselineDescription || canonical(b?.evidence ?? []) !== canonical(o.baselineEvidence) || d.baselineId !== history.currentBaselineId) throw Error("Outcome definition or baseline content changed");
+    for (const def of history.definitions) {
+      checkStrong(def); metricFor({type: def.metric.kind === "qualitative" ? "qualitative" : "quantitative", unit: def.metric.unit, direction: def.metric.direction}, def.metric); validateMetric(def.metric, def.target);
+      if (def.outcomeId !== o.id || def.engagementId !== w.engagementId || def.organizationId !== w.organizationId || def.number !== history.definitions.indexOf(def) + 1 || (def.previousId && !history.definitions.some((p) => p.id === def.previousId && p.number < def.number)) || (def.baselineId && !history.baselines.some((b) => b.id === def.baselineId))) throw Error("Outcome definition relationship mismatch");
+    }
+    for (const baseline of history.baselines) {
+      checkStrong(baseline); const def = history.definitions.find((d) => d.id === baseline.definitionId);
+      if (!def || baseline.outcomeId !== o.id || baseline.engagementId !== w.engagementId || baseline.organizationId !== w.organizationId || baseline.number !== history.baselines.indexOf(baseline) + 1 || (baseline.previousId && !history.baselines.some((b) => b.id === baseline.previousId && b.number < baseline.number)) || timestampInstant(baseline.observedAt) > Date.now()) throw Error("Baseline relationship mismatch");
+      validateMetric(def.metric, baseline.value, baseline.unit);
+    }
+    for (const m of o.measurements) {
+      if (!m.binding) throw Error("Observation lacks immutable content binding");
+      checkStrong(m.binding); const def = history.definitions.find((d) => d.id === m.binding?.definitionId), baseline = history.baselines.find((b) => b.id === m.binding?.baselineId);
+      if (!def || m.binding.measurementId !== m.id || m.binding.engagementId !== w.engagementId || m.binding.organizationId !== w.organizationId || m.binding.outcomeId !== o.id || m.binding.definitionValue !== def.integrityValue || m.binding.baselineId !== def.baselineId || m.binding.baselineValue !== (baseline?.integrityValue ?? "") || canonical(m.binding.content) !== canonical(measurementContent(m)) || (m.binding.supersedesId && !o.measurements.some((p) => p.id === m.binding?.supersedesId && p.id !== m.id))) throw Error("Observation content or baseline binding changed");
+      validateMetric(def.metric, m.value, def.metric.unit, o.type === "quantitative");
+      if (m.verification) {
+        if (!m.verificationBinding) throw Error("Verification lacks exact observation binding");
+        checkStrong(m.verificationBinding);
+        if (m.verificationBinding.measurementId !== m.id || m.verificationBinding.measurementValue !== m.binding.integrityValue || m.verificationBinding.baselineId !== m.binding.baselineId || m.verificationBinding.baselineValue !== m.binding.baselineValue || m.verificationBinding.definitionId !== m.binding.definitionId || canonical(m.verificationBinding.approval) !== canonical(m.verification)) throw Error("Verification content binding mismatch");
+      } else if (m.verificationBinding) throw Error("Verification decision was removed");
+    }
+  }
+  for (const r of w.reviews) {
+    if (r.integrityContract !== STRONG_CONTRACT || r.schema !== "aurumi.cia.engagement-review/2" || !r.binding || !r.outcomeEvidence) throw Error("Review lacks exact reviewed evidence");
+    checkStrong(r.binding);
+    if (r.binding.engagementId !== w.engagementId || r.binding.organizationId !== w.organizationId || r.binding.stateValue !== contentValue(r.binding.state)) throw Error("Review material-state binding mismatch");
+    for (const historic of r.outcomeEvidence) {
+      const current = w.outcomes.find((o) => o.id === historic.id);
+      if (!current?.evidenceHistory || !historic.evidenceHistory || historic.measurements.some((m) => !current.measurements.some((p) => p.id === m.id && canonical(p.binding) === canonical(m.binding))) || historic.evidenceHistory.baselines.some((b) => !current.evidenceHistory?.baselines.some((p) => canonical(p) === canonical(b))) || historic.evidenceHistory.definitions.some((d) => !current.evidenceHistory?.definitions.some((p) => canonical(p) === canonical(d)))) throw Error("Historical review evidence is unavailable or changed");
+    }
   }
 }

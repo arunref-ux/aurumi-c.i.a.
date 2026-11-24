@@ -4,7 +4,7 @@ import { networkService as N } from "@/data/network";
 import { store, memoryBackend, STORAGE_KEY, QUARANTINE_KEY } from "@/data/store";
 import { deliveryAdapters } from "@/integrations/adapters/delivery";
 import { mockControls } from "@/integrations/adapters/mock";
-import { seal, contentValue } from "@/domain/delivery";
+import { seal, contentValue, proposalScopeTerms } from "@/domain/delivery";
 import { canonical } from "@/domain/assessment";
 import { issuedProposal } from "./proposal-fixtures";
 import legacyOriginal from "./fixtures/legacy-e696c05-issued.json";
@@ -427,7 +427,7 @@ describe("Phase 6 strict restoration and independent sibling preservation", () =
           next.issued.document.recipient.organization || next.issued.document.recipient.name,
         proposalVersionId: next.issued.id,
         allocationId: "exact-source",
-        terms: { ...creation().terms, currency: nextTotal.currency, amount: nextTotal.initialCost },
+        terms: { ...creation().terms, ...proposalScopeTerms(next.issued), currency: nextTotal.currency, amount: nextTotal.initialCost },
       }),
     );
     const encoded = liveBackend.read(STORAGE_KEY);
@@ -544,11 +544,17 @@ describe("Phase 6 strict restoration and independent sibling preservation", () =
     (_name, fixture) => {
       const b = memoryBackend();
       const envelope = "envelope" in fixture ? fixture.envelope : fixture;
-      const copy = canonical(envelope);
       b.write(STORAGE_KEY, JSON.stringify(envelope));
-      store.attach(b);
-      expect(store.table("deliveryWorkspaces")).toHaveLength(6);
-      expect(canonical(envelope)).toBe(copy);
+      for(let reload=0; reload<3; reload++) {
+        store.attach(b);
+        expect(store.table("deliveryWorkspaces")).toHaveLength(6);
+        if (_name === "Phase 5 converted intake") {
+          for(const key of ["fitSnapshots", "fitIntakes", "fitConversions", "fitConsultations"] as const) {
+            const expected=fitHistory.tables[key];
+            for(const row of expected) expect(store.table(key).find((r) => r.id === row.id)).toEqual(row);
+          }
+        }
+      }
       expect(store.table("engagements").some((e) => e.id === "eng_e")).toBe(true);
       if ("versionId" in fixture)
         expect(store.table("proposalVersions").find((v) => v.id === fixture.versionId)).toEqual(

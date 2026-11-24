@@ -1,3 +1,13 @@
+# Phase 6 — F01–F07 targeted corrections
+- [ ] F01: source-derived obligations, validated delivery mapping and authorized amendments.
+- [ ] F02/F07: fresh material-state completion review and bound commencement authorization.
+- [ ] F03/F04: recursive commercial projection and operational outcome ownership.
+- [ ] F05/F06: measurement domains, strict instants and immutable content-bound evidence.
+- [ ] Genuine released Phase 6 fixtures; earlier-phase repeated restoration assertion correction.
+- [ ] Regression/durability tests, full suite, lint and automatic toolchain validation; completion report and commit.
+- [ ] Exact-commit successful Actions evidence (requires repository synchronization/access).
+- [ ] Independent Codex review required; Phase 6 remains open and Phase 7 excluded.
+
 # Phase 6 — Engagements & C.I.A. Network
 Phases 1–5 closed by independent review; baseline `9e19f209b70827e59851c19818a85697af4e8b39`, approved Actions run `45325310876`. Implement Phase 6 only; Phase 7 excluded.
 - [x] Reuse identities and permissions; professional profiles, qualifications, affiliations, availability and assignment history.
@@ -34,3 +44,5 @@ Phases 1–5 closed by independent verification per Phase 6 authorization.
 - [x] Completion report and commit; await independent Codex review. Standalone types/build commands are prohibited here; CI run URL awaits repository push.
 
 Existing deferred P2 backlog unchanged: share impossible-calendar expiry checks; historical issued /1 simulated sharing; tax display and printed version numbering; Phase 2 connector evidence binding; Phase 3 catalog scope display and async stale-write hardening; Overview hydration warning.
+
+Phase 6 deferred P2: broader amendment/concern/completion-identity presentation; change and deliverable draft/withdrawal workflows. Browser accessibility and actual printing remain for Phase 7.

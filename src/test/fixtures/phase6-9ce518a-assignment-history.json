@@ -1,0 +1,4255 @@
+{
+  "commit": "9ce518ad7e1f5e39007418bdd1422e056cbf3f67",
+  "envelope": {
+    "savedAt": "2026-11-24T06:05:15.243Z",
+    "tables": {
+      "assessments": [
+        {
+          "id": "asm_a",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-03T00:00:00.000Z",
+          "createdBy": "u_pro",
+          "updatedAt": "2026-11-03T00:00:00.000Z",
+          "updatedBy": "u_pro",
+          "ownerId": "u_pro",
+          "teamId": "team_advisory",
+          "assignedUserIds": [],
+          "type": "tenant",
+          "title": "Operations & reporting review",
+          "subjectName": "Shreeji Precision Components (fictional)",
+          "status": "completed",
+          "channel": "direct",
+          "scenarioCode": "A"
+        },
+        {
+          "id": "asm_b",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-14T00:00:00.000Z",
+          "createdBy": "u_manager",
+          "updatedAt": "2026-11-14T00:00:00.000Z",
+          "updatedBy": "u_manager",
+          "ownerId": "u_manager",
+          "teamId": "team_advisory",
+          "assignedUserIds": [
+            "u_pro"
+          ],
+          "type": "tenant",
+          "title": "Guest operations assessment",
+          "subjectName": "Coral Bay Resort (fictional)",
+          "status": "in_progress",
+          "channel": "direct",
+          "scenarioCode": "B"
+        },
+        {
+          "id": "asm_c",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-09T00:00:00.000Z",
+          "createdBy": "u_pm",
+          "updatedAt": "2026-11-09T00:00:00.000Z",
+          "updatedBy": "u_pm",
+          "ownerId": "u_pm",
+          "teamId": "team_partners",
+          "assignedUserIds": [],
+          "type": "partner",
+          "title": "Reseller partnership fit",
+          "subjectName": "Maple Books Consulting (fictional)",
+          "status": "under_review",
+          "channel": "partner_referral",
+          "scenarioCode": "C"
+        },
+        {
+          "id": "asm_d",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-20T00:00:00.000Z",
+          "createdBy": "u_manager",
+          "updatedAt": "2026-11-20T00:00:00.000Z",
+          "updatedBy": "u_manager",
+          "ownerId": "u_manager",
+          "teamId": "team_advisory",
+          "assignedUserIds": [],
+          "type": "tenant",
+          "title": "Business Fit — report for boss",
+          "subjectName": "Brightline Logistics (fictional)",
+          "status": "draft",
+          "channel": "website_boss",
+          "scenarioCode": "D"
+        },
+        {
+          "id": "asm_e",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-10-14T00:00:00.000Z",
+          "createdBy": "u_pro",
+          "updatedAt": "2026-10-14T00:00:00.000Z",
+          "updatedBy": "u_pro",
+          "ownerId": "u_pro",
+          "teamId": "team_advisory",
+          "assignedUserIds": [],
+          "type": "tenant",
+          "title": "Expansion opportunity review",
+          "subjectName": "Kairo Foods (fictional tenant)",
+          "status": "completed",
+          "channel": "existing_tenant",
+          "scenarioCode": "E"
+        }
+      ],
+      "proposals": [
+        {
+          "id": "prp_a",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-11T00:00:00.000Z",
+          "createdBy": "u_pro",
+          "updatedAt": "2026-11-11T00:00:00.000Z",
+          "updatedBy": "u_pro",
+          "ownerId": "u_pro",
+          "teamId": "team_advisory",
+          "assignedUserIds": [],
+          "assessmentId": "asm_a",
+          "title": "Connected reporting for Shreeji",
+          "track": "tenant_solution",
+          "status": "shared",
+          "includesPricing": false
+        },
+        {
+          "id": "prp_c",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-17T00:00:00.000Z",
+          "createdBy": "u_pm",
+          "updatedAt": "2026-11-17T00:00:00.000Z",
+          "updatedBy": "u_pm",
+          "ownerId": "u_pm",
+          "teamId": "team_partners",
+          "assignedUserIds": [],
+          "assessmentId": "asm_c",
+          "title": "Joint pilot & revenue-share proposal",
+          "track": "reseller_partner",
+          "status": "in_review",
+          "includesPricing": true
+        },
+        {
+          "id": "prp_e",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-10-24T00:00:00.000Z",
+          "createdBy": "u_pro",
+          "updatedAt": "2026-10-24T00:00:00.000Z",
+          "updatedBy": "u_pro",
+          "ownerId": "u_pro",
+          "teamId": "team_advisory",
+          "assignedUserIds": [],
+          "assessmentId": "asm_e",
+          "title": "Kairo connector expansion",
+          "track": "tenant_commercial",
+          "status": "accepted",
+          "includesPricing": true
+        },
+        {
+          "id": "prp_b",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-21T00:00:00.000Z",
+          "createdBy": "u_manager",
+          "updatedAt": "2026-11-21T00:00:00.000Z",
+          "updatedBy": "u_manager",
+          "ownerId": "u_manager",
+          "teamId": "team_advisory",
+          "assignedUserIds": [
+            "u_pro"
+          ],
+          "assessmentId": "asm_b",
+          "title": "Guest operations — draft",
+          "track": "tenant_solution",
+          "status": "draft",
+          "includesPricing": false
+        }
+      ],
+      "engagements": [
+        {
+          "id": "eng_e",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-10-29T00:00:00.000Z",
+          "createdBy": "u_manager",
+          "updatedAt": "2026-10-29T00:00:00.000Z",
+          "updatedBy": "u_manager",
+          "ownerId": "u_manager",
+          "teamId": "team_advisory",
+          "assignedUserIds": [
+            "u_pro"
+          ],
+          "proposalId": "prp_e",
+          "title": "Kairo expansion rollout",
+          "status": "active"
+        },
+        {
+          "id": "delivery_hotel",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "ownerId": "u_manager",
+          "teamId": "team_advisory",
+          "assignedUserIds": [
+            "u_manager",
+            "u_pro"
+          ],
+          "proposalId": "",
+          "title": "Coral Bay — connected operations",
+          "status": "active",
+          "deliverySchema": "aurumi.cia.engagement/1",
+          "initiationId": "init_delivery_hotel"
+        },
+        {
+          "id": "delivery_distribution",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T06:05:15.235Z",
+          "updatedBy": "u_admin",
+          "ownerId": "u_manager",
+          "teamId": "team_advisory",
+          "assignedUserIds": [
+            "u_pro"
+          ],
+          "proposalId": "",
+          "title": "Brightline — adoption & monthly advisory",
+          "status": "active",
+          "deliverySchema": "aurumi.cia.engagement/1",
+          "initiationId": "init_delivery_distribution"
+        },
+        {
+          "id": "delivery_training",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "ownerId": "u_manager",
+          "teamId": "team_advisory",
+          "assignedUserIds": [
+            "u_manager"
+          ],
+          "proposalId": "",
+          "title": "Cedar Foods — team training",
+          "status": "authorized",
+          "deliverySchema": "aurumi.cia.engagement/1",
+          "initiationId": "init_delivery_training"
+        },
+        {
+          "id": "delivery_reseller",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "ownerId": "u_pm",
+          "teamId": "team_partners",
+          "assignedUserIds": [
+            "u_partner_pro"
+          ],
+          "proposalId": "",
+          "title": "Maple Books — customer enablement",
+          "status": "active",
+          "deliverySchema": "aurumi.cia.engagement/1",
+          "initiationId": "init_delivery_reseller"
+        },
+        {
+          "id": "delivery_specialist",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "ownerId": "u_manager",
+          "teamId": "team_advisory",
+          "assignedUserIds": [
+            "u_manager",
+            "u_pro"
+          ],
+          "proposalId": "",
+          "title": "Harbour Logistics — integration advisory",
+          "status": "active",
+          "deliverySchema": "aurumi.cia.engagement/1",
+          "initiationId": "init_delivery_specialist"
+        },
+        {
+          "id": "delivery_completed",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "ownerId": "u_manager",
+          "teamId": "team_advisory",
+          "assignedUserIds": [
+            "u_manager"
+          ],
+          "proposalId": "",
+          "title": "Shreeji — reporting review completed",
+          "status": "completed",
+          "deliverySchema": "aurumi.cia.engagement/1",
+          "initiationId": "init_delivery_completed"
+        }
+      ],
+      "workspaces": [
+        {
+          "id": "ws_asm_b",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-14T00:00:00.000Z",
+          "createdBy": "u_manager",
+          "updatedAt": "2026-11-14T00:00:00.000Z",
+          "updatedBy": "u_manager",
+          "assessmentId": "asm_b",
+          "category": "hospitality",
+          "overview": {
+            "primaryContact": "Operations manager (name withheld in sample)",
+            "purpose": "Understand guest-operations pain points before the peak season.",
+            "scope": "Front desk, housekeeping and F&B ordering.",
+            "summary": ""
+          },
+          "profile": {
+            "businessName": "Coral Bay Resort (fictional)",
+            "industry": "Hospitality — beach resort",
+            "geography": "Goa, India — 1 property",
+            "businessSize": "",
+            "employees": "80–120",
+            "businessModel": "Room nights + F&B",
+            "departments": "",
+            "operations": "",
+            "stakeholders": "",
+            "digitalMaturity": "",
+            "constraints": "",
+            "unknown": [
+              "digitalMaturity"
+            ]
+          },
+          "systems": [
+            {
+              "id": "sys_b1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-15T00:00:00.000Z",
+              "createdBy": "u_pro",
+              "updatedAt": "2026-11-15T00:00:00.000Z",
+              "updatedBy": "u_pro",
+              "name": "Housekeeping tracker",
+              "vendor": "",
+              "category": "Task tracking",
+              "classification": "spreadsheet",
+              "deployment": "desktop",
+              "departments": "Housekeeping",
+              "processesSupported": "Room turnover",
+              "userCount": "6",
+              "usage": "Updated twice per shift",
+              "satisfaction": "low",
+              "limitations": "No real-time view for front desk",
+              "integrationNeeds": "Room status to front desk",
+              "apiAvailability": "none",
+              "notes": "",
+              "evidenceIds": [],
+              "compatibility": {
+                "status": "unknown",
+                "evidenceIds": [],
+                "note": ""
+              }
+            },
+            {
+              "id": "sys_b2",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-15T00:00:00.000Z",
+              "createdBy": "u_pro",
+              "updatedAt": "2026-11-15T00:00:00.000Z",
+              "updatedBy": "u_pro",
+              "name": "LagoonPMS (fictional)",
+              "vendor": "Lagoon Software (fictional)",
+              "category": "Property management",
+              "classification": "commercial",
+              "deployment": "cloud",
+              "departments": "Front desk, Reservations",
+              "processesSupported": "Bookings, check-in/out",
+              "userCount": "12",
+              "usage": "Core system",
+              "satisfaction": "medium",
+              "limitations": "Reports exported manually",
+              "integrationNeeds": "Occupancy feed",
+              "apiAvailability": "unknown",
+              "notes": "Vendor says an API exists — not verified.",
+              "evidenceIds": [
+                "ev_b1"
+              ],
+              "compatibility": {
+                "status": "unknown",
+                "evidenceIds": [],
+                "note": "No Aurumi connector verified."
+              }
+            }
+          ],
+          "processes": [
+            {
+              "id": "proc_b1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-15T00:00:00.000Z",
+              "createdBy": "u_pro",
+              "updatedAt": "2026-11-15T00:00:00.000Z",
+              "updatedBy": "u_pro",
+              "department": "Housekeeping",
+              "name": "Room turnover",
+              "currentProcess": "Supervisor radios front desk when a room is ready.",
+              "relatedSystemIds": [
+                "sys_b1"
+              ],
+              "evidenceIds": []
+            }
+          ],
+          "painPoints": [
+            {
+              "id": "pain_b1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-15T00:00:00.000Z",
+              "createdBy": "u_pro",
+              "updatedAt": "2026-11-15T00:00:00.000Z",
+              "updatedBy": "u_pro",
+              "processId": "proc_b1",
+              "description": "Guests wait in lobby because room readiness is unknown.",
+              "impact": "Late check-ins and complaints in peak season",
+              "frequency": "daily",
+              "severity": "high",
+              "priority": "high",
+              "desiredOutcome": "Front desk sees room status live",
+              "workaround": "Radio calls and walk-arounds",
+              "relatedSystemIds": [
+                "sys_b1"
+              ],
+              "evidenceIds": []
+            }
+          ],
+          "requirements": [
+            {
+              "id": "req_b1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-15T00:00:00.000Z",
+              "createdBy": "u_pro",
+              "updatedAt": "2026-11-15T00:00:00.000Z",
+              "updatedBy": "u_pro",
+              "category": "workflow",
+              "statement": "Room-ready status visible to front desk within a minute.",
+              "basis": "confirmed",
+              "priority": "high",
+              "evidenceIds": []
+            },
+            {
+              "id": "req_b2",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-15T00:00:00.000Z",
+              "createdBy": "u_pro",
+              "updatedAt": "2026-11-15T00:00:00.000Z",
+              "updatedBy": "u_pro",
+              "category": "budget",
+              "statement": "Budget likely under one housekeeping salary per year.",
+              "basis": "assumption",
+              "priority": "medium",
+              "evidenceIds": []
+            }
+          ],
+          "evidence": [
+            {
+              "id": "ev_b1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-15T00:00:00.000Z",
+              "createdBy": "u_pro",
+              "updatedAt": "2026-11-15T00:00:00.000Z",
+              "updatedBy": "u_pro",
+              "attribute": "api_availability",
+              "statement": "LagoonPMS publishes a partner API for reservations.",
+              "status": "research_finding",
+              "sources": [
+                {
+                  "title": "LagoonPMS partner page (fictional)",
+                  "url": "https://lagoon.example/partners",
+                  "sourceType": "vendor_site",
+                  "retrievedAt": "2026-11-14T10:00:00Z"
+                }
+              ],
+              "researchedAt": "2026-11-14T10:00:00Z",
+              "confidence": {
+                "level": "medium",
+                "rationale": "Vendor marketing only"
+              },
+              "verification": {
+                "state": "unverified"
+              },
+              "links": [
+                {
+                  "kind": "system",
+                  "id": "sys_b2"
+                }
+              ],
+              "notes": ""
+            }
+          ],
+          "findings": {
+            "environment": "Single resort, mixed spreadsheets and one cloud PMS.",
+            "problems": "",
+            "landscape": "",
+            "opportunities": "",
+            "constraints": "",
+            "missingInformation": "",
+            "risks": "",
+            "nextSteps": ""
+          },
+          "customQuestions": [],
+          "answers": [
+            {
+              "questionId": "q_decision",
+              "state": "answered",
+              "value": "General manager decides; owner signs off above budget.",
+              "answeredBy": "u_pro",
+              "answeredAt": "2026-11-15T00:00:00.000Z"
+            }
+          ],
+          "openQuestions": [
+            {
+              "id": "oq_b1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-15T00:00:00.000Z",
+              "createdBy": "u_pro",
+              "updatedAt": "2026-11-15T00:00:00.000Z",
+              "updatedBy": "u_pro",
+              "text": "Does F&B use a separate POS?",
+              "resolved": false
+            }
+          ],
+          "reviewComments": []
+        },
+        {
+          "id": "ws_asm_c",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-09T00:00:00.000Z",
+          "createdBy": "u_pm",
+          "updatedAt": "2026-11-09T00:00:00.000Z",
+          "updatedBy": "u_pm",
+          "assessmentId": "asm_c",
+          "category": "software_vendor",
+          "overview": {
+            "primaryContact": "Managing partner (sample)",
+            "purpose": "Assess fit as a prospective reseller of Aurumi to accounting clients.",
+            "scope": "Customer base, distribution capability and integration with their accounting tools.",
+            "summary": "Prospective reseller; no agreement exists."
+          },
+          "profile": {
+            "businessName": "Maple Books Consulting (fictional)",
+            "industry": "Accounting advisory",
+            "geography": "Ontario, Canada",
+            "businessSize": "",
+            "employees": "25",
+            "businessModel": "Advisory retainers",
+            "departments": "",
+            "operations": "",
+            "stakeholders": "",
+            "digitalMaturity": "",
+            "constraints": "",
+            "unknown": []
+          },
+          "partner": {
+            "partnerCategory": "Reseller / channel partner",
+            "products": "Bookkeeping services on third-party accounting software",
+            "customerSegments": "SMB retail and professional services",
+            "geographicCoverage": "",
+            "installedBase": "",
+            "apiPossibilities": "",
+            "objectives": "Offer operations software to existing SMB clients",
+            "distribution": "",
+            "dependencies": "",
+            "useCases": "",
+            "openTechnicalQuestions": "",
+            "relationshipStatus": "prospective"
+          },
+          "systems": [],
+          "processes": [],
+          "painPoints": [],
+          "requirements": [],
+          "evidence": [],
+          "findings": {
+            "environment": "",
+            "problems": "",
+            "landscape": "",
+            "opportunities": "",
+            "constraints": "",
+            "missingInformation": "",
+            "risks": "",
+            "nextSteps": ""
+          },
+          "customQuestions": [],
+          "answers": [],
+          "openQuestions": [],
+          "reviewerId": "u_admin",
+          "reviewComments": [
+            {
+              "id": "rc_c1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-21T00:00:00.000Z",
+              "createdBy": "u_pm",
+              "updatedAt": "2026-11-21T00:00:00.000Z",
+              "updatedBy": "u_pm",
+              "kind": "submitted",
+              "body": "Submitted for review."
+            }
+          ]
+        }
+      ],
+      "snapshots": [],
+      "solutions": [],
+      "solutionWorkspaces": [],
+      "solutionSnapshots": [],
+      "proposalWorkspaces": [],
+      "proposalVersions": [],
+      "proposalShares": [],
+      "fitQuestionnaires": [
+        {
+          "id": "fit-questionnaire-v1",
+          "organizationId": "org_public",
+          "createdAt": "2026-11-24T00:00:00.000Z",
+          "createdBy": "system",
+          "updatedAt": "2026-11-24T00:00:00.000Z",
+          "updatedBy": "system",
+          "questionnaireId": "business-fit",
+          "version": 1,
+          "title": "Your Business Fit",
+          "description": "A preliminary view of how your people, processes and systems work together.",
+          "sections": [
+            "About your business",
+            "Your existing systems",
+            "How work happens today",
+            "Your improvement priorities"
+          ],
+          "status": "published",
+          "questions": [
+            {
+              "id": "businessName",
+              "section": 0,
+              "prompt": "Business name (optional)",
+              "type": "text",
+              "options": [],
+              "required": false,
+              "order": 0
+            },
+            {
+              "id": "industry",
+              "section": 0,
+              "prompt": "Industry",
+              "type": "single",
+              "options": [
+                "Hospitality",
+                "Retail",
+                "Manufacturing",
+                "Healthcare",
+                "Professional services",
+                "Real estate and property management",
+                "Construction",
+                "Distribution and wholesale",
+                "Education",
+                "Other",
+                "Not sure"
+              ],
+              "required": true,
+              "order": 1
+            },
+            {
+              "id": "subcategory",
+              "section": 0,
+              "prompt": "Hospitality business type",
+              "type": "single",
+              "options": [
+                "Hotel",
+                "Restaurant",
+                "Travel and leisure",
+                "Other",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 2,
+              "visibleWhen": {
+                "questionId": "industry",
+                "operator": "equals",
+                "value": "Hospitality"
+              }
+            },
+            {
+              "id": "industryOther",
+              "section": 0,
+              "prompt": "Your industry",
+              "type": "text",
+              "options": [],
+              "required": false,
+              "order": 3,
+              "visibleWhen": {
+                "questionId": "industry",
+                "operator": "equals",
+                "value": "Other"
+              }
+            },
+            {
+              "id": "country",
+              "section": 0,
+              "prompt": "Country",
+              "type": "text",
+              "options": [],
+              "required": true,
+              "order": 4
+            },
+            {
+              "id": "employeeBand",
+              "section": 0,
+              "prompt": "Number of employees",
+              "type": "single",
+              "options": [
+                "1–10",
+                "11–25",
+                "26–50",
+                "51–100",
+                "101–250",
+                "251–500",
+                "More than 500",
+                "Not sure"
+              ],
+              "required": true,
+              "order": 5
+            },
+            {
+              "id": "locations",
+              "section": 0,
+              "prompt": "Operating locations",
+              "type": "single",
+              "options": [
+                "1",
+                "2–5",
+                "6–20",
+                "More than 20",
+                "Not sure"
+              ],
+              "required": true,
+              "order": 6
+            },
+            {
+              "id": "operatingModel",
+              "section": 0,
+              "prompt": "Operating model",
+              "type": "single",
+              "options": [
+                "Single site",
+                "Multi-location",
+                "Remote / distributed",
+                "Hybrid",
+                "Other",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 7
+            },
+            {
+              "id": "respondentRole",
+              "section": 0,
+              "prompt": "Your role",
+              "type": "single",
+              "options": [
+                "Owner",
+                "Director",
+                "Operations manager",
+                "Finance manager",
+                "IT manager",
+                "HR manager",
+                "Other",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 8
+            },
+            {
+              "id": "roleOther",
+              "section": 0,
+              "prompt": "Your role (other)",
+              "type": "text",
+              "options": [],
+              "required": false,
+              "order": 9,
+              "visibleWhen": {
+                "questionId": "respondentRole",
+                "operator": "equals",
+                "value": "Other"
+              }
+            },
+            {
+              "id": "systems",
+              "section": 1,
+              "prompt": "Systems used across your business",
+              "type": "systems",
+              "options": [],
+              "required": false,
+              "order": 10
+            },
+            {
+              "id": "duplicateEntry",
+              "section": 2,
+              "prompt": "Is the same information entered into multiple systems?",
+              "type": "single",
+              "options": [
+                "Never",
+                "Sometimes",
+                "Often",
+                "Always",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 11
+            },
+            {
+              "id": "information",
+              "section": 2,
+              "prompt": "How easily can employees find the information they need?",
+              "type": "single",
+              "options": [
+                "Difficult",
+                "Somewhat easy",
+                "Easy",
+                "Very easy",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 12
+            },
+            {
+              "id": "tasks",
+              "section": 2,
+              "prompt": "How are important tasks tracked?",
+              "type": "single",
+              "options": [
+                "Manual / informal",
+                "Shared tracker",
+                "Structured workflow",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 13
+            },
+            {
+              "id": "approvals",
+              "section": 2,
+              "prompt": "How are approvals handled?",
+              "type": "single",
+              "options": [
+                "Informally",
+                "Partly structured",
+                "Structured workflow",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 14
+            },
+            {
+              "id": "manualReports",
+              "section": 2,
+              "prompt": "Are reports manually prepared from multiple sources?",
+              "type": "single",
+              "options": [
+                "Never",
+                "Sometimes",
+                "Often",
+                "Always",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 15
+            },
+            {
+              "id": "exchange",
+              "section": 2,
+              "prompt": "Do your systems exchange information automatically?",
+              "type": "single",
+              "options": [
+                "No",
+                "Partly",
+                "Yes",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 16
+            },
+            {
+              "id": "keyPeople",
+              "section": 2,
+              "prompt": "Is important knowledge dependent on particular employees?",
+              "type": "single",
+              "options": [
+                "Never",
+                "Sometimes",
+                "Often",
+                "Always",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 17
+            },
+            {
+              "id": "visibility",
+              "section": 2,
+              "prompt": "How easily can managers obtain up-to-date information?",
+              "type": "single",
+              "options": [
+                "Difficult",
+                "Somewhat easy",
+                "Easy",
+                "Very easy",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 18
+            },
+            {
+              "id": "acrossLocations",
+              "section": 2,
+              "prompt": "How easily can managers monitor different locations?",
+              "type": "single",
+              "options": [
+                "Difficult",
+                "Somewhat easy",
+                "Easy",
+                "Very easy",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 19,
+              "visibleWhen": {
+                "questionId": "locations",
+                "operator": "equals",
+                "value": "2–5"
+              }
+            },
+            {
+              "id": "severity",
+              "section": 2,
+              "prompt": "How much do these difficulties affect day-to-day work?",
+              "type": "single",
+              "options": [
+                "Low",
+                "Medium",
+                "High",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 20
+            },
+            {
+              "id": "priorities",
+              "section": 3,
+              "prompt": "Your top priorities (up to three, in selection order)",
+              "type": "multi",
+              "options": [
+                "Reduce repetitive manual work",
+                "Improve visibility into business operations",
+                "Improve customer response times",
+                "Improve sales follow-up",
+                "Improve employee productivity",
+                "Strengthen accountability",
+                "Connect existing software",
+                "Improve reporting",
+                "Improve access to business knowledge",
+                "Introduce AI-assisted business conversations",
+                "Improve operational consistency across locations"
+              ],
+              "required": true,
+              "order": 21,
+              "maxSelections": 3
+            },
+            {
+              "id": "secondaryPriorities",
+              "section": 3,
+              "prompt": "Other priorities (optional)",
+              "type": "multi",
+              "options": [
+                "Reduce repetitive manual work",
+                "Improve visibility into business operations",
+                "Improve customer response times",
+                "Improve sales follow-up",
+                "Improve employee productivity",
+                "Strengthen accountability",
+                "Connect existing software",
+                "Improve reporting",
+                "Improve access to business knowledge",
+                "Introduce AI-assisted business conversations",
+                "Improve operational consistency across locations"
+              ],
+              "required": false,
+              "order": 22
+            },
+            {
+              "id": "preference",
+              "section": 3,
+              "prompt": "Implementation preference",
+              "type": "single",
+              "options": [
+                "Retain existing systems wherever possible",
+                "Open to replacing some existing systems",
+                "Start with a small improvement",
+                "Consider broader business transformation",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 23
+            },
+            {
+              "id": "timeframe",
+              "section": 3,
+              "prompt": "Your timeframe",
+              "type": "single",
+              "options": [
+                "Immediate",
+                "Within three months",
+                "Within six months",
+                "Exploring possibilities",
+                "Not sure"
+              ],
+              "required": false,
+              "order": 24
+            }
+          ]
+        }
+      ],
+      "fitRules": [
+        {
+          "id": "fit-rules-v1",
+          "organizationId": "org_public",
+          "createdAt": "2026-11-24T00:00:00.000Z",
+          "createdBy": "system",
+          "updatedAt": "2026-11-24T00:00:00.000Z",
+          "updatedBy": "system",
+          "ruleSetId": "business-fit-rules",
+          "version": 1,
+          "questionnaireVersionId": "fit-questionnaire-v1",
+          "name": "Practical business improvement rules",
+          "rules": [
+            {
+              "id": "digitization-Often",
+              "name": "Reduce repeated data entry",
+              "dimension": "Process digitization",
+              "conditions": [
+                {
+                  "questionId": "duplicateEntry",
+                  "operator": "equals",
+                  "value": "Often"
+                }
+              ],
+              "evidenceRequirements": [
+                "duplicateEntry"
+              ],
+              "description": "You report frequent repeated entry, which can create delays and inconsistent records.",
+              "category": "Process improvement",
+              "recommendation": "Reduce repeated data entry",
+              "nextStep": "Map one repeated entry and agree a single source of truth.",
+              "priority": 10,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Developing"
+            },
+            {
+              "id": "digitization-Always",
+              "name": "Reduce repeated data entry",
+              "dimension": "Process digitization",
+              "conditions": [
+                {
+                  "questionId": "duplicateEntry",
+                  "operator": "equals",
+                  "value": "Always"
+                }
+              ],
+              "evidenceRequirements": [
+                "duplicateEntry"
+              ],
+              "description": "You report frequent repeated entry, which can create delays and inconsistent records.",
+              "category": "Process improvement",
+              "recommendation": "Reduce repeated data entry",
+              "nextStep": "Map one repeated entry and agree a single source of truth.",
+              "priority": 10,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Developing"
+            },
+            {
+              "id": "digitization-never",
+              "name": "Keep effective digital processes",
+              "dimension": "Process digitization",
+              "conditions": [
+                {
+                  "questionId": "duplicateEntry",
+                  "operator": "equals",
+                  "value": "Never"
+                }
+              ],
+              "evidenceRequirements": [
+                "duplicateEntry"
+              ],
+              "description": "You report no repeated data entry; replacement is not justified by this response.",
+              "category": "Better use of existing software",
+              "recommendation": "Keep effective digital processes",
+              "nextStep": "Check whether existing features can address the remaining priorities.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Established"
+            },
+            {
+              "id": "information-0",
+              "name": "Make important knowledge easier to find",
+              "dimension": "Information accessibility",
+              "conditions": [
+                {
+                  "questionId": "information",
+                  "operator": "equals",
+                  "value": "Difficult"
+                }
+              ],
+              "evidenceRequirements": [
+                "information"
+              ],
+              "description": "You describe finding information as difficult.",
+              "category": "Process improvement",
+              "recommendation": "Make important knowledge easier to find",
+              "nextStep": "Agree where key documents live and who keeps them current.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Foundational"
+            },
+            {
+              "id": "visibility-0",
+              "name": "Improve management reporting",
+              "dimension": "Management visibility",
+              "conditions": [
+                {
+                  "questionId": "visibility",
+                  "operator": "equals",
+                  "value": "Difficult"
+                }
+              ],
+              "evidenceRequirements": [
+                "visibility"
+              ],
+              "description": "You describe access to up-to-date management information as difficult.",
+              "category": "Better use of existing software",
+              "recommendation": "Improve management reporting",
+              "nextStep": "Review existing reporting tools before choosing additional software.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Foundational"
+            },
+            {
+              "id": "ai-ready-0",
+              "name": "Organize information before introducing conversational access",
+              "dimension": "AI-assisted operations readiness",
+              "conditions": [
+                {
+                  "questionId": "information",
+                  "operator": "equals",
+                  "value": "Difficult"
+                }
+              ],
+              "evidenceRequirements": [
+                "information"
+              ],
+              "description": "Conversational tools need accessible, maintained source information.",
+              "category": "Process improvement",
+              "recommendation": "Organize information before introducing conversational access",
+              "nextStep": "Review data quality, access rights and unanswered business questions.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Foundational"
+            },
+            {
+              "id": "information-1",
+              "name": "Make important knowledge easier to find",
+              "dimension": "Information accessibility",
+              "conditions": [
+                {
+                  "questionId": "information",
+                  "operator": "equals",
+                  "value": "Somewhat easy"
+                }
+              ],
+              "evidenceRequirements": [
+                "information"
+              ],
+              "description": "You describe finding information as somewhat easy.",
+              "category": "Process improvement",
+              "recommendation": "Make important knowledge easier to find",
+              "nextStep": "Agree where key documents live and who keeps them current.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Developing"
+            },
+            {
+              "id": "visibility-1",
+              "name": "Improve management reporting",
+              "dimension": "Management visibility",
+              "conditions": [
+                {
+                  "questionId": "visibility",
+                  "operator": "equals",
+                  "value": "Somewhat easy"
+                }
+              ],
+              "evidenceRequirements": [
+                "visibility"
+              ],
+              "description": "You describe access to up-to-date management information as somewhat easy.",
+              "category": "Better use of existing software",
+              "recommendation": "Improve management reporting",
+              "nextStep": "Review existing reporting tools before choosing additional software.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Developing"
+            },
+            {
+              "id": "ai-ready-1",
+              "name": "Organize information before introducing conversational access",
+              "dimension": "AI-assisted operations readiness",
+              "conditions": [
+                {
+                  "questionId": "information",
+                  "operator": "equals",
+                  "value": "Somewhat easy"
+                }
+              ],
+              "evidenceRequirements": [
+                "information"
+              ],
+              "description": "Conversational tools need accessible, maintained source information.",
+              "category": "Process improvement",
+              "recommendation": "Organize information before introducing conversational access",
+              "nextStep": "Review data quality, access rights and unanswered business questions.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Developing"
+            },
+            {
+              "id": "information-2",
+              "name": "Preserve accessible business knowledge",
+              "dimension": "Information accessibility",
+              "conditions": [
+                {
+                  "questionId": "information",
+                  "operator": "equals",
+                  "value": "Easy"
+                }
+              ],
+              "evidenceRequirements": [
+                "information"
+              ],
+              "description": "You describe finding information as easy.",
+              "category": "Process improvement",
+              "recommendation": "Preserve accessible business knowledge",
+              "nextStep": "Agree where key documents live and who keeps them current.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Established"
+            },
+            {
+              "id": "visibility-2",
+              "name": "Build on current management visibility",
+              "dimension": "Management visibility",
+              "conditions": [
+                {
+                  "questionId": "visibility",
+                  "operator": "equals",
+                  "value": "Easy"
+                }
+              ],
+              "evidenceRequirements": [
+                "visibility"
+              ],
+              "description": "You describe access to up-to-date management information as easy.",
+              "category": "Better use of existing software",
+              "recommendation": "Build on current management visibility",
+              "nextStep": "Review existing reporting tools before choosing additional software.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Established"
+            },
+            {
+              "id": "ai-ready-2",
+              "name": "Validate access and permissions for conversational information",
+              "dimension": "AI-assisted operations readiness",
+              "conditions": [
+                {
+                  "questionId": "information",
+                  "operator": "equals",
+                  "value": "Easy"
+                }
+              ],
+              "evidenceRequirements": [
+                "information"
+              ],
+              "description": "Accessible information is a useful foundation, not proof of AI suitability.",
+              "category": "Process improvement",
+              "recommendation": "Validate access and permissions for conversational information",
+              "nextStep": "Review data quality, access rights and unanswered business questions.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Established"
+            },
+            {
+              "id": "information-3",
+              "name": "Preserve accessible business knowledge",
+              "dimension": "Information accessibility",
+              "conditions": [
+                {
+                  "questionId": "information",
+                  "operator": "equals",
+                  "value": "Very easy"
+                }
+              ],
+              "evidenceRequirements": [
+                "information"
+              ],
+              "description": "You describe finding information as very easy.",
+              "category": "Process improvement",
+              "recommendation": "Preserve accessible business knowledge",
+              "nextStep": "Agree where key documents live and who keeps them current.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Advanced"
+            },
+            {
+              "id": "visibility-3",
+              "name": "Build on current management visibility",
+              "dimension": "Management visibility",
+              "conditions": [
+                {
+                  "questionId": "visibility",
+                  "operator": "equals",
+                  "value": "Very easy"
+                }
+              ],
+              "evidenceRequirements": [
+                "visibility"
+              ],
+              "description": "You describe access to up-to-date management information as very easy.",
+              "category": "Better use of existing software",
+              "recommendation": "Build on current management visibility",
+              "nextStep": "Review existing reporting tools before choosing additional software.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Advanced"
+            },
+            {
+              "id": "ai-ready-3",
+              "name": "Validate access and permissions for conversational information",
+              "dimension": "AI-assisted operations readiness",
+              "conditions": [
+                {
+                  "questionId": "information",
+                  "operator": "equals",
+                  "value": "Very easy"
+                }
+              ],
+              "evidenceRequirements": [
+                "information"
+              ],
+              "description": "Accessible information is a useful foundation, not proof of AI suitability.",
+              "category": "Process improvement",
+              "recommendation": "Validate access and permissions for conversational information",
+              "nextStep": "Review data quality, access rights and unanswered business questions.",
+              "priority": 20,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Advanced"
+            },
+            {
+              "id": "tasks-0",
+              "name": "Make ownership and follow-up visible",
+              "dimension": "Workflow and accountability",
+              "conditions": [
+                {
+                  "questionId": "tasks",
+                  "operator": "equals",
+                  "value": "Manual / informal"
+                }
+              ],
+              "evidenceRequirements": [
+                "tasks"
+              ],
+              "description": "Important tasks are tracked using manual / informal.",
+              "category": "Process improvement",
+              "recommendation": "Make ownership and follow-up visible",
+              "nextStep": "Choose one workflow and agree an owner, due date and follow-up routine.",
+              "priority": 12,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Foundational"
+            },
+            {
+              "id": "tasks-1",
+              "name": "Make ownership and follow-up visible",
+              "dimension": "Workflow and accountability",
+              "conditions": [
+                {
+                  "questionId": "tasks",
+                  "operator": "equals",
+                  "value": "Shared tracker"
+                }
+              ],
+              "evidenceRequirements": [
+                "tasks"
+              ],
+              "description": "Important tasks are tracked using shared tracker.",
+              "category": "Process improvement",
+              "recommendation": "Make ownership and follow-up visible",
+              "nextStep": "Choose one workflow and agree an owner, due date and follow-up routine.",
+              "priority": 12,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Developing"
+            },
+            {
+              "id": "tasks-2",
+              "name": "Keep structured accountability",
+              "dimension": "Workflow and accountability",
+              "conditions": [
+                {
+                  "questionId": "tasks",
+                  "operator": "equals",
+                  "value": "Structured workflow"
+                }
+              ],
+              "evidenceRequirements": [
+                "tasks"
+              ],
+              "description": "Important tasks are tracked using structured workflow.",
+              "category": "Process improvement",
+              "recommendation": "Keep structured accountability",
+              "nextStep": "Choose one workflow and agree an owner, due date and follow-up routine.",
+              "priority": 12,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Established"
+            },
+            {
+              "id": "exchange-0",
+              "name": "Investigate information exchange between existing systems",
+              "dimension": "Systems interoperability",
+              "conditions": [
+                {
+                  "questionId": "exchange",
+                  "operator": "equals",
+                  "value": "No"
+                }
+              ],
+              "evidenceRequirements": [
+                "exchange"
+              ],
+              "description": "You report no automatic exchange; this does not establish connector compatibility.",
+              "category": "Integration opportunities",
+              "recommendation": "Investigate information exchange between existing systems",
+              "nextStep": "Confirm interfaces, data ownership and required operations before committing to an integration.",
+              "priority": 15,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Foundational"
+            },
+            {
+              "id": "exchange-1",
+              "name": "Investigate information exchange between existing systems",
+              "dimension": "Systems interoperability",
+              "conditions": [
+                {
+                  "questionId": "exchange",
+                  "operator": "equals",
+                  "value": "Partly"
+                }
+              ],
+              "evidenceRequirements": [
+                "exchange"
+              ],
+              "description": "You report partly automatic exchange; this does not establish connector compatibility.",
+              "category": "Integration opportunities",
+              "recommendation": "Investigate information exchange between existing systems",
+              "nextStep": "Confirm interfaces, data ownership and required operations before committing to an integration.",
+              "priority": 15,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Developing"
+            },
+            {
+              "id": "exchange-2",
+              "name": "Retain useful system connections",
+              "dimension": "Systems interoperability",
+              "conditions": [
+                {
+                  "questionId": "exchange",
+                  "operator": "equals",
+                  "value": "Yes"
+                }
+              ],
+              "evidenceRequirements": [
+                "exchange"
+              ],
+              "description": "You report yes automatic exchange; this does not establish connector compatibility.",
+              "category": "Better use of existing software",
+              "recommendation": "Retain useful system connections",
+              "nextStep": "Confirm interfaces, data ownership and required operations before committing to an integration.",
+              "priority": 15,
+              "industries": [],
+              "employeeBands": [],
+              "level": "Established"
+            },
+            {
+              "id": "reports-Often",
+              "name": "Review existing reporting and export features",
+              "dimension": "Management visibility",
+              "conditions": [
+                {
+                  "questionId": "manualReports",
+                  "operator": "equals",
+                  "value": "Often"
+                }
+              ],
+              "evidenceRequirements": [
+                "manualReports"
+              ],
+              "description": "Reports are frequently prepared manually from multiple sources.",
+              "category": "Better use of existing software",
+              "recommendation": "Review existing reporting and export features",
+              "nextStep": "Retain suitable software; define one consolidated report and investigate its data sources.",
+              "priority": 11,
+              "industries": [],
+              "employeeBands": [],
+              "catalogId": "app_ops_reports"
+            },
+            {
+              "id": "reports-Always",
+              "name": "Review existing reporting and export features",
+              "dimension": "Management visibility",
+              "conditions": [
+                {
+                  "questionId": "manualReports",
+                  "operator": "equals",
+                  "value": "Always"
+                }
+              ],
+              "evidenceRequirements": [
+                "manualReports"
+              ],
+              "description": "Reports are frequently prepared manually from multiple sources.",
+              "category": "Better use of existing software",
+              "recommendation": "Review existing reporting and export features",
+              "nextStep": "Retain suitable software; define one consolidated report and investigate its data sources.",
+              "priority": 11,
+              "industries": [],
+              "employeeBands": [],
+              "catalogId": "app_ops_reports"
+            },
+            {
+              "id": "crm-priority",
+              "name": "Explore consistent customer follow-up",
+              "dimension": "Workflow and accountability",
+              "conditions": [
+                {
+                  "questionId": "priorities",
+                  "operator": "includes",
+                  "value": "Improve sales follow-up"
+                }
+              ],
+              "evidenceRequirements": [
+                "priorities"
+              ],
+              "description": "Sales follow-up is a stated priority; existing CRM features may already address it.",
+              "category": "Native application opportunities",
+              "recommendation": "Explore consistent customer follow-up",
+              "nextStep": "Try a structured follow-up routine before considering an additional app.",
+              "priority": 18,
+              "industries": [],
+              "employeeBands": [],
+              "catalogId": "app_crm_followups"
+            },
+            {
+              "id": "ai-priority",
+              "name": "Explore conversational access without replacing suitable software",
+              "dimension": "AI-assisted operations readiness",
+              "conditions": [
+                {
+                  "questionId": "priorities",
+                  "operator": "includes",
+                  "value": "Introduce AI-assisted business conversations"
+                }
+              ],
+              "evidenceRequirements": [
+                "priorities"
+              ],
+              "description": "Conversational access is a stated priority, separate from digital maturity.",
+              "category": "AI-assisted information access",
+              "recommendation": "Explore conversational access without replacing suitable software",
+              "nextStep": "Validate questions, accessible sources and user permissions.",
+              "priority": 18,
+              "industries": [],
+              "employeeBands": [],
+              "catalogId": "ai_summaries"
+            },
+            {
+              "id": "knowledge-priority",
+              "name": "Organize shared business knowledge",
+              "dimension": "Information accessibility",
+              "conditions": [
+                {
+                  "questionId": "priorities",
+                  "operator": "includes",
+                  "value": "Improve access to business knowledge"
+                }
+              ],
+              "evidenceRequirements": [
+                "priorities"
+              ],
+              "description": "Knowledge access is a stated priority.",
+              "category": "Process improvement",
+              "recommendation": "Organize shared business knowledge",
+              "nextStep": "Identify frequently asked questions and nominate document owners.",
+              "priority": 18,
+              "industries": [],
+              "employeeBands": []
+            },
+            {
+              "id": "integration-priority",
+              "name": "Validate unknown integration requirements",
+              "dimension": "Systems interoperability",
+              "conditions": [
+                {
+                  "questionId": "priorities",
+                  "operator": "includes",
+                  "value": "Connect existing software"
+                }
+              ],
+              "evidenceRequirements": [
+                "priorities"
+              ],
+              "description": "A desire to connect software does not prove an available connector.",
+              "category": "Further information required",
+              "recommendation": "Validate unknown integration requirements",
+              "nextStep": "Ask vendors about supported interfaces; preserve unknown and unsupported needs as private demand signals.",
+              "priority": 18,
+              "industries": [],
+              "employeeBands": []
+            },
+            {
+              "id": "accountability",
+              "name": "Agree ownership of recurring tasks",
+              "dimension": "Workflow and accountability",
+              "conditions": [
+                {
+                  "questionId": "priorities",
+                  "operator": "includes",
+                  "value": "Strengthen accountability"
+                }
+              ],
+              "evidenceRequirements": [
+                "priorities"
+              ],
+              "description": "Accountability is a stated priority.",
+              "category": "Process improvement",
+              "recommendation": "Agree ownership of recurring tasks",
+              "nextStep": "Start with a shared task list and review cadence.",
+              "priority": 18,
+              "industries": [],
+              "employeeBands": []
+            },
+            {
+              "id": "manual-work",
+              "name": "Start with one repetitive task",
+              "dimension": "Process digitization",
+              "conditions": [
+                {
+                  "questionId": "priorities",
+                  "operator": "includes",
+                  "value": "Reduce repetitive manual work"
+                }
+              ],
+              "evidenceRequirements": [
+                "priorities"
+              ],
+              "description": "Reducing repetitive work is a stated priority.",
+              "category": "Process improvement",
+              "recommendation": "Start with one repetitive task",
+              "nextStep": "Map one routine and check existing software automation before adding tools.",
+              "priority": 18,
+              "industries": [],
+              "employeeBands": []
+            },
+            {
+              "id": "professional-review",
+              "name": "Consider a professional assessment",
+              "dimension": "Management visibility",
+              "conditions": [
+                {
+                  "questionId": "severity",
+                  "operator": "equals",
+                  "value": "High"
+                }
+              ],
+              "evidenceRequirements": [
+                "severity"
+              ],
+              "description": "You report a high day-to-day impact; the supplied information is not independently verified.",
+              "category": "Professional assessment recommended",
+              "recommendation": "Consider a professional assessment",
+              "nextStep": "Validate important findings with a C.I.A. professional before making commitments.",
+              "priority": 25,
+              "industries": [],
+              "employeeBands": []
+            }
+          ],
+          "status": "published"
+        }
+      ],
+      "fitSessions": [],
+      "fitSnapshots": [],
+      "fitConsultations": [],
+      "fitIntakes": [],
+      "fitConversions": [],
+      "fitOperations": [],
+      "deliveryWorkspaces": [
+        {
+          "id": "workspace_delivery_hotel",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "engagementId": "delivery_hotel",
+          "initiation": {
+            "id": "init_delivery_hotel",
+            "organizationId": "org_aurumi",
+            "createdAt": "2026-11-24T04:00:00.000Z",
+            "createdBy": "u_admin",
+            "updatedAt": "2026-11-24T04:00:00.000Z",
+            "updatedBy": "u_admin",
+            "schema": "aurumi.cia.engagement-initiation/1",
+            "engagementId": "delivery_hotel",
+            "customer": {
+              "reference": "mock://shoptalk/delivery_hotel",
+              "name": "Coral Bay Resort (fictional)",
+              "kind": "customer",
+              "partnerAffiliationId": ""
+            },
+            "serviceCategories": [
+              "implementation"
+            ],
+            "source": {
+              "kind": "direct",
+              "customerReference": "mock://shoptalk/delivery_hotel"
+            },
+            "terms": {
+              "included": "Mobilization, PMS/Tally/attendance feasibility, workflow implementation, departmental training and reporting",
+              "excluded": "Production connector commitments and new product development",
+              "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+              "customerResponsibilities": "Provide source data and appoint a departmental contact",
+              "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+              "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+              "currency": "INR",
+              "amount": 24000,
+              "period": "one_time",
+              "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "cadence": "Weekly delivery review"
+            },
+            "deliverables": [
+              {
+                "title": "Delivery findings & recommendations",
+                "criteria": "Source limitations documented; customer responsibilities recorded"
+              }
+            ],
+            "authorizingEvidence": "mock://file-hub/authorized-demonstration",
+            "integrityContract": "aurumi.cia.delivery-content/1",
+            "integrityValue": "9a7e941c0df7b240"
+          },
+          "authorization": {
+            "by": "u_admin",
+            "at": "2026-11-24T04:00:00.000Z",
+            "evidence": "mock://file-hub/authorized-demonstration",
+            "comment": "Fictional demonstration authorization, not a real contract",
+            "simulated": true
+          },
+          "scopes": [
+            {
+              "id": "scope_delivery_hotel_1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "schema": "aurumi.cia.engagement-scope/1",
+              "engagementId": "delivery_hotel",
+              "number": 1,
+              "terms": {
+                "included": "Mobilization, PMS/Tally/attendance feasibility, workflow implementation, departmental training and reporting",
+                "excluded": "Production connector commitments and new product development",
+                "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+                "customerResponsibilities": "Provide source data and appoint a departmental contact",
+                "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+                "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+                "currency": "INR",
+                "amount": 24000,
+                "period": "one_time",
+                "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+                "start": "2026-11-01",
+                "end": "2026-12-31",
+                "cadence": "Weekly delivery review"
+              },
+              "changeId": "",
+              "approval": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              },
+              "integrityContract": "aurumi.cia.delivery-content/1",
+              "integrityValue": "0460769633b3587e"
+            }
+          ],
+          "assignments": [
+            {
+              "id": "assignment_delivery_hotel_pro_rohan",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_hotel",
+              "professionalId": "pro_rohan",
+              "userId": "u_manager",
+              "responsibility": "lead",
+              "workstreamId": "",
+              "start": "2026-11-01",
+              "end": null,
+              "status": "active",
+              "acknowledgedAt": "2026-11-24T04:00:00.000Z",
+              "allocationHours": 8,
+              "qualificationIds": [
+                "authorization_pro_rohan"
+              ],
+              "service": "implementation",
+              "affiliation": {
+                "id": "affiliation_pro_rohan",
+                "organization": "aff_aurumi",
+                "relationship": "employed",
+                "start": "2026-01-01",
+                "end": null
+              }
+            },
+            {
+              "id": "assignment_delivery_hotel_pro_ananya",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_hotel",
+              "professionalId": "pro_ananya",
+              "userId": "u_pro",
+              "responsibility": "integration",
+              "workstreamId": "workstream_delivery_hotel",
+              "start": "2026-11-01",
+              "end": null,
+              "status": "active",
+              "acknowledgedAt": "2026-11-24T04:00:00.000Z",
+              "allocationHours": 4,
+              "qualificationIds": [
+                "authorization_pro_ananya"
+              ],
+              "service": "implementation",
+              "affiliation": {
+                "id": "affiliation_pro_ananya",
+                "organization": "aff_aurumi",
+                "relationship": "independent",
+                "start": "2026-01-01",
+                "end": null
+              }
+            }
+          ],
+          "workstreams": [
+            {
+              "id": "workstream_delivery_hotel",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_hotel",
+              "name": "Discovery, integration & training",
+              "description": "Mobilization, PMS/Tally/attendance feasibility, workflow implementation, departmental training and reporting",
+              "ownerProfessionalId": "pro_rohan",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "dependencies": [],
+              "status": "active"
+            }
+          ],
+          "milestones": [
+            {
+              "id": "milestone_delivery_hotel",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_hotel",
+              "workstreamId": "workstream_delivery_hotel",
+              "title": "Review findings with customer",
+              "description": "Confirm recommendations and actual results",
+              "ownerProfessionalId": "pro_rohan",
+              "due": "2026-11-22",
+              "completedAt": null,
+              "criteria": "Accepted findings and recorded customer feedback",
+              "deliverableIds": [
+                "deliverable_delivery_hotel"
+              ],
+              "dependencies": [],
+              "required": true,
+              "status": "planned",
+              "evidence": [],
+              "exception": null
+            }
+          ],
+          "deliverables": [
+            {
+              "id": "deliverable_delivery_hotel",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_hotel",
+              "workstreamId": "workstream_delivery_hotel",
+              "ownerProfessionalId": "pro_rohan",
+              "title": "Delivery findings & recommendations",
+              "description": "Mobilization, PMS/Tally/attendance feasibility, workflow implementation, departmental training and reporting",
+              "criteria": "Source limitations documented; customer responsibilities recorded",
+              "due": "2026-12-04",
+              "required": true,
+              "independentReview": true,
+              "acceptanceKind": "customer_acceptance",
+              "artifactReference": "mock://file-hub/findings",
+              "status": "draft",
+              "versions": [],
+              "reviews": []
+            }
+          ],
+          "outcomes": [
+            {
+              "id": "outcome_delivery_hotel",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_hotel",
+              "objective": "Reduce management report preparation time",
+              "definition": "Minutes to prepare the same agreed consolidated report, observed once per month",
+              "unit": "minutes",
+              "type": "quantitative",
+              "baseline": 120,
+              "baselineDescription": "Customer-reported observation (fictional)",
+              "baselineEvidence": [
+                "mock://file-hub/baseline"
+              ],
+              "target": 60,
+              "targetDescription": "Target only, not a guaranteed benefit",
+              "direction": "decrease",
+              "frequency": "Monthly",
+              "ownerProfessionalId": "pro_rohan",
+              "status": "in_progress",
+              "feedback": "",
+              "measurements": []
+            }
+          ],
+          "tasks": [],
+          "interactions": [],
+          "changes": [],
+          "concerns": [],
+          "reviews": [],
+          "continuations": [],
+          "holdReason": "",
+          "holdBy": "",
+          "completion": null,
+          "cancellation": null
+        },
+        {
+          "id": "workspace_delivery_distribution",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T06:05:15.235Z",
+          "updatedBy": "u_admin",
+          "engagementId": "delivery_distribution",
+          "initiation": {
+            "id": "init_delivery_distribution",
+            "organizationId": "org_aurumi",
+            "createdAt": "2026-11-24T04:00:00.000Z",
+            "createdBy": "u_admin",
+            "updatedAt": "2026-11-24T04:00:00.000Z",
+            "updatedBy": "u_admin",
+            "schema": "aurumi.cia.engagement-initiation/1",
+            "engagementId": "delivery_distribution",
+            "customer": {
+              "reference": "mock://shoptalk/delivery_distribution",
+              "name": "Brightline Distribution (fictional)",
+              "kind": "customer",
+              "partnerAffiliationId": ""
+            },
+            "serviceCategories": [
+              "ongoing_advisory"
+            ],
+            "source": {
+              "kind": "direct",
+              "customerReference": "mock://shoptalk/delivery_distribution"
+            },
+            "terms": {
+              "included": "Retain Tally; improve spreadsheet follow-ups, task accountability and monthly management reviews",
+              "excluded": "Production connector commitments and new product development",
+              "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+              "customerResponsibilities": "Provide source data and appoint a departmental contact",
+              "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+              "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+              "currency": "INR",
+              "amount": 12000,
+              "period": "monthly",
+              "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "cadence": "Monthly advisory review"
+            },
+            "deliverables": [
+              {
+                "title": "Delivery findings & recommendations",
+                "criteria": "Source limitations documented; customer responsibilities recorded"
+              }
+            ],
+            "authorizingEvidence": "mock://file-hub/authorized-demonstration",
+            "integrityContract": "aurumi.cia.delivery-content/1",
+            "integrityValue": "587779c200af5776"
+          },
+          "authorization": {
+            "by": "u_admin",
+            "at": "2026-11-24T04:00:00.000Z",
+            "evidence": "mock://file-hub/authorized-demonstration",
+            "comment": "Fictional demonstration authorization, not a real contract",
+            "simulated": true
+          },
+          "scopes": [
+            {
+              "id": "scope_delivery_distribution_1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "schema": "aurumi.cia.engagement-scope/1",
+              "engagementId": "delivery_distribution",
+              "number": 1,
+              "terms": {
+                "included": "Retain Tally; improve spreadsheet follow-ups, task accountability and monthly management reviews",
+                "excluded": "Production connector commitments and new product development",
+                "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+                "customerResponsibilities": "Provide source data and appoint a departmental contact",
+                "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+                "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+                "currency": "INR",
+                "amount": 12000,
+                "period": "monthly",
+                "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+                "start": "2026-11-01",
+                "end": "2026-12-31",
+                "cadence": "Monthly advisory review"
+              },
+              "changeId": "",
+              "approval": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              },
+              "integrityContract": "aurumi.cia.delivery-content/1",
+              "integrityValue": "db1670a5a2363657"
+            }
+          ],
+          "assignments": [
+            {
+              "id": "assignment_delivery_distribution_pro_rohan",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_distribution",
+              "professionalId": "pro_rohan",
+              "userId": "u_manager",
+              "responsibility": "lead",
+              "workstreamId": "",
+              "start": "2026-11-01",
+              "end": "2026-11-24",
+              "status": "ended",
+              "acknowledgedAt": "2026-11-24T04:00:00.000Z",
+              "allocationHours": 8,
+              "qualificationIds": [
+                "authorization_pro_rohan"
+              ],
+              "service": "implementation",
+              "affiliation": {
+                "id": "affiliation_pro_rohan",
+                "organization": "aff_aurumi",
+                "relationship": "employed",
+                "start": "2026-01-01",
+                "end": null
+              }
+            },
+            {
+              "id": "assignment_1b06452bcbb7",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T06:05:15.232Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T06:05:15.232Z",
+              "updatedBy": "u_admin",
+              "professionalId": "pro_ananya",
+              "responsibility": "lead",
+              "workstreamId": "",
+              "start": "2026-11-24",
+              "end": null,
+              "allocationHours": 8,
+              "qualificationIds": [
+                "authorization_pro_ananya"
+              ],
+              "service": "ongoing_advisory",
+              "engagementId": "delivery_distribution",
+              "userId": "u_pro",
+              "status": "active",
+              "acknowledgedAt": null,
+              "affiliation": {
+                "id": "affiliation_pro_ananya",
+                "organization": "aff_aurumi",
+                "relationship": "independent",
+                "start": "2026-01-01",
+                "end": null
+              }
+            }
+          ],
+          "workstreams": [
+            {
+              "id": "workstream_delivery_distribution",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_distribution",
+              "name": "Service delivery",
+              "description": "Retain Tally; improve spreadsheet follow-ups, task accountability and monthly management reviews",
+              "ownerProfessionalId": "pro_rohan",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "dependencies": [],
+              "status": "active"
+            }
+          ],
+          "milestones": [
+            {
+              "id": "milestone_delivery_distribution",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_distribution",
+              "workstreamId": "workstream_delivery_distribution",
+              "title": "Review findings with customer",
+              "description": "Confirm recommendations and actual results",
+              "ownerProfessionalId": "pro_rohan",
+              "due": "2026-12-04",
+              "completedAt": null,
+              "criteria": "Accepted findings and recorded customer feedback",
+              "deliverableIds": [
+                "deliverable_delivery_distribution"
+              ],
+              "dependencies": [],
+              "required": true,
+              "status": "planned",
+              "evidence": [],
+              "exception": null
+            }
+          ],
+          "deliverables": [
+            {
+              "id": "deliverable_delivery_distribution",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_distribution",
+              "workstreamId": "workstream_delivery_distribution",
+              "ownerProfessionalId": "pro_rohan",
+              "title": "Delivery findings & recommendations",
+              "description": "Retain Tally; improve spreadsheet follow-ups, task accountability and monthly management reviews",
+              "criteria": "Source limitations documented; customer responsibilities recorded",
+              "due": "2026-12-04",
+              "required": true,
+              "independentReview": true,
+              "acceptanceKind": "customer_acceptance",
+              "artifactReference": "mock://file-hub/findings",
+              "status": "draft",
+              "versions": [],
+              "reviews": []
+            }
+          ],
+          "outcomes": [
+            {
+              "id": "outcome_delivery_distribution",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_distribution",
+              "objective": "Reduce management report preparation time",
+              "definition": "Minutes to prepare the same agreed consolidated report, observed once per month",
+              "unit": "minutes",
+              "type": "quantitative",
+              "baseline": 120,
+              "baselineDescription": "Customer-reported observation (fictional)",
+              "baselineEvidence": [
+                "mock://file-hub/baseline"
+              ],
+              "target": 60,
+              "targetDescription": "Target only, not a guaranteed benefit",
+              "direction": "decrease",
+              "frequency": "Monthly",
+              "ownerProfessionalId": "pro_rohan",
+              "status": "in_progress",
+              "feedback": "",
+              "measurements": []
+            }
+          ],
+          "tasks": [],
+          "interactions": [],
+          "changes": [],
+          "concerns": [],
+          "reviews": [],
+          "continuations": [],
+          "holdReason": "",
+          "holdBy": "",
+          "completion": null,
+          "cancellation": null
+        },
+        {
+          "id": "workspace_delivery_training",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "engagementId": "delivery_training",
+          "initiation": {
+            "id": "init_delivery_training",
+            "organizationId": "org_aurumi",
+            "createdAt": "2026-11-24T04:00:00.000Z",
+            "createdBy": "u_admin",
+            "updatedAt": "2026-11-24T04:00:00.000Z",
+            "updatedBy": "u_admin",
+            "schema": "aurumi.cia.engagement-initiation/1",
+            "engagementId": "delivery_training",
+            "customer": {
+              "reference": "mock://shoptalk/delivery_training",
+              "name": "Cedar Foods (fictional)",
+              "kind": "customer",
+              "partnerAffiliationId": ""
+            },
+            "serviceCategories": [
+              "adoption_training"
+            ],
+            "source": {
+              "kind": "direct",
+              "customerReference": "mock://shoptalk/delivery_training"
+            },
+            "terms": {
+              "included": "Two departmental training sessions and an adoption check; separately authorized direct service",
+              "excluded": "Production connector commitments and new product development",
+              "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+              "customerResponsibilities": "Provide source data and appoint a departmental contact",
+              "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+              "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+              "currency": "INR",
+              "amount": 24000,
+              "period": "one_time",
+              "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "cadence": "Weekly delivery review"
+            },
+            "deliverables": [
+              {
+                "title": "Delivery findings & recommendations",
+                "criteria": "Source limitations documented; customer responsibilities recorded"
+              }
+            ],
+            "authorizingEvidence": "mock://file-hub/authorized-demonstration",
+            "integrityContract": "aurumi.cia.delivery-content/1",
+            "integrityValue": "9ff0b2b5e5616577"
+          },
+          "authorization": {
+            "by": "u_admin",
+            "at": "2026-11-24T04:00:00.000Z",
+            "evidence": "mock://file-hub/authorized-demonstration",
+            "comment": "Fictional demonstration authorization, not a real contract",
+            "simulated": true
+          },
+          "scopes": [
+            {
+              "id": "scope_delivery_training_1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "schema": "aurumi.cia.engagement-scope/1",
+              "engagementId": "delivery_training",
+              "number": 1,
+              "terms": {
+                "included": "Two departmental training sessions and an adoption check; separately authorized direct service",
+                "excluded": "Production connector commitments and new product development",
+                "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+                "customerResponsibilities": "Provide source data and appoint a departmental contact",
+                "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+                "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+                "currency": "INR",
+                "amount": 24000,
+                "period": "one_time",
+                "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+                "start": "2026-11-01",
+                "end": "2026-12-31",
+                "cadence": "Weekly delivery review"
+              },
+              "changeId": "",
+              "approval": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              },
+              "integrityContract": "aurumi.cia.delivery-content/1",
+              "integrityValue": "edbed55c5c71a4d6"
+            }
+          ],
+          "assignments": [
+            {
+              "id": "assignment_delivery_training_pro_rohan",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_training",
+              "professionalId": "pro_rohan",
+              "userId": "u_manager",
+              "responsibility": "lead",
+              "workstreamId": "",
+              "start": "2026-11-01",
+              "end": null,
+              "status": "active",
+              "acknowledgedAt": "2026-11-24T04:00:00.000Z",
+              "allocationHours": 8,
+              "qualificationIds": [
+                "authorization_pro_rohan"
+              ],
+              "service": "implementation",
+              "affiliation": {
+                "id": "affiliation_pro_rohan",
+                "organization": "aff_aurumi",
+                "relationship": "employed",
+                "start": "2026-01-01",
+                "end": null
+              }
+            }
+          ],
+          "workstreams": [
+            {
+              "id": "workstream_delivery_training",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_training",
+              "name": "Service delivery",
+              "description": "Two departmental training sessions and an adoption check; separately authorized direct service",
+              "ownerProfessionalId": "pro_rohan",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "dependencies": [],
+              "status": "active"
+            }
+          ],
+          "milestones": [
+            {
+              "id": "milestone_delivery_training",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_training",
+              "workstreamId": "workstream_delivery_training",
+              "title": "Review findings with customer",
+              "description": "Confirm recommendations and actual results",
+              "ownerProfessionalId": "pro_rohan",
+              "due": "2026-12-04",
+              "completedAt": null,
+              "criteria": "Accepted findings and recorded customer feedback",
+              "deliverableIds": [
+                "deliverable_delivery_training"
+              ],
+              "dependencies": [],
+              "required": true,
+              "status": "planned",
+              "evidence": [],
+              "exception": null
+            }
+          ],
+          "deliverables": [
+            {
+              "id": "deliverable_delivery_training",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_training",
+              "workstreamId": "workstream_delivery_training",
+              "ownerProfessionalId": "pro_rohan",
+              "title": "Delivery findings & recommendations",
+              "description": "Two departmental training sessions and an adoption check; separately authorized direct service",
+              "criteria": "Source limitations documented; customer responsibilities recorded",
+              "due": "2026-12-04",
+              "required": true,
+              "independentReview": true,
+              "acceptanceKind": "customer_acceptance",
+              "artifactReference": "mock://file-hub/findings",
+              "status": "draft",
+              "versions": [],
+              "reviews": []
+            }
+          ],
+          "outcomes": [
+            {
+              "id": "outcome_delivery_training",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_training",
+              "objective": "Reduce management report preparation time",
+              "definition": "Minutes to prepare the same agreed consolidated report, observed once per month",
+              "unit": "minutes",
+              "type": "quantitative",
+              "baseline": null,
+              "baselineDescription": "Customer-reported observation (fictional)",
+              "baselineEvidence": [
+                "mock://file-hub/baseline"
+              ],
+              "target": 60,
+              "targetDescription": "Target only, not a guaranteed benefit",
+              "direction": "decrease",
+              "frequency": "Monthly",
+              "ownerProfessionalId": "pro_rohan",
+              "status": "in_progress",
+              "feedback": "",
+              "measurements": []
+            }
+          ],
+          "tasks": [],
+          "interactions": [],
+          "changes": [],
+          "concerns": [],
+          "reviews": [],
+          "continuations": [],
+          "holdReason": "",
+          "holdBy": "",
+          "completion": null,
+          "cancellation": null
+        },
+        {
+          "id": "workspace_delivery_reseller",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "engagementId": "delivery_reseller",
+          "initiation": {
+            "id": "init_delivery_reseller",
+            "organizationId": "org_aurumi",
+            "createdAt": "2026-11-24T04:00:00.000Z",
+            "createdBy": "u_admin",
+            "updatedAt": "2026-11-24T04:00:00.000Z",
+            "updatedBy": "u_admin",
+            "schema": "aurumi.cia.engagement-initiation/1",
+            "engagementId": "delivery_reseller",
+            "customer": {
+              "reference": "mock://shoptalk/delivery_reseller",
+              "name": "Maple Books customer (fictional)",
+              "kind": "customer",
+              "partnerAffiliationId": "aff_northledger"
+            },
+            "serviceCategories": [
+              "partner_enablement"
+            ],
+            "source": {
+              "kind": "direct",
+              "customerReference": "mock://shoptalk/delivery_reseller"
+            },
+            "terms": {
+              "included": "Reseller-led adoption support for the explicitly assigned customer only",
+              "excluded": "Production connector commitments and new product development",
+              "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+              "customerResponsibilities": "Provide source data and appoint a departmental contact",
+              "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+              "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+              "currency": "INR",
+              "amount": 24000,
+              "period": "one_time",
+              "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "cadence": "Weekly delivery review"
+            },
+            "deliverables": [
+              {
+                "title": "Delivery findings & recommendations",
+                "criteria": "Source limitations documented; customer responsibilities recorded"
+              }
+            ],
+            "authorizingEvidence": "mock://file-hub/authorized-demonstration",
+            "integrityContract": "aurumi.cia.delivery-content/1",
+            "integrityValue": "6d3d6af3e3565ead"
+          },
+          "authorization": {
+            "by": "u_admin",
+            "at": "2026-11-24T04:00:00.000Z",
+            "evidence": "mock://file-hub/authorized-demonstration",
+            "comment": "Fictional demonstration authorization, not a real contract",
+            "simulated": true
+          },
+          "scopes": [
+            {
+              "id": "scope_delivery_reseller_1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "schema": "aurumi.cia.engagement-scope/1",
+              "engagementId": "delivery_reseller",
+              "number": 1,
+              "terms": {
+                "included": "Reseller-led adoption support for the explicitly assigned customer only",
+                "excluded": "Production connector commitments and new product development",
+                "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+                "customerResponsibilities": "Provide source data and appoint a departmental contact",
+                "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+                "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+                "currency": "INR",
+                "amount": 24000,
+                "period": "one_time",
+                "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+                "start": "2026-11-01",
+                "end": "2026-12-31",
+                "cadence": "Weekly delivery review"
+              },
+              "changeId": "",
+              "approval": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              },
+              "integrityContract": "aurumi.cia.delivery-content/1",
+              "integrityValue": "e7c749c0a8b2a56c"
+            }
+          ],
+          "assignments": [
+            {
+              "id": "assignment_delivery_reseller_pro_liam",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_reseller",
+              "professionalId": "pro_liam",
+              "userId": "u_partner_pro",
+              "responsibility": "lead",
+              "workstreamId": "",
+              "start": "2026-11-01",
+              "end": null,
+              "status": "active",
+              "acknowledgedAt": "2026-11-24T04:00:00.000Z",
+              "allocationHours": 8,
+              "qualificationIds": [
+                "authorization_pro_liam"
+              ],
+              "service": "implementation",
+              "affiliation": {
+                "id": "affiliation_pro_liam",
+                "organization": "aff_northledger",
+                "relationship": "reseller",
+                "start": "2026-01-01",
+                "end": null
+              }
+            }
+          ],
+          "workstreams": [
+            {
+              "id": "workstream_delivery_reseller",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_reseller",
+              "name": "Service delivery",
+              "description": "Reseller-led adoption support for the explicitly assigned customer only",
+              "ownerProfessionalId": "pro_liam",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "dependencies": [],
+              "status": "active"
+            }
+          ],
+          "milestones": [
+            {
+              "id": "milestone_delivery_reseller",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_reseller",
+              "workstreamId": "workstream_delivery_reseller",
+              "title": "Review findings with customer",
+              "description": "Confirm recommendations and actual results",
+              "ownerProfessionalId": "pro_liam",
+              "due": "2026-12-04",
+              "completedAt": null,
+              "criteria": "Accepted findings and recorded customer feedback",
+              "deliverableIds": [
+                "deliverable_delivery_reseller"
+              ],
+              "dependencies": [],
+              "required": true,
+              "status": "planned",
+              "evidence": [],
+              "exception": null
+            }
+          ],
+          "deliverables": [
+            {
+              "id": "deliverable_delivery_reseller",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_reseller",
+              "workstreamId": "workstream_delivery_reseller",
+              "ownerProfessionalId": "pro_liam",
+              "title": "Delivery findings & recommendations",
+              "description": "Reseller-led adoption support for the explicitly assigned customer only",
+              "criteria": "Source limitations documented; customer responsibilities recorded",
+              "due": "2026-12-04",
+              "required": true,
+              "independentReview": true,
+              "acceptanceKind": "customer_acceptance",
+              "artifactReference": "mock://file-hub/findings",
+              "status": "draft",
+              "versions": [],
+              "reviews": []
+            }
+          ],
+          "outcomes": [
+            {
+              "id": "outcome_delivery_reseller",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_reseller",
+              "objective": "Reduce management report preparation time",
+              "definition": "Minutes to prepare the same agreed consolidated report, observed once per month",
+              "unit": "minutes",
+              "type": "quantitative",
+              "baseline": 120,
+              "baselineDescription": "Customer-reported observation (fictional)",
+              "baselineEvidence": [
+                "mock://file-hub/baseline"
+              ],
+              "target": 60,
+              "targetDescription": "Target only, not a guaranteed benefit",
+              "direction": "decrease",
+              "frequency": "Monthly",
+              "ownerProfessionalId": "pro_liam",
+              "status": "in_progress",
+              "feedback": "",
+              "measurements": []
+            }
+          ],
+          "tasks": [],
+          "interactions": [],
+          "changes": [],
+          "concerns": [],
+          "reviews": [],
+          "continuations": [],
+          "holdReason": "",
+          "holdBy": "",
+          "completion": null,
+          "cancellation": null
+        },
+        {
+          "id": "workspace_delivery_specialist",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "engagementId": "delivery_specialist",
+          "initiation": {
+            "id": "init_delivery_specialist",
+            "organizationId": "org_aurumi",
+            "createdAt": "2026-11-24T04:00:00.000Z",
+            "createdBy": "u_admin",
+            "updatedAt": "2026-11-24T04:00:00.000Z",
+            "updatedBy": "u_admin",
+            "schema": "aurumi.cia.engagement-initiation/1",
+            "engagementId": "delivery_specialist",
+            "customer": {
+              "reference": "mock://shoptalk/delivery_specialist",
+              "name": "Harbour Logistics (fictional)",
+              "kind": "customer",
+              "partnerAffiliationId": ""
+            },
+            "serviceCategories": [
+              "integration_advisory"
+            ],
+            "source": {
+              "kind": "direct",
+              "customerReference": "mock://shoptalk/delivery_specialist"
+            },
+            "terms": {
+              "included": "Independent specialist review of existing third-party accounting integration; no connector commitment",
+              "excluded": "Production connector commitments and new product development",
+              "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+              "customerResponsibilities": "Provide source data and appoint a departmental contact",
+              "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+              "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+              "currency": "INR",
+              "amount": 24000,
+              "period": "one_time",
+              "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "cadence": "Weekly delivery review"
+            },
+            "deliverables": [
+              {
+                "title": "Delivery findings & recommendations",
+                "criteria": "Source limitations documented; customer responsibilities recorded"
+              }
+            ],
+            "authorizingEvidence": "mock://file-hub/authorized-demonstration",
+            "integrityContract": "aurumi.cia.delivery-content/1",
+            "integrityValue": "9844c88eb8a25a14"
+          },
+          "authorization": {
+            "by": "u_admin",
+            "at": "2026-11-24T04:00:00.000Z",
+            "evidence": "mock://file-hub/authorized-demonstration",
+            "comment": "Fictional demonstration authorization, not a real contract",
+            "simulated": true
+          },
+          "scopes": [
+            {
+              "id": "scope_delivery_specialist_1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "schema": "aurumi.cia.engagement-scope/1",
+              "engagementId": "delivery_specialist",
+              "number": 1,
+              "terms": {
+                "included": "Independent specialist review of existing third-party accounting integration; no connector commitment",
+                "excluded": "Production connector commitments and new product development",
+                "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+                "customerResponsibilities": "Provide source data and appoint a departmental contact",
+                "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+                "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+                "currency": "INR",
+                "amount": 24000,
+                "period": "one_time",
+                "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+                "start": "2026-11-01",
+                "end": "2026-12-31",
+                "cadence": "Weekly delivery review"
+              },
+              "changeId": "",
+              "approval": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              },
+              "integrityContract": "aurumi.cia.delivery-content/1",
+              "integrityValue": "26cb9cd6d98d3cc6"
+            }
+          ],
+          "assignments": [
+            {
+              "id": "assignment_delivery_specialist_pro_rohan",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_specialist",
+              "professionalId": "pro_rohan",
+              "userId": "u_manager",
+              "responsibility": "lead",
+              "workstreamId": "",
+              "start": "2026-11-01",
+              "end": null,
+              "status": "active",
+              "acknowledgedAt": "2026-11-24T04:00:00.000Z",
+              "allocationHours": 8,
+              "qualificationIds": [
+                "authorization_pro_rohan"
+              ],
+              "service": "implementation",
+              "affiliation": {
+                "id": "affiliation_pro_rohan",
+                "organization": "aff_aurumi",
+                "relationship": "employed",
+                "start": "2026-01-01",
+                "end": null
+              }
+            },
+            {
+              "id": "assignment_delivery_specialist_pro_ananya",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_specialist",
+              "professionalId": "pro_ananya",
+              "userId": "u_pro",
+              "responsibility": "integration",
+              "workstreamId": "workstream_delivery_specialist",
+              "start": "2026-11-01",
+              "end": null,
+              "status": "active",
+              "acknowledgedAt": "2026-11-24T04:00:00.000Z",
+              "allocationHours": 4,
+              "qualificationIds": [
+                "authorization_pro_ananya"
+              ],
+              "service": "implementation",
+              "affiliation": {
+                "id": "affiliation_pro_ananya",
+                "organization": "aff_aurumi",
+                "relationship": "independent",
+                "start": "2026-01-01",
+                "end": null
+              }
+            }
+          ],
+          "workstreams": [
+            {
+              "id": "workstream_delivery_specialist",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_specialist",
+              "name": "Service delivery",
+              "description": "Independent specialist review of existing third-party accounting integration; no connector commitment",
+              "ownerProfessionalId": "pro_rohan",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "dependencies": [],
+              "status": "active"
+            }
+          ],
+          "milestones": [
+            {
+              "id": "milestone_delivery_specialist",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_specialist",
+              "workstreamId": "workstream_delivery_specialist",
+              "title": "Review findings with customer",
+              "description": "Confirm recommendations and actual results",
+              "ownerProfessionalId": "pro_rohan",
+              "due": "2026-12-04",
+              "completedAt": null,
+              "criteria": "Accepted findings and recorded customer feedback",
+              "deliverableIds": [
+                "deliverable_delivery_specialist"
+              ],
+              "dependencies": [],
+              "required": true,
+              "status": "planned",
+              "evidence": [],
+              "exception": null
+            }
+          ],
+          "deliverables": [
+            {
+              "id": "deliverable_delivery_specialist",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_specialist",
+              "workstreamId": "workstream_delivery_specialist",
+              "ownerProfessionalId": "pro_rohan",
+              "title": "Delivery findings & recommendations",
+              "description": "Independent specialist review of existing third-party accounting integration; no connector commitment",
+              "criteria": "Source limitations documented; customer responsibilities recorded",
+              "due": "2026-12-04",
+              "required": true,
+              "independentReview": true,
+              "acceptanceKind": "customer_acceptance",
+              "artifactReference": "mock://file-hub/findings",
+              "status": "draft",
+              "versions": [],
+              "reviews": []
+            }
+          ],
+          "outcomes": [
+            {
+              "id": "outcome_delivery_specialist",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_specialist",
+              "objective": "Reduce management report preparation time",
+              "definition": "Minutes to prepare the same agreed consolidated report, observed once per month",
+              "unit": "minutes",
+              "type": "quantitative",
+              "baseline": 120,
+              "baselineDescription": "Customer-reported observation (fictional)",
+              "baselineEvidence": [
+                "mock://file-hub/baseline"
+              ],
+              "target": 60,
+              "targetDescription": "Target only, not a guaranteed benefit",
+              "direction": "decrease",
+              "frequency": "Monthly",
+              "ownerProfessionalId": "pro_rohan",
+              "status": "in_progress",
+              "feedback": "",
+              "measurements": []
+            }
+          ],
+          "tasks": [],
+          "interactions": [],
+          "changes": [],
+          "concerns": [],
+          "reviews": [],
+          "continuations": [],
+          "holdReason": "",
+          "holdBy": "",
+          "completion": null,
+          "cancellation": null
+        },
+        {
+          "id": "workspace_delivery_completed",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "engagementId": "delivery_completed",
+          "initiation": {
+            "id": "init_delivery_completed",
+            "organizationId": "org_aurumi",
+            "createdAt": "2026-11-24T04:00:00.000Z",
+            "createdBy": "u_admin",
+            "updatedAt": "2026-11-24T04:00:00.000Z",
+            "updatedBy": "u_admin",
+            "schema": "aurumi.cia.engagement-initiation/1",
+            "engagementId": "delivery_completed",
+            "customer": {
+              "reference": "mock://shoptalk/delivery_completed",
+              "name": "Shreeji Precision (fictional)",
+              "kind": "customer",
+              "partnerAffiliationId": ""
+            },
+            "serviceCategories": [
+              "process_improvement"
+            ],
+            "source": {
+              "kind": "direct",
+              "customerReference": "mock://shoptalk/delivery_completed"
+            },
+            "terms": {
+              "included": "Management reporting process improvement and training",
+              "excluded": "Production connector commitments and new product development",
+              "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+              "customerResponsibilities": "Provide source data and appoint a departmental contact",
+              "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+              "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+              "currency": "INR",
+              "amount": 24000,
+              "period": "one_time",
+              "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "cadence": "Weekly delivery review"
+            },
+            "deliverables": [
+              {
+                "title": "Delivery findings & recommendations",
+                "criteria": "Source limitations documented; customer responsibilities recorded"
+              }
+            ],
+            "authorizingEvidence": "mock://file-hub/authorized-demonstration",
+            "integrityContract": "aurumi.cia.delivery-content/1",
+            "integrityValue": "62acbbadba3e2393"
+          },
+          "authorization": {
+            "by": "u_admin",
+            "at": "2026-11-24T04:00:00.000Z",
+            "evidence": "mock://file-hub/authorized-demonstration",
+            "comment": "Fictional demonstration authorization, not a real contract",
+            "simulated": true
+          },
+          "scopes": [
+            {
+              "id": "scope_delivery_completed_1",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "schema": "aurumi.cia.engagement-scope/1",
+              "engagementId": "delivery_completed",
+              "number": 1,
+              "terms": {
+                "included": "Management reporting process improvement and training",
+                "excluded": "Production connector commitments and new product development",
+                "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+                "customerResponsibilities": "Provide source data and appoint a departmental contact",
+                "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+                "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+                "currency": "INR",
+                "amount": 24000,
+                "period": "one_time",
+                "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+                "start": "2026-11-01",
+                "end": "2026-12-31",
+                "cadence": "Weekly delivery review"
+              },
+              "changeId": "",
+              "approval": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              },
+              "integrityContract": "aurumi.cia.delivery-content/1",
+              "integrityValue": "e0bc29c7451c41a7"
+            }
+          ],
+          "assignments": [
+            {
+              "id": "assignment_delivery_completed_pro_rohan",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_completed",
+              "professionalId": "pro_rohan",
+              "userId": "u_manager",
+              "responsibility": "lead",
+              "workstreamId": "",
+              "start": "2026-11-01",
+              "end": null,
+              "status": "active",
+              "acknowledgedAt": "2026-11-24T04:00:00.000Z",
+              "allocationHours": 8,
+              "qualificationIds": [
+                "authorization_pro_rohan"
+              ],
+              "service": "implementation",
+              "affiliation": {
+                "id": "affiliation_pro_rohan",
+                "organization": "aff_aurumi",
+                "relationship": "employed",
+                "start": "2026-01-01",
+                "end": null
+              }
+            }
+          ],
+          "workstreams": [
+            {
+              "id": "workstream_delivery_completed",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_completed",
+              "name": "Service delivery",
+              "description": "Management reporting process improvement and training",
+              "ownerProfessionalId": "pro_rohan",
+              "start": "2026-11-01",
+              "end": "2026-12-31",
+              "dependencies": [],
+              "status": "completed"
+            }
+          ],
+          "milestones": [
+            {
+              "id": "milestone_delivery_completed",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_completed",
+              "workstreamId": "workstream_delivery_completed",
+              "title": "Review findings with customer",
+              "description": "Confirm recommendations and actual results",
+              "ownerProfessionalId": "pro_rohan",
+              "due": "2026-12-04",
+              "completedAt": "2026-11-24T04:00:00.000Z",
+              "criteria": "Accepted findings and recorded customer feedback",
+              "deliverableIds": [
+                "deliverable_delivery_completed"
+              ],
+              "dependencies": [],
+              "required": true,
+              "status": "completed",
+              "evidence": [
+                "mock://file-hub/findings"
+              ],
+              "exception": null
+            }
+          ],
+          "deliverables": [
+            {
+              "id": "deliverable_delivery_completed",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_completed",
+              "workstreamId": "workstream_delivery_completed",
+              "ownerProfessionalId": "pro_rohan",
+              "title": "Delivery findings & recommendations",
+              "description": "Management reporting process improvement and training",
+              "criteria": "Source limitations documented; customer responsibilities recorded",
+              "due": "2026-12-04",
+              "required": true,
+              "independentReview": true,
+              "acceptanceKind": "customer_acceptance",
+              "artifactReference": "mock://file-hub/findings",
+              "status": "accepted",
+              "versions": [
+                {
+                  "id": "version_delivery_completed_1",
+                  "organizationId": "org_aurumi",
+                  "createdAt": "2026-11-24T04:00:00.000Z",
+                  "createdBy": "u_manager",
+                  "updatedAt": "2026-11-24T04:00:00.000Z",
+                  "updatedBy": "u_manager",
+                  "schema": "aurumi.cia.deliverable-version/1",
+                  "engagementId": "delivery_completed",
+                  "deliverableId": "deliverable_delivery_completed",
+                  "number": 1,
+                  "description": "Management reporting process improvement and training",
+                  "criteria": "Source limitations documented; customer responsibilities recorded",
+                  "artifactReference": "mock://file-hub/findings",
+                  "authorProfessionalId": "pro_rohan",
+                  "submittedAt": "2026-11-24T04:00:00.000Z",
+                  "integrityContract": "aurumi.cia.delivery-content/1",
+                  "integrityValue": "eee1f4c9b0cdbb87"
+                }
+              ],
+              "reviews": [
+                {
+                  "id": "acceptance_delivery_completed",
+                  "organizationId": "org_aurumi",
+                  "createdAt": "2026-11-24T04:00:00.000Z",
+                  "createdBy": "u_admin",
+                  "updatedAt": "2026-11-24T04:00:00.000Z",
+                  "updatedBy": "u_admin",
+                  "engagementId": "delivery_completed",
+                  "deliverableId": "deliverable_delivery_completed",
+                  "versionId": "version_delivery_completed_1",
+                  "versionValue": "eee1f4c9b0cdbb87",
+                  "kind": "customer_acceptance",
+                  "decision": "accepted",
+                  "approval": {
+                    "by": "u_admin",
+                    "at": "2026-11-24T04:00:00.000Z",
+                    "evidence": "mock://file-hub/authorized-demonstration",
+                    "comment": "Fictional demonstration authorization, not a real contract",
+                    "simulated": true
+                  },
+                  "integrityContract": "aurumi.cia.delivery-content/1",
+                  "integrityValue": "611b99ea1acaedf0"
+                }
+              ]
+            }
+          ],
+          "outcomes": [
+            {
+              "id": "outcome_delivery_completed",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_completed",
+              "objective": "Reduce management report preparation time",
+              "definition": "Minutes to prepare the same agreed consolidated report, observed once per month",
+              "unit": "minutes",
+              "type": "quantitative",
+              "baseline": 120,
+              "baselineDescription": "Customer-reported observation (fictional)",
+              "baselineEvidence": [
+                "mock://file-hub/baseline"
+              ],
+              "target": 60,
+              "targetDescription": "Target only, not a guaranteed benefit",
+              "direction": "decrease",
+              "frequency": "Monthly",
+              "ownerProfessionalId": "pro_rohan",
+              "status": "partially_achieved",
+              "feedback": "Report preparation improved but remains above the agreed target",
+              "measurements": [
+                {
+                  "id": "measurement_delivery_completed",
+                  "organizationId": "org_aurumi",
+                  "createdAt": "2026-11-24T04:00:00.000Z",
+                  "createdBy": "u_admin",
+                  "updatedAt": "2026-11-24T04:00:00.000Z",
+                  "updatedBy": "u_admin",
+                  "engagementId": "delivery_completed",
+                  "outcomeId": "outcome_delivery_completed",
+                  "observedAt": "2026-11-24T04:00:00.000Z",
+                  "value": 80,
+                  "qualitative": "Partial improvement; input data cleanup remains with the customer",
+                  "source": "Customer feedback at completion review",
+                  "provenance": "customer_reported",
+                  "evidence": [
+                    "mock://file-hub/customer-feedback"
+                  ],
+                  "verification": null
+                }
+              ]
+            }
+          ],
+          "tasks": [],
+          "interactions": [],
+          "changes": [],
+          "concerns": [],
+          "reviews": [
+            {
+              "id": "review_delivery_completed",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "schema": "aurumi.cia.engagement-review/1",
+              "engagementId": "delivery_completed",
+              "kind": "completion",
+              "scheduledAt": "2026-11-24T04:00:00.000Z",
+              "calendarReference": "mock://tasks-calendar/completion",
+              "summary": "Delivered reporting review; target partially achieved and limitations acknowledged",
+              "customerFeedback": "Report preparation improved but remains above the agreed target",
+              "nextActions": "Customer to standardize the remaining spreadsheet inputs",
+              "participants": [
+                "u_manager",
+                "fictional_customer"
+              ],
+              "milestoneResults": [
+                {
+                  "id": "milestone_delivery_completed",
+                  "status": "completed"
+                }
+              ],
+              "deliverableResults": [
+                {
+                  "id": "deliverable_delivery_completed",
+                  "versionId": "version_delivery_completed_1",
+                  "status": "accepted"
+                }
+              ],
+              "measurementIds": [
+                "measurement_delivery_completed"
+              ],
+              "concernIds": [],
+              "approval": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              },
+              "integrityContract": "aurumi.cia.delivery-content/1",
+              "integrityValue": "ca5b74b3c329c41d"
+            }
+          ],
+          "continuations": [
+            {
+              "id": "continuation_delivery_completed",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "engagementId": "delivery_completed",
+              "kind": "advisory",
+              "recommendation": "Consider monthly advisory for input quality and sustained adoption",
+              "customerNeed": "Remaining spreadsheet standardization",
+              "evidence": [
+                "mock://file-hub/customer-feedback"
+              ],
+              "obligation": false,
+              "opportunityReference": ""
+            }
+          ],
+          "holdReason": "",
+          "holdBy": "",
+          "completion": {
+            "id": "completion_delivery_completed",
+            "organizationId": "org_aurumi",
+            "createdAt": "2026-11-24T04:00:00.000Z",
+            "createdBy": "u_admin",
+            "updatedAt": "2026-11-24T04:00:00.000Z",
+            "updatedBy": "u_admin",
+            "schema": "aurumi.cia.engagement-completion/1",
+            "engagementId": "delivery_completed",
+            "initiation": {
+              "id": "init_delivery_completed",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "schema": "aurumi.cia.engagement-initiation/1",
+              "engagementId": "delivery_completed",
+              "customer": {
+                "reference": "mock://shoptalk/delivery_completed",
+                "name": "Shreeji Precision (fictional)",
+                "kind": "customer",
+                "partnerAffiliationId": ""
+              },
+              "serviceCategories": [
+                "process_improvement"
+              ],
+              "source": {
+                "kind": "direct",
+                "customerReference": "mock://shoptalk/delivery_completed"
+              },
+              "terms": {
+                "included": "Management reporting process improvement and training",
+                "excluded": "Production connector commitments and new product development",
+                "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+                "customerResponsibilities": "Provide source data and appoint a departmental contact",
+                "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+                "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+                "currency": "INR",
+                "amount": 24000,
+                "period": "one_time",
+                "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+                "start": "2026-11-01",
+                "end": "2026-12-31",
+                "cadence": "Weekly delivery review"
+              },
+              "deliverables": [
+                {
+                  "title": "Delivery findings & recommendations",
+                  "criteria": "Source limitations documented; customer responsibilities recorded"
+                }
+              ],
+              "authorizingEvidence": "mock://file-hub/authorized-demonstration",
+              "integrityContract": "aurumi.cia.delivery-content/1",
+              "integrityValue": "62acbbadba3e2393"
+            },
+            "scopes": [
+              {
+                "id": "scope_delivery_completed_1",
+                "organizationId": "org_aurumi",
+                "createdAt": "2026-11-24T04:00:00.000Z",
+                "createdBy": "u_admin",
+                "updatedAt": "2026-11-24T04:00:00.000Z",
+                "updatedBy": "u_admin",
+                "schema": "aurumi.cia.engagement-scope/1",
+                "engagementId": "delivery_completed",
+                "number": 1,
+                "terms": {
+                  "included": "Management reporting process improvement and training",
+                  "excluded": "Production connector commitments and new product development",
+                  "assumptions": "Customer provides access to agreed systems; third-party integration remains subject to verified feasibility",
+                  "customerResponsibilities": "Provide source data and appoint a departmental contact",
+                  "professionalResponsibilities": "Delivery oversight, evidence-based advice and agreed training",
+                  "commercialBasis": "Explicit fictional service allocation DEMO-2026, separately authorized",
+                  "currency": "INR",
+                  "amount": 24000,
+                  "period": "one_time",
+                  "pricingReference": "mock://pricing-studio/authorized-service-allocation",
+                  "start": "2026-11-01",
+                  "end": "2026-12-31",
+                  "cadence": "Weekly delivery review"
+                },
+                "changeId": "",
+                "approval": {
+                  "by": "u_admin",
+                  "at": "2026-11-24T04:00:00.000Z",
+                  "evidence": "mock://file-hub/authorized-demonstration",
+                  "comment": "Fictional demonstration authorization, not a real contract",
+                  "simulated": true
+                },
+                "integrityContract": "aurumi.cia.delivery-content/1",
+                "integrityValue": "e0bc29c7451c41a7"
+              }
+            ],
+            "assignments": [
+              {
+                "id": "assignment_delivery_completed_pro_rohan",
+                "organizationId": "org_aurumi",
+                "createdAt": "2026-11-24T04:00:00.000Z",
+                "createdBy": "u_admin",
+                "updatedAt": "2026-11-24T04:00:00.000Z",
+                "updatedBy": "u_admin",
+                "engagementId": "delivery_completed",
+                "professionalId": "pro_rohan",
+                "userId": "u_manager",
+                "responsibility": "lead",
+                "workstreamId": "",
+                "start": "2026-11-01",
+                "end": null,
+                "status": "active",
+                "acknowledgedAt": "2026-11-24T04:00:00.000Z",
+                "allocationHours": 8,
+                "qualificationIds": [
+                  "authorization_pro_rohan"
+                ],
+                "service": "implementation",
+                "affiliation": {
+                  "id": "affiliation_pro_rohan",
+                  "organization": "aff_aurumi",
+                  "relationship": "employed",
+                  "start": "2026-01-01",
+                  "end": null
+                }
+              }
+            ],
+            "workstreams": [
+              {
+                "id": "workstream_delivery_completed",
+                "organizationId": "org_aurumi",
+                "createdAt": "2026-11-24T04:00:00.000Z",
+                "createdBy": "u_admin",
+                "updatedAt": "2026-11-24T04:00:00.000Z",
+                "updatedBy": "u_admin",
+                "engagementId": "delivery_completed",
+                "name": "Service delivery",
+                "description": "Management reporting process improvement and training",
+                "ownerProfessionalId": "pro_rohan",
+                "start": "2026-11-01",
+                "end": "2026-12-31",
+                "dependencies": [],
+                "status": "completed"
+              }
+            ],
+            "milestones": [
+              {
+                "id": "milestone_delivery_completed",
+                "organizationId": "org_aurumi",
+                "createdAt": "2026-11-24T04:00:00.000Z",
+                "createdBy": "u_admin",
+                "updatedAt": "2026-11-24T04:00:00.000Z",
+                "updatedBy": "u_admin",
+                "engagementId": "delivery_completed",
+                "workstreamId": "workstream_delivery_completed",
+                "title": "Review findings with customer",
+                "description": "Confirm recommendations and actual results",
+                "ownerProfessionalId": "pro_rohan",
+                "due": "2026-12-04",
+                "completedAt": "2026-11-24T04:00:00.000Z",
+                "criteria": "Accepted findings and recorded customer feedback",
+                "deliverableIds": [
+                  "deliverable_delivery_completed"
+                ],
+                "dependencies": [],
+                "required": true,
+                "status": "completed",
+                "evidence": [
+                  "mock://file-hub/findings"
+                ],
+                "exception": null
+              }
+            ],
+            "deliverables": [
+              {
+                "id": "deliverable_delivery_completed",
+                "organizationId": "org_aurumi",
+                "createdAt": "2026-11-24T04:00:00.000Z",
+                "createdBy": "u_admin",
+                "updatedAt": "2026-11-24T04:00:00.000Z",
+                "updatedBy": "u_admin",
+                "engagementId": "delivery_completed",
+                "workstreamId": "workstream_delivery_completed",
+                "ownerProfessionalId": "pro_rohan",
+                "title": "Delivery findings & recommendations",
+                "description": "Management reporting process improvement and training",
+                "criteria": "Source limitations documented; customer responsibilities recorded",
+                "due": "2026-12-04",
+                "required": true,
+                "independentReview": true,
+                "acceptanceKind": "customer_acceptance",
+                "artifactReference": "mock://file-hub/findings",
+                "status": "accepted",
+                "versions": [
+                  {
+                    "id": "version_delivery_completed_1",
+                    "organizationId": "org_aurumi",
+                    "createdAt": "2026-11-24T04:00:00.000Z",
+                    "createdBy": "u_manager",
+                    "updatedAt": "2026-11-24T04:00:00.000Z",
+                    "updatedBy": "u_manager",
+                    "schema": "aurumi.cia.deliverable-version/1",
+                    "engagementId": "delivery_completed",
+                    "deliverableId": "deliverable_delivery_completed",
+                    "number": 1,
+                    "description": "Management reporting process improvement and training",
+                    "criteria": "Source limitations documented; customer responsibilities recorded",
+                    "artifactReference": "mock://file-hub/findings",
+                    "authorProfessionalId": "pro_rohan",
+                    "submittedAt": "2026-11-24T04:00:00.000Z",
+                    "integrityContract": "aurumi.cia.delivery-content/1",
+                    "integrityValue": "eee1f4c9b0cdbb87"
+                  }
+                ],
+                "reviews": [
+                  {
+                    "id": "acceptance_delivery_completed",
+                    "organizationId": "org_aurumi",
+                    "createdAt": "2026-11-24T04:00:00.000Z",
+                    "createdBy": "u_admin",
+                    "updatedAt": "2026-11-24T04:00:00.000Z",
+                    "updatedBy": "u_admin",
+                    "engagementId": "delivery_completed",
+                    "deliverableId": "deliverable_delivery_completed",
+                    "versionId": "version_delivery_completed_1",
+                    "versionValue": "eee1f4c9b0cdbb87",
+                    "kind": "customer_acceptance",
+                    "decision": "accepted",
+                    "approval": {
+                      "by": "u_admin",
+                      "at": "2026-11-24T04:00:00.000Z",
+                      "evidence": "mock://file-hub/authorized-demonstration",
+                      "comment": "Fictional demonstration authorization, not a real contract",
+                      "simulated": true
+                    },
+                    "integrityContract": "aurumi.cia.delivery-content/1",
+                    "integrityValue": "611b99ea1acaedf0"
+                  }
+                ]
+              }
+            ],
+            "outcomes": [
+              {
+                "id": "outcome_delivery_completed",
+                "organizationId": "org_aurumi",
+                "createdAt": "2026-11-24T04:00:00.000Z",
+                "createdBy": "u_admin",
+                "updatedAt": "2026-11-24T04:00:00.000Z",
+                "updatedBy": "u_admin",
+                "engagementId": "delivery_completed",
+                "objective": "Reduce management report preparation time",
+                "definition": "Minutes to prepare the same agreed consolidated report, observed once per month",
+                "unit": "minutes",
+                "type": "quantitative",
+                "baseline": 120,
+                "baselineDescription": "Customer-reported observation (fictional)",
+                "baselineEvidence": [
+                  "mock://file-hub/baseline"
+                ],
+                "target": 60,
+                "targetDescription": "Target only, not a guaranteed benefit",
+                "direction": "decrease",
+                "frequency": "Monthly",
+                "ownerProfessionalId": "pro_rohan",
+                "status": "partially_achieved",
+                "feedback": "Report preparation improved but remains above the agreed target",
+                "measurements": [
+                  {
+                    "id": "measurement_delivery_completed",
+                    "organizationId": "org_aurumi",
+                    "createdAt": "2026-11-24T04:00:00.000Z",
+                    "createdBy": "u_admin",
+                    "updatedAt": "2026-11-24T04:00:00.000Z",
+                    "updatedBy": "u_admin",
+                    "engagementId": "delivery_completed",
+                    "outcomeId": "outcome_delivery_completed",
+                    "observedAt": "2026-11-24T04:00:00.000Z",
+                    "value": 80,
+                    "qualitative": "Partial improvement; input data cleanup remains with the customer",
+                    "source": "Customer feedback at completion review",
+                    "provenance": "customer_reported",
+                    "evidence": [
+                      "mock://file-hub/customer-feedback"
+                    ],
+                    "verification": null
+                  }
+                ]
+              }
+            ],
+            "concerns": [],
+            "reviews": [
+              {
+                "id": "review_delivery_completed",
+                "organizationId": "org_aurumi",
+                "createdAt": "2026-11-24T04:00:00.000Z",
+                "createdBy": "u_admin",
+                "updatedAt": "2026-11-24T04:00:00.000Z",
+                "updatedBy": "u_admin",
+                "schema": "aurumi.cia.engagement-review/1",
+                "engagementId": "delivery_completed",
+                "kind": "completion",
+                "scheduledAt": "2026-11-24T04:00:00.000Z",
+                "calendarReference": "mock://tasks-calendar/completion",
+                "summary": "Delivered reporting review; target partially achieved and limitations acknowledged",
+                "customerFeedback": "Report preparation improved but remains above the agreed target",
+                "nextActions": "Customer to standardize the remaining spreadsheet inputs",
+                "participants": [
+                  "u_manager",
+                  "fictional_customer"
+                ],
+                "milestoneResults": [
+                  {
+                    "id": "milestone_delivery_completed",
+                    "status": "completed"
+                  }
+                ],
+                "deliverableResults": [
+                  {
+                    "id": "deliverable_delivery_completed",
+                    "versionId": "version_delivery_completed_1",
+                    "status": "accepted"
+                  }
+                ],
+                "measurementIds": [
+                  "measurement_delivery_completed"
+                ],
+                "concernIds": [],
+                "approval": {
+                  "by": "u_admin",
+                  "at": "2026-11-24T04:00:00.000Z",
+                  "evidence": "mock://file-hub/authorized-demonstration",
+                  "comment": "Fictional demonstration authorization, not a real contract",
+                  "simulated": true
+                },
+                "integrityContract": "aurumi.cia.delivery-content/1",
+                "integrityValue": "ca5b74b3c329c41d"
+              }
+            ],
+            "continuations": [
+              {
+                "id": "continuation_delivery_completed",
+                "organizationId": "org_aurumi",
+                "createdAt": "2026-11-24T04:00:00.000Z",
+                "createdBy": "u_admin",
+                "updatedAt": "2026-11-24T04:00:00.000Z",
+                "updatedBy": "u_admin",
+                "engagementId": "delivery_completed",
+                "kind": "advisory",
+                "recommendation": "Consider monthly advisory for input quality and sustained adoption",
+                "customerNeed": "Remaining spreadsheet standardization",
+                "evidence": [
+                  "mock://file-hub/customer-feedback"
+                ],
+                "obligation": false,
+                "opportunityReference": ""
+              }
+            ],
+            "customerFeedback": "Report preparation improved but remains above the agreed target",
+            "outstandingResponsibilities": "Customer to standardize the remaining spreadsheet inputs",
+            "executiveSummary": "Reporting review delivered. Preparation time fell from 120 to 80 minutes against a 60-minute target. Partial achievement is recorded honestly.",
+            "decision": {
+              "by": "u_admin",
+              "at": "2026-11-24T04:00:00.000Z",
+              "evidence": "mock://file-hub/authorized-demonstration",
+              "comment": "Fictional demonstration authorization, not a real contract",
+              "simulated": true
+            },
+            "integrityContract": "aurumi.cia.delivery-content/1",
+            "integrityValue": "66fd34f6f71bbe7c"
+          },
+          "cancellation": null
+        }
+      ],
+      "networkProfiles": [
+        {
+          "id": "pro_ananya",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "userId": "u_pro",
+          "teamId": "team_advisory",
+          "displayName": "Ananya Rao",
+          "title": "Independent integration & delivery adviser",
+          "summary": "Fictional professional profile. Expertise tags are self-declared; authorizations below are simulated.",
+          "country": "India",
+          "region": "India — West",
+          "timezone": "Asia/Kolkata",
+          "languages": [
+            "English",
+            "Hindi"
+          ],
+          "expertise": [
+            "expertise_0",
+            "expertise_9",
+            "expertise_11"
+          ],
+          "status": "active",
+          "services": [
+            "implementation",
+            "adoption_training",
+            "integration_advisory",
+            "process_improvement",
+            "ongoing_advisory",
+            "periodic_review",
+            "partner_enablement",
+            "custom"
+          ],
+          "affiliations": [
+            {
+              "id": "affiliation_pro_ananya",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "organization": "aff_aurumi",
+              "relationship": "independent",
+              "start": "2026-01-01",
+              "end": null,
+              "status": "approved",
+              "approval": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              }
+            }
+          ],
+          "qualifications": [
+            {
+              "id": "authorization_pro_ananya",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "professionalId": "pro_ananya",
+              "name": "Simulated Aurumi delivery authorization",
+              "issuer": "Aurumi (fictional demonstration)",
+              "category": "aurumi_authorization",
+              "issueDate": "2026-01-01",
+              "expiryDate": "2027-01-01",
+              "evidenceReference": "mock://file-hub/authorization",
+              "services": [
+                "implementation",
+                "adoption_training",
+                "integration_advisory",
+                "process_improvement",
+                "ongoing_advisory",
+                "periodic_review",
+                "partner_enablement",
+                "custom"
+              ],
+              "status": "verified",
+              "verification": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              },
+              "notes": "Not a certification or an examination credential"
+            }
+          ],
+          "availability": "limited",
+          "weeklyCapacity": 20,
+          "absenceStart": null,
+          "absenceEnd": null,
+          "statusDecision": {
+            "by": "u_admin",
+            "at": "2026-11-24T04:00:00.000Z",
+            "evidence": "mock://file-hub/authorized-demonstration",
+            "comment": "Fictional demonstration authorization, not a real contract",
+            "simulated": true
+          }
+        },
+        {
+          "id": "pro_rohan",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "userId": "u_manager",
+          "teamId": "team_advisory",
+          "displayName": "Rohan Desai",
+          "title": "C.I.A. Manager",
+          "summary": "Fictional professional profile. Expertise tags are self-declared; authorizations below are simulated.",
+          "country": "India",
+          "region": "India",
+          "timezone": "Asia/Kolkata",
+          "languages": [
+            "English",
+            "Hindi"
+          ],
+          "expertise": [
+            "expertise_0",
+            "expertise_9",
+            "expertise_11"
+          ],
+          "status": "active",
+          "services": [
+            "implementation",
+            "adoption_training",
+            "integration_advisory",
+            "process_improvement",
+            "ongoing_advisory",
+            "periodic_review",
+            "partner_enablement",
+            "custom"
+          ],
+          "affiliations": [
+            {
+              "id": "affiliation_pro_rohan",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "organization": "aff_aurumi",
+              "relationship": "employed",
+              "start": "2026-01-01",
+              "end": null,
+              "status": "approved",
+              "approval": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              }
+            }
+          ],
+          "qualifications": [
+            {
+              "id": "authorization_pro_rohan",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "professionalId": "pro_rohan",
+              "name": "Simulated Aurumi delivery authorization",
+              "issuer": "Aurumi (fictional demonstration)",
+              "category": "aurumi_authorization",
+              "issueDate": "2026-01-01",
+              "expiryDate": "2027-01-01",
+              "evidenceReference": "mock://file-hub/authorization",
+              "services": [
+                "implementation",
+                "adoption_training",
+                "integration_advisory",
+                "process_improvement",
+                "ongoing_advisory",
+                "periodic_review",
+                "partner_enablement",
+                "custom"
+              ],
+              "status": "verified",
+              "verification": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              },
+              "notes": "Not a certification or an examination credential"
+            }
+          ],
+          "availability": "available",
+          "weeklyCapacity": 32,
+          "absenceStart": null,
+          "absenceEnd": null,
+          "statusDecision": {
+            "by": "u_admin",
+            "at": "2026-11-24T04:00:00.000Z",
+            "evidence": "mock://file-hub/authorized-demonstration",
+            "comment": "Fictional demonstration authorization, not a real contract",
+            "simulated": true
+          }
+        },
+        {
+          "id": "pro_liam",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "userId": "u_partner_pro",
+          "teamId": "team_partners",
+          "displayName": "Liam Tremblay",
+          "title": "Partner C.I.A.",
+          "summary": "Fictional professional profile. Expertise tags are self-declared; authorizations below are simulated.",
+          "country": "Canada",
+          "region": "Canada — Ontario",
+          "timezone": "America/Toronto",
+          "languages": [
+            "English",
+            "French"
+          ],
+          "expertise": [
+            "expertise_0",
+            "expertise_9",
+            "expertise_11"
+          ],
+          "status": "active",
+          "services": [
+            "implementation",
+            "adoption_training",
+            "integration_advisory",
+            "process_improvement",
+            "ongoing_advisory",
+            "periodic_review",
+            "partner_enablement",
+            "custom"
+          ],
+          "affiliations": [
+            {
+              "id": "affiliation_pro_liam",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "organization": "aff_northledger",
+              "relationship": "reseller",
+              "start": "2026-01-01",
+              "end": null,
+              "status": "approved",
+              "approval": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              }
+            }
+          ],
+          "qualifications": [
+            {
+              "id": "authorization_pro_liam",
+              "organizationId": "org_aurumi",
+              "createdAt": "2026-11-24T04:00:00.000Z",
+              "createdBy": "u_admin",
+              "updatedAt": "2026-11-24T04:00:00.000Z",
+              "updatedBy": "u_admin",
+              "professionalId": "pro_liam",
+              "name": "Simulated Aurumi delivery authorization",
+              "issuer": "Aurumi (fictional demonstration)",
+              "category": "aurumi_authorization",
+              "issueDate": "2026-01-01",
+              "expiryDate": "2027-01-01",
+              "evidenceReference": "mock://file-hub/authorization",
+              "services": [
+                "implementation",
+                "adoption_training",
+                "integration_advisory",
+                "process_improvement",
+                "ongoing_advisory",
+                "periodic_review",
+                "partner_enablement",
+                "custom"
+              ],
+              "status": "verified",
+              "verification": {
+                "by": "u_admin",
+                "at": "2026-11-24T04:00:00.000Z",
+                "evidence": "mock://file-hub/authorized-demonstration",
+                "comment": "Fictional demonstration authorization, not a real contract",
+                "simulated": true
+              },
+              "notes": "Not a certification or an examination credential"
+            }
+          ],
+          "availability": "available",
+          "weeklyCapacity": 32,
+          "absenceStart": null,
+          "absenceEnd": null,
+          "statusDecision": {
+            "by": "u_admin",
+            "at": "2026-11-24T04:00:00.000Z",
+            "evidence": "mock://file-hub/authorized-demonstration",
+            "comment": "Fictional demonstration authorization, not a real contract",
+            "simulated": true
+          }
+        }
+      ],
+      "expertiseCategories": [
+        {
+          "id": "expertise_0",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "Process assessment",
+          "active": true
+        },
+        {
+          "id": "expertise_1",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "Hospitality operations",
+          "active": true
+        },
+        {
+          "id": "expertise_2",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "Accounting systems",
+          "active": true
+        },
+        {
+          "id": "expertise_3",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "Tally",
+          "active": true
+        },
+        {
+          "id": "expertise_4",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "QuickBooks",
+          "active": true
+        },
+        {
+          "id": "expertise_5",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "CRM implementation",
+          "active": true
+        },
+        {
+          "id": "expertise_6",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "HR and attendance",
+          "active": true
+        },
+        {
+          "id": "expertise_7",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "Workflow automation",
+          "active": true
+        },
+        {
+          "id": "expertise_8",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "AI-assisted operations",
+          "active": true
+        },
+        {
+          "id": "expertise_9",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "Integration advisory",
+          "active": true
+        },
+        {
+          "id": "expertise_10",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "Change management",
+          "active": true
+        },
+        {
+          "id": "expertise_11",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "Training",
+          "active": true
+        },
+        {
+          "id": "expertise_12",
+          "organizationId": "org_aurumi",
+          "createdAt": "2026-11-24T04:00:00.000Z",
+          "createdBy": "u_admin",
+          "updatedAt": "2026-11-24T04:00:00.000Z",
+          "updatedBy": "u_admin",
+          "label": "Information security advisory",
+          "active": true
+        }
+      ],
+      "deliveryOperations": []
+    },
+    "audit": [
+      {
+        "actorId": "u_admin",
+        "organizationId": "org_aurumi",
+        "teamId": "team_advisory",
+        "ownerId": "u_admin",
+        "action": "delivery.assign",
+        "resourceType": "engagement",
+        "resourceId": "delivery_distribution",
+        "summary": "Delivery decision delivery.assign saved",
+        "outcome": "allowed",
+        "id": "aud_ee83fd6d7045",
+        "at": "2026-11-24T06:05:15.236Z"
+      },
+      {
+        "id": "aud_1",
+        "at": "2026-11-21T00:00:00.000Z",
+        "organizationId": "org_aurumi",
+        "actorId": "u_manager",
+        "teamId": "team_advisory",
+        "ownerId": "u_manager",
+        "action": "proposal.create",
+        "resourceType": "proposal",
+        "resourceId": "prp_b",
+        "summary": "Created draft proposal for Coral Bay Resort",
+        "outcome": "allowed"
+      },
+      {
+        "id": "aud_2",
+        "at": "2026-11-20T00:00:00.000Z",
+        "organizationId": "org_aurumi",
+        "actorId": "u_manager",
+        "teamId": "team_advisory",
+        "ownerId": "u_manager",
+        "action": "assessment.create",
+        "resourceType": "assessment",
+        "resourceId": "asm_d",
+        "summary": "Website Business Fit session handed off (consented)",
+        "outcome": "allowed"
+      },
+      {
+        "id": "aud_3",
+        "at": "2026-11-17T00:00:00.000Z",
+        "organizationId": "org_aurumi",
+        "actorId": "u_pm",
+        "teamId": "team_partners",
+        "ownerId": "u_pm",
+        "action": "proposal.create",
+        "resourceType": "proposal",
+        "resourceId": "prp_c",
+        "summary": "Generated partnership proposal for Maple Books",
+        "outcome": "allowed"
+      },
+      {
+        "id": "aud_4",
+        "at": "2026-11-11T00:00:00.000Z",
+        "organizationId": "org_aurumi",
+        "actorId": "u_pro",
+        "teamId": "team_advisory",
+        "ownerId": "u_pro",
+        "action": "proposal.share",
+        "resourceType": "proposal",
+        "resourceId": "prp_a",
+        "summary": "Shared proposal v2 with Shreeji leadership",
+        "outcome": "allowed"
+      }
+    ]
+  }
+}

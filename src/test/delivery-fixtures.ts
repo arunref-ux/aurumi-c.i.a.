@@ -123,6 +123,7 @@ export async function readyCompletion() {
     summary: "Actual results and limitations reviewed",
     customerFeedback: "Partial improvement acknowledged",
     nextActions: "Customer standardizes inputs",
+    outstandingResponsibilities: "Customer must standardize source input",
     participants: ["customer", "u_manager"],
     evidence: "mock://file-hub/review",
     comment: "Completed review, not automatic engagement closure",
