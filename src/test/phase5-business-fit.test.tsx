@@ -645,8 +645,14 @@ describe("Phase 5 saved work and recovery", () => {
     const rows = store.table("fitConsultations");
     const row = rows[0];
     if (!row) throw new Error("Contact fixture missing");
-    row.organizationId = "other-org";
-    store.replace("fitConsultations", rows);
+    // Inject a reconstructed corrupt row at the simulated persistence boundary;
+    // never mutate the domain record's immutable organization identity.
+    store.replace(
+      "fitConsultations",
+      rows.map((contact) =>
+        contact.id === row.id ? { ...contact, organizationId: "other-org" } : contact,
+      ),
+    );
     expect(() => I.contact(MGR, id)).toThrow("relationships");
   });
   it("conversion refuses an inconsistent pinned source", async () => {
