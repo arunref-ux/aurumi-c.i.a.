@@ -18,6 +18,7 @@ import {
   useSolutionMutation,
 } from "@/lib/solution-queries";
 import { useSession } from "@/lib/session";
+import { loadDemoSolutions } from "@/data/demo-solutions";
 
 const TITLE = "Solution Studio — C.I.A. Workspace";
 const DESC = "Turn approved assessments into explainable, technically credible solution designs.";
@@ -87,10 +88,13 @@ function SolutionList() {
       {q.isPending ? (
         <p className="text-sm text-muted-foreground">Loading solutions…</p>
       ) : rows.length === 0 ? (
-        <EmptyState
-          title="No solution designs yet"
-          body="Approve an assessment first, then create a solution from its hand-off snapshot."
-        />
+        <div className="space-y-3">
+          <EmptyState
+            title="No solution designs yet"
+            body="Approve an assessment first, then create a solution from its hand-off snapshot."
+          />
+          {can(user, "solution.create") && <SampleButton />}
+        </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-left text-sm">
@@ -231,5 +235,35 @@ function CreatePanel({ onDone }: { onDone: () => void }) {
         </div>
       )}
     </Panel>
+  );
+}
+
+function SampleButton() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  return (
+    <div className="text-center">
+      <button
+        className={btnPrimary}
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            await loadDemoSolutions();
+          } catch (e) {
+            setError(e);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? "Loading sample solutions…" : "Load sample solutions"}
+      </button>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Adds three fictional reference designs (approved, in review, draft).
+      </p>
+      <ErrorNote error={error} />
+    </div>
   );
 }
