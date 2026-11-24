@@ -249,7 +249,6 @@ describe("P1-05 current versions use the strengthened contract", () => {
         delete v.hashContract;
       },
     ],
-    ["contract marker removed from an untouched current version", (v) => delete v.hashContract],
     ["unknown contract marker", (v) => (v.hashContract = "proposal-content-hash/1")],
   ];
   for (const [name, mut] of cases)
@@ -259,6 +258,17 @@ describe("P1-05 current versions use the strengthened contract", () => {
       expect((await P.get(PRO, p.id)).versions.map((x) => x.id)).toEqual([issued.id]);
       expect(backend.read(QUARANTINE_KEY)).toContain("pv_corrupt");
     });
+  it("an absent marker on unchanged strengthened content is interpreted only as unmarked history", async () => {
+    const { p, issued } = await restoreWith((v) => delete v.hashContract);
+    expect(store.persistence().quarantined).toBe(0);
+    const versions = (await P.get(PRO, p.id)).versions;
+    const historical = versions.find((v) => v.id === "pv_corrupt");
+    expect(historical).toBeDefined();
+    if (!historical) throw new Error("Missing historical version");
+    expect(hashContractOf(historical)).toBe(HASH_CONTRACT);
+    expect(historical.contentHash).toBe(issued.contentHash);
+    expect("hashContract" in historical).toBe(false);
+  });
   it("failed quarantine backup keeps the original payload and blocks writes", async () => {
     const m = new Map<string, string>();
     const ctl = { fail: false };

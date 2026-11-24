@@ -29,6 +29,8 @@ export const Route = createFileRoute("/settings")({
         property: "og:description",
         content: "Integration health, roles and permissions, and audit log for C.I.A. Workspace.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Settings,

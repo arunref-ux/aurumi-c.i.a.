@@ -1115,20 +1115,53 @@ export const readinessPercent = (items: ReadinessItem[]) =>
 export const PROPOSAL_VERSION_SCHEMA = "aurumi.cia.proposal-version/1" as const;
 /**
  * Content-hash contracts. /2 (all new versions) covers the embedded solution hand-off;
- * /1 is the pre-correction hash without it. Records written before contracts existed carry
- * no marker and are legacy; the marker is never inferred from whether a hash matches.
+ * /1 is the pre-correction hash without it. Two released implementations wrote
+ * unmarked history: only those records may be interpreted by independently matching
+ * both documented algorithms. This is consistency/compatibility, not authentication.
  */
 export const HASH_CONTRACT = "proposal-content-hash/2" as const;
 export const LEGACY_HASH_CONTRACT = "proposal-content-hash/1" as const;
 export type HashContract = typeof HASH_CONTRACT | typeof LEGACY_HASH_CONTRACT;
-export function hashContractOf(v: { hashContract?: unknown }): HashContract | null {
-  if (v.hashContract === HASH_CONTRACT) return HASH_CONTRACT;
-  if (!("hashContract" in v) || v.hashContract === undefined) return LEGACY_HASH_CONTRACT;
-  return null; // unknown marker: never accepted
+export type VersionHashMetadata = {
+  contract: HashContract | null;
+  assurance: "current-strengthened" | "historical-original" | "historical-strengthened" | "invalid";
+  problem: string | null;
+};
+type HashVersion = Pick<ProposalVersionRecord, "document" | "contentHash"> & {
+  hashContract?: unknown;
+};
+/** Derived runtime metadata only: never stamped onto or persisted into historical records. */
+export function versionHashMetadata(v: HashVersion): VersionHashMetadata {
+  const invalid = (problem: string): VersionHashMetadata => ({
+    contract: null,
+    assurance: "invalid",
+    problem,
+  });
+  if ("hashContract" in v) {
+    // Explicit /1 is not supported. Present-but-undefined/null is malformed, not historical.
+    if (v.hashContract !== HASH_CONTRACT)
+      return invalid(`unknown hash contract "${String(v.hashContract)}"`);
+    return { contract: HASH_CONTRACT, assurance: "current-strengthened", problem: null };
+  }
+  try {
+    const original = documentHash(v.document, LEGACY_HASH_CONTRACT) === v.contentHash;
+    const strengthened = documentHash(v.document, HASH_CONTRACT) === v.contentHash;
+    if (original && strengthened) return invalid("ambiguous historical content hash contract");
+    if (!original && !strengthened)
+      return invalid("content hash does not match either historical contract");
+    return {
+      contract: original ? LEGACY_HASH_CONTRACT : HASH_CONTRACT,
+      assurance: original ? "historical-original" : "historical-strengthened",
+      problem: null,
+    };
+  } catch {
+    return invalid("version document is malformed");
+  }
 }
-/** Legacy versions stay viewable as history but can never be approved or issued anew. */
-export const isLegacyVersion = (v: { hashContract?: unknown }) =>
-  hashContractOf(v) === LEGACY_HASH_CONTRACT;
+export const hashContractOf = (v: HashVersion): HashContract | null =>
+  versionHashMetadata(v).contract;
+/** All unmarked history stays viewable but cannot authorize fresh approval or issuance. */
+export const isLegacyVersion = (v: { hashContract?: unknown }) => !("hashContract" in v);
 export const PROPOSAL_TEMPLATE_VERSION = "cia-proposal-template/1" as const;
 export interface ProposalDocument {
   readonly templateVersion: typeof PROPOSAL_TEMPLATE_VERSION;
@@ -1168,7 +1201,7 @@ export interface ProposalVersionRecord {
   readonly createdAt: ISODate;
   readonly createdBy: ID;
   readonly contentHash: string;
-  /** Absent only on legacy records written before hash contracts existed. */
+  /** Absent on historical /1 AND historical strengthened /2; neither authorizes new issuance. */
   readonly hashContract?: typeof HASH_CONTRACT;
   readonly document: ProposalDocument;
   /** Write-once review decision for this exact version. */
@@ -1355,10 +1388,10 @@ export function versionIntegrityProblems(v: ProposalVersionRecord): string[] {
     const summary = calculateCommercials(lines, [...d.commercials.taxes]);
     if (canonical(summary) !== canonical(d.commercials.summary))
       out.push("stored totals do not match recomputed totals");
-    const contract = hashContractOf(v);
-    if (!contract) out.push(`unknown hash contract "${String(v.hashContract)}"`);
-    // No fallback: a version is checked only against its own declared contract.
-    else if (documentHash(d, contract) !== v.contentHash)
+    const metadata = versionHashMetadata(v);
+    if (metadata.problem) out.push(metadata.problem);
+    // Explicit markers are checked only against their declared contract; never rescued by history.
+    else if (metadata.contract && documentHash(d, metadata.contract) !== v.contentHash)
       out.push("content hash does not match the stored document");
   } catch {
     out.push("version document is malformed");

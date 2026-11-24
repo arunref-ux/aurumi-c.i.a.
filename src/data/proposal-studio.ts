@@ -545,7 +545,7 @@ function unchanged(ctx: Ctx, id: ID, before: string, what: string) {
     );
 }
 const LEGACY_REMEDY =
-  "this version predates strengthened content hashing (proposal-content-hash/1) and stays as history only; revise the proposal and resubmit to create a new version for fresh approval";
+  "this unmarked historical version (proposal-content-hash/1 or historical /2) stays as history only; revise the proposal and resubmit to create an explicitly strengthened new version for fresh approval";
 /** Problems that stop an exact stored version from being approved or issued. */
 function versionDefects(v: ProposalVersionRecord, book: PriceBook | null, at: string): string[] {
   const out = versionIntegrityProblems(v).map((x) => `version integrity: ${x}`);

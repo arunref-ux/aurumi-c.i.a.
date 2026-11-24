@@ -14,6 +14,8 @@ export const Route = createFileRoute("/network")({
         property: "og:description",
         content: "Professional profiles, certification, affiliations and assignments.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Page,

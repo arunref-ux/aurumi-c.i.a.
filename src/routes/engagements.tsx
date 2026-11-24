@@ -13,6 +13,8 @@ export const Route = createFileRoute("/engagements")({
         property: "og:description",
         content: "Post-acceptance advisory and implementation coordination.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Page,
