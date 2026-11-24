@@ -17,6 +17,16 @@ import type {
 import type { AuditEvent, BaseRecord } from "@/domain/types";
 import { sanitizeTable, type QuarantineEntry } from "./persisted-schema";
 import * as seed from "./seed";
+import { FIT_QUESTIONNAIRE, FIT_RULES } from "./business-fit-seed";
+import type {
+  BusinessFitSession,
+  BusinessFitQuestionnaireVersion,
+  BusinessFitRuleSetVersion,
+  BusinessFitSubmissionSnapshot,
+  BusinessFitConsultationRequest,
+  BusinessFitIntakeRecord,
+  BusinessFitAssessmentConversion,
+} from "@/domain/business-fit";
 
 export interface Tables {
   assessments: typeof seed.seedAssessments;
@@ -34,6 +44,13 @@ export interface Tables {
   proposalWorkspaces: ProposalWorkspace[];
   proposalVersions: ProposalVersionRecord[];
   proposalShares: ProposalShareRecord[];
+  fitQuestionnaires: BusinessFitQuestionnaireVersion[];
+  fitRules: BusinessFitRuleSetVersion[];
+  fitSessions: BusinessFitSession[];
+  fitSnapshots: BusinessFitSubmissionSnapshot[];
+  fitConsultations: BusinessFitConsultationRequest[];
+  fitIntakes: BusinessFitIntakeRecord[];
+  fitConversions: BusinessFitAssessmentConversion[];
 }
 
 /** Tables that represent user work and survive reloads; directory tables always come from seed. */
@@ -49,6 +66,13 @@ const PERSISTED = [
   "proposalWorkspaces",
   "proposalVersions",
   "proposalShares",
+  "fitQuestionnaires",
+  "fitRules",
+  "fitSessions",
+  "fitSnapshots",
+  "fitConsultations",
+  "fitIntakes",
+  "fitConversions",
 ] as const;
 export const STORAGE_KEY = "aurumi.cia.simulated-store.v1";
 /** Saved entries that failed validation are kept here for recovery, never deleted. */
@@ -93,6 +117,13 @@ function fresh(): { tables: Tables; audit: AuditEvent[] } {
       proposalWorkspaces: [],
       proposalVersions: [],
       proposalShares: [],
+      fitQuestionnaires: [FIT_QUESTIONNAIRE],
+      fitRules: [FIT_RULES],
+      fitSessions: [],
+      fitSnapshots: [],
+      fitConsultations: [],
+      fitIntakes: [],
+      fitConversions: [],
     }),
     audit: clone(seed.seedAudit),
   };
@@ -299,6 +330,13 @@ export const store = {
   replace<K extends keyof Tables>(k: K, rows: Tables[K]) {
     if (isProtected()) throw new StorageProtectedError();
     db.tables[k] = clone(rows);
+    dataVersion++;
+    store.emit();
+  },
+  /** Synchronous multi-table commit: one persistence write, no partial consultation records. */
+  batch(changes: Partial<Tables>) {
+    if (isProtected()) throw new StorageProtectedError();
+    db.tables = { ...db.tables, ...clone(changes) };
     dataVersion++;
     store.emit();
   },

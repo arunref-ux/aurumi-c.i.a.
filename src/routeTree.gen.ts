@@ -10,11 +10,21 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BusinessFitRouteImport } from './routes/business-fit'
+import { Route as BusinessFitManagementRouteImport } from './routes/business-fit-management'
 import { Route as EngagementsRouteImport } from './routes/engagements'
 import { Route as NetworkRouteImport } from './routes/network'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AssessmentsIndexRouteImport } from './routes/assessments.index'
 import { Route as AssessmentsAssessmentIdRouteImport } from './routes/assessments.$assessmentId'
+import { Route as BusinessFitManagementIndexRouteImport } from './routes/business-fit-management.index'
+import { Route as BusinessFitManagementIntakeIdRouteImport } from './routes/business-fit-management.$intakeId'
+import { Route as BusinessFitManagementConsultationsRouteImport } from './routes/business-fit-management.consultations'
+import { Route as BusinessFitManagementQuestionnaireRouteImport } from './routes/business-fit-management.questionnaire'
+import { Route as BusinessFitManagementRulesRouteImport } from './routes/business-fit-management.rules'
+import { Route as BusinessFitIndexRouteImport } from './routes/business-fit.index'
+import { Route as BusinessFitReportRouteImport } from './routes/business-fit.report'
+import { Route as BusinessFitStartRouteImport } from './routes/business-fit.start'
 import { Route as ProposalsIndexRouteImport } from './routes/proposals.index'
 import { Route as ProposalsProposalIdRouteImport } from './routes/proposals.$proposalId'
 import { Route as SolutionsIndexRouteImport } from './routes/solutions.index'
@@ -23,6 +33,16 @@ import { Route as SolutionsSolutionIdRouteImport } from './routes/solutions.$sol
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BusinessFitRoute = BusinessFitRouteImport.update({
+  id: '/business-fit',
+  path: '/business-fit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BusinessFitManagementRoute = BusinessFitManagementRouteImport.update({
+  id: '/business-fit-management',
+  path: '/business-fit-management',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EngagementsRoute = EngagementsRouteImport.update({
@@ -50,6 +70,51 @@ const AssessmentsAssessmentIdRoute = AssessmentsAssessmentIdRouteImport.update({
   path: '/assessments/$assessmentId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BusinessFitManagementIndexRoute =
+  BusinessFitManagementIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => BusinessFitManagementRoute,
+  } as any)
+const BusinessFitManagementIntakeIdRoute =
+  BusinessFitManagementIntakeIdRouteImport.update({
+    id: '/$intakeId',
+    path: '/$intakeId',
+    getParentRoute: () => BusinessFitManagementRoute,
+  } as any)
+const BusinessFitManagementConsultationsRoute =
+  BusinessFitManagementConsultationsRouteImport.update({
+    id: '/consultations',
+    path: '/consultations',
+    getParentRoute: () => BusinessFitManagementRoute,
+  } as any)
+const BusinessFitManagementQuestionnaireRoute =
+  BusinessFitManagementQuestionnaireRouteImport.update({
+    id: '/questionnaire',
+    path: '/questionnaire',
+    getParentRoute: () => BusinessFitManagementRoute,
+  } as any)
+const BusinessFitManagementRulesRoute =
+  BusinessFitManagementRulesRouteImport.update({
+    id: '/rules',
+    path: '/rules',
+    getParentRoute: () => BusinessFitManagementRoute,
+  } as any)
+const BusinessFitIndexRoute = BusinessFitIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BusinessFitRoute,
+} as any)
+const BusinessFitReportRoute = BusinessFitReportRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => BusinessFitRoute,
+} as any)
+const BusinessFitStartRoute = BusinessFitStartRouteImport.update({
+  id: '/start',
+  path: '/start',
+  getParentRoute: () => BusinessFitRoute,
+} as any)
 const ProposalsIndexRoute = ProposalsIndexRouteImport.update({
   id: '/proposals/',
   path: '/proposals/',
@@ -73,13 +138,23 @@ const SolutionsSolutionIdRoute = SolutionsSolutionIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/business-fit': typeof BusinessFitRouteWithChildren
+  '/business-fit-management': typeof BusinessFitManagementRouteWithChildren
   '/engagements': typeof EngagementsRoute
   '/network': typeof NetworkRoute
   '/settings': typeof SettingsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
+  '/business-fit-management/$intakeId': typeof BusinessFitManagementIntakeIdRoute
+  '/business-fit-management/consultations': typeof BusinessFitManagementConsultationsRoute
+  '/business-fit-management/questionnaire': typeof BusinessFitManagementQuestionnaireRoute
+  '/business-fit-management/rules': typeof BusinessFitManagementRulesRoute
+  '/business-fit/report': typeof BusinessFitReportRoute
+  '/business-fit/start': typeof BusinessFitStartRoute
   '/proposals/$proposalId': typeof ProposalsProposalIdRoute
   '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments/': typeof AssessmentsIndexRoute
+  '/business-fit-management/': typeof BusinessFitManagementIndexRoute
+  '/business-fit/': typeof BusinessFitIndexRoute
   '/proposals/': typeof ProposalsIndexRoute
   '/solutions/': typeof SolutionsIndexRoute
 }
@@ -89,22 +164,40 @@ export interface FileRoutesByTo {
   '/network': typeof NetworkRoute
   '/settings': typeof SettingsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
+  '/business-fit-management/$intakeId': typeof BusinessFitManagementIntakeIdRoute
+  '/business-fit-management/consultations': typeof BusinessFitManagementConsultationsRoute
+  '/business-fit-management/questionnaire': typeof BusinessFitManagementQuestionnaireRoute
+  '/business-fit-management/rules': typeof BusinessFitManagementRulesRoute
+  '/business-fit/report': typeof BusinessFitReportRoute
+  '/business-fit/start': typeof BusinessFitStartRoute
   '/proposals/$proposalId': typeof ProposalsProposalIdRoute
   '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments': typeof AssessmentsIndexRoute
+  '/business-fit-management': typeof BusinessFitManagementIndexRoute
+  '/business-fit': typeof BusinessFitIndexRoute
   '/proposals': typeof ProposalsIndexRoute
   '/solutions': typeof SolutionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/business-fit': typeof BusinessFitRouteWithChildren
+  '/business-fit-management': typeof BusinessFitManagementRouteWithChildren
   '/engagements': typeof EngagementsRoute
   '/network': typeof NetworkRoute
   '/settings': typeof SettingsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
+  '/business-fit-management/$intakeId': typeof BusinessFitManagementIntakeIdRoute
+  '/business-fit-management/consultations': typeof BusinessFitManagementConsultationsRoute
+  '/business-fit-management/questionnaire': typeof BusinessFitManagementQuestionnaireRoute
+  '/business-fit-management/rules': typeof BusinessFitManagementRulesRoute
+  '/business-fit/report': typeof BusinessFitReportRoute
+  '/business-fit/start': typeof BusinessFitStartRoute
   '/proposals/$proposalId': typeof ProposalsProposalIdRoute
   '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments/': typeof AssessmentsIndexRoute
+  '/business-fit-management/': typeof BusinessFitManagementIndexRoute
+  '/business-fit/': typeof BusinessFitIndexRoute
   '/proposals/': typeof ProposalsIndexRoute
   '/solutions/': typeof SolutionsIndexRoute
 }
@@ -112,13 +205,23 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/business-fit'
+    | '/business-fit-management'
     | '/engagements'
     | '/network'
     | '/settings'
     | '/assessments/$assessmentId'
+    | '/business-fit-management/$intakeId'
+    | '/business-fit-management/consultations'
+    | '/business-fit-management/questionnaire'
+    | '/business-fit-management/rules'
+    | '/business-fit/report'
+    | '/business-fit/start'
     | '/proposals/$proposalId'
     | '/solutions/$solutionId'
     | '/assessments/'
+    | '/business-fit-management/'
+    | '/business-fit/'
     | '/proposals/'
     | '/solutions/'
   fileRoutesByTo: FileRoutesByTo
@@ -128,27 +231,47 @@ export interface FileRouteTypes {
     | '/network'
     | '/settings'
     | '/assessments/$assessmentId'
+    | '/business-fit-management/$intakeId'
+    | '/business-fit-management/consultations'
+    | '/business-fit-management/questionnaire'
+    | '/business-fit-management/rules'
+    | '/business-fit/report'
+    | '/business-fit/start'
     | '/proposals/$proposalId'
     | '/solutions/$solutionId'
     | '/assessments'
+    | '/business-fit-management'
+    | '/business-fit'
     | '/proposals'
     | '/solutions'
   id:
     | '__root__'
     | '/'
+    | '/business-fit'
+    | '/business-fit-management'
     | '/engagements'
     | '/network'
     | '/settings'
     | '/assessments/$assessmentId'
+    | '/business-fit-management/$intakeId'
+    | '/business-fit-management/consultations'
+    | '/business-fit-management/questionnaire'
+    | '/business-fit-management/rules'
+    | '/business-fit/report'
+    | '/business-fit/start'
     | '/proposals/$proposalId'
     | '/solutions/$solutionId'
     | '/assessments/'
+    | '/business-fit-management/'
+    | '/business-fit/'
     | '/proposals/'
     | '/solutions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BusinessFitRoute: typeof BusinessFitRouteWithChildren
+  BusinessFitManagementRoute: typeof BusinessFitManagementRouteWithChildren
   EngagementsRoute: typeof EngagementsRoute
   NetworkRoute: typeof NetworkRoute
   SettingsRoute: typeof SettingsRoute
@@ -167,6 +290,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/business-fit': {
+      id: '/business-fit'
+      path: '/business-fit'
+      fullPath: '/business-fit'
+      preLoaderRoute: typeof BusinessFitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/business-fit-management': {
+      id: '/business-fit-management'
+      path: '/business-fit-management'
+      fullPath: '/business-fit-management'
+      preLoaderRoute: typeof BusinessFitManagementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/engagements': {
@@ -204,6 +341,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AssessmentsAssessmentIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/business-fit-management/': {
+      id: '/business-fit-management/'
+      path: '/'
+      fullPath: '/business-fit-management/'
+      preLoaderRoute: typeof BusinessFitManagementIndexRouteImport
+      parentRoute: typeof BusinessFitManagementRoute
+    }
+    '/business-fit-management/$intakeId': {
+      id: '/business-fit-management/$intakeId'
+      path: '/$intakeId'
+      fullPath: '/business-fit-management/$intakeId'
+      preLoaderRoute: typeof BusinessFitManagementIntakeIdRouteImport
+      parentRoute: typeof BusinessFitManagementRoute
+    }
+    '/business-fit-management/consultations': {
+      id: '/business-fit-management/consultations'
+      path: '/consultations'
+      fullPath: '/business-fit-management/consultations'
+      preLoaderRoute: typeof BusinessFitManagementConsultationsRouteImport
+      parentRoute: typeof BusinessFitManagementRoute
+    }
+    '/business-fit-management/questionnaire': {
+      id: '/business-fit-management/questionnaire'
+      path: '/questionnaire'
+      fullPath: '/business-fit-management/questionnaire'
+      preLoaderRoute: typeof BusinessFitManagementQuestionnaireRouteImport
+      parentRoute: typeof BusinessFitManagementRoute
+    }
+    '/business-fit-management/rules': {
+      id: '/business-fit-management/rules'
+      path: '/rules'
+      fullPath: '/business-fit-management/rules'
+      preLoaderRoute: typeof BusinessFitManagementRulesRouteImport
+      parentRoute: typeof BusinessFitManagementRoute
+    }
+    '/business-fit/': {
+      id: '/business-fit/'
+      path: '/'
+      fullPath: '/business-fit/'
+      preLoaderRoute: typeof BusinessFitIndexRouteImport
+      parentRoute: typeof BusinessFitRoute
+    }
+    '/business-fit/report': {
+      id: '/business-fit/report'
+      path: '/report'
+      fullPath: '/business-fit/report'
+      preLoaderRoute: typeof BusinessFitReportRouteImport
+      parentRoute: typeof BusinessFitRoute
+    }
+    '/business-fit/start': {
+      id: '/business-fit/start'
+      path: '/start'
+      fullPath: '/business-fit/start'
+      preLoaderRoute: typeof BusinessFitStartRouteImport
+      parentRoute: typeof BusinessFitRoute
+    }
     '/proposals/': {
       id: '/proposals/'
       path: '/proposals'
@@ -235,8 +428,49 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface BusinessFitRouteChildren {
+  BusinessFitReportRoute: typeof BusinessFitReportRoute
+  BusinessFitStartRoute: typeof BusinessFitStartRoute
+  BusinessFitIndexRoute: typeof BusinessFitIndexRoute
+}
+
+const BusinessFitRouteChildren: BusinessFitRouteChildren = {
+  BusinessFitReportRoute: BusinessFitReportRoute,
+  BusinessFitStartRoute: BusinessFitStartRoute,
+  BusinessFitIndexRoute: BusinessFitIndexRoute,
+}
+
+const BusinessFitRouteWithChildren = BusinessFitRoute._addFileChildren(
+  BusinessFitRouteChildren,
+)
+
+interface BusinessFitManagementRouteChildren {
+  BusinessFitManagementIntakeIdRoute: typeof BusinessFitManagementIntakeIdRoute
+  BusinessFitManagementConsultationsRoute: typeof BusinessFitManagementConsultationsRoute
+  BusinessFitManagementQuestionnaireRoute: typeof BusinessFitManagementQuestionnaireRoute
+  BusinessFitManagementRulesRoute: typeof BusinessFitManagementRulesRoute
+  BusinessFitManagementIndexRoute: typeof BusinessFitManagementIndexRoute
+}
+
+const BusinessFitManagementRouteChildren: BusinessFitManagementRouteChildren = {
+  BusinessFitManagementIntakeIdRoute: BusinessFitManagementIntakeIdRoute,
+  BusinessFitManagementConsultationsRoute:
+    BusinessFitManagementConsultationsRoute,
+  BusinessFitManagementQuestionnaireRoute:
+    BusinessFitManagementQuestionnaireRoute,
+  BusinessFitManagementRulesRoute: BusinessFitManagementRulesRoute,
+  BusinessFitManagementIndexRoute: BusinessFitManagementIndexRoute,
+}
+
+const BusinessFitManagementRouteWithChildren =
+  BusinessFitManagementRoute._addFileChildren(
+    BusinessFitManagementRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BusinessFitRoute: BusinessFitRouteWithChildren,
+  BusinessFitManagementRoute: BusinessFitManagementRouteWithChildren,
   EngagementsRoute: EngagementsRoute,
   NetworkRoute: NetworkRoute,
   SettingsRoute: SettingsRoute,

@@ -7,6 +7,21 @@
 import { z } from "zod";
 import { FINDING_FIELDS, PARTNER_FIELDS, PROFILE_FIELDS } from "@/domain/assessment";
 import { versionIntegrityProblems, type ProposalVersionRecord } from "@/domain/proposal";
+import {
+  QuestionnaireSchema,
+  RuleSetSchema,
+  SessionSchema,
+  SnapshotSchema,
+  ConsultationSchema,
+  IntakeSchema,
+  ConversionSchema,
+  evaluate,
+  validateDefinition,
+  validateResponses,
+  identifiedSystems,
+  type BusinessFitSession,
+  type BusinessFitSubmissionSnapshot,
+} from "@/domain/business-fit";
 
 const id = z.string().min(1);
 const str = z.string();
@@ -175,6 +190,13 @@ const snapshot = z.looseObject({
 });
 
 const ROW = {
+  fitQuestionnaires: QuestionnaireSchema,
+  fitRules: RuleSetSchema,
+  fitSessions: SessionSchema,
+  fitSnapshots: SnapshotSchema,
+  fitConsultations: ConsultationSchema,
+  fitIntakes: IntakeSchema,
+  fitConversions: ConversionSchema,
   assessments: z.looseObject({
     ...audited,
     organizationId: str,
@@ -613,6 +635,50 @@ export function sanitizeTable(
     if (!r.success) {
       quarantined.push({ table, path: `${table}[${i}]`, reason: reasonOf(r.error), value: row });
       return;
+    }
+    if (table.startsWith("fit")) {
+      try {
+        if (table === "fitQuestionnaires") {
+          const problems = validateDefinition(QuestionnaireSchema.parse(row));
+          if (problems.length) throw new Error(problems.join("; "));
+        }
+        if (table === "fitSessions" || table === "fitSnapshots") {
+          const v = row as BusinessFitSession | BusinessFitSubmissionSnapshot;
+          const problems = validateDefinition(
+            v.questionnaire,
+            v.rules,
+            table === "fitSessions" ? (v as BusinessFitSession).catalog : (v.report?.catalog ?? []),
+          );
+          // Snapshots embed the complete public catalog in their report for self-contained validation.
+          if (problems.length) throw new Error(problems.join("; "));
+          validateResponses(v.questionnaire, v.responses);
+          if (v.report) {
+            const report = evaluate(
+              v.responses,
+              v.questionnaire,
+              v.rules,
+              table === "fitSessions" ? (v as BusinessFitSession).catalog : v.report.catalog,
+              v.report,
+            );
+            if (JSON.stringify(report) !== JSON.stringify(v.report))
+              throw new Error("Report does not match pinned responses and rules");
+          }
+          if (
+            table === "fitSnapshots" &&
+            JSON.stringify(identifiedSystems(v.responses)) !==
+              JSON.stringify((v as BusinessFitSubmissionSnapshot).systems)
+          )
+            throw new Error("Snapshot systems disagree with responses");
+        }
+      } catch (error) {
+        quarantined.push({
+          table,
+          path: `${table}[${i}]`,
+          reason: error instanceof Error ? error.message : "Invalid Business Fit record",
+          value: row,
+        });
+        return;
+      }
     }
     if (table === "proposalVersions") {
       // Immutable approval-bound documents: recompute amounts, totals and hash; never trust storage.

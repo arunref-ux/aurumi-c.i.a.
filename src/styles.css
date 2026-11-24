@@ -166,3 +166,37 @@
     box-shadow: none;
   }
 }
+
+/* Public Business Fit uses the same semantic brand tokens; the cover is unframed. */
+.fit-cover {
+  min-height: 470px;
+}
+.fit-cover-wash {
+  background: linear-gradient(
+    90deg,
+    var(--background) 0%,
+    color-mix(in oklch, var(--background) 93%, transparent) 30%,
+    color-mix(in oklch, var(--background) 48%, transparent) 54%,
+    transparent 75%
+  );
+}
+@media (max-width: 640px) {
+  .fit-cover-wash {
+    background: color-mix(in oklch, var(--background) 86%, transparent);
+  }
+  .fit-cover {
+    min-height: 480px;
+  }
+}
+@media print {
+  .fit-no-print {
+    display: none !important;
+  }
+  #business-fit-print {
+    width: 100%;
+  }
+  #business-fit-print section,
+  #business-fit-print article > div {
+    break-inside: avoid;
+  }
+}

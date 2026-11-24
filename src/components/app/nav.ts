@@ -14,6 +14,7 @@ export const NAV = [
   { to: "/assessments", label: "Assessments", icon: ClipboardList, phase: 2 },
   { to: "/solutions", label: "Solutions", icon: Lightbulb, phase: 3 },
   { to: "/proposals", label: "Proposals", icon: FileText, phase: 4 },
+  { to: "/business-fit-management", label: "Business Fit", icon: Lightbulb, phase: 5 },
   { to: "/engagements", label: "Engagements", icon: Briefcase, phase: 6 },
   { to: "/network", label: "C.I.A. Network", icon: Network, phase: 6 },
   { to: "/settings", label: "Settings", icon: Settings, phase: 1 },

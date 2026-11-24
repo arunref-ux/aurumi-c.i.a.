@@ -7,7 +7,18 @@ import type { ID, ResourceType, RoleKey, ScopedRecord, User } from "./types";
 
 export type Scope = "self" | "team" | "organization";
 export type Action = "read" | "create" | "update" | "delete" | "approve" | "share" | "assign";
-export type Permission = `${ResourceType}.${Action}` | "settings.manage" | "audit.read";
+export type FitAction =
+  | "read"
+  | "contact"
+  | "manage"
+  | "assign"
+  | "convert"
+  | "questionnaire"
+  | "publish_questionnaire"
+  | "rules"
+  | "publish_rules";
+export type Permission =
+  `${ResourceType}.${Action}` | `business_fit.${FitAction}` | "settings.manage" | "audit.read";
 
 export const ROLE_LABELS: Record<RoleKey, string> = {
   cia_admin: "C.I.A. Administrator",
@@ -24,6 +35,15 @@ const all = (r: ResourceType, s: Scope, actions: Action[]): Grants =>
 
 export const ROLE_GRANTS: Record<RoleKey, Grants> = {
   cia_admin: {
+    "business_fit.read": "organization",
+    "business_fit.contact": "organization",
+    "business_fit.manage": "organization",
+    "business_fit.assign": "organization",
+    "business_fit.convert": "organization",
+    "business_fit.questionnaire": "organization",
+    "business_fit.publish_questionnaire": "organization",
+    "business_fit.rules": "organization",
+    "business_fit.publish_rules": "organization",
     ...all("assessment", "organization", [
       "read",
       "create",
@@ -40,6 +60,13 @@ export const ROLE_GRANTS: Record<RoleKey, Grants> = {
     "audit.read": "organization",
   },
   cia_manager: {
+    "business_fit.read": "team",
+    "business_fit.contact": "team",
+    "business_fit.manage": "team",
+    "business_fit.assign": "team",
+    "business_fit.convert": "team",
+    "business_fit.questionnaire": "team",
+    "business_fit.rules": "team",
     ...all("assessment", "team", ["read", "create", "update", "assign", "approve"]),
     ...all("solution", "team", ["read", "create", "update", "assign", "approve"]),
     ...all("proposal", "team", ["read", "create", "update", "share"]),
@@ -48,6 +75,10 @@ export const ROLE_GRANTS: Record<RoleKey, Grants> = {
     "audit.read": "team",
   },
   cia_professional: {
+    "business_fit.read": "self",
+    "business_fit.contact": "self",
+    "business_fit.manage": "self",
+    "business_fit.convert": "self",
     ...all("assessment", "self", ["read", "create", "update"]),
     ...all("solution", "self", ["read", "create", "update"]),
     ...all("proposal", "self", ["read", "create", "update"]),
@@ -55,6 +86,10 @@ export const ROLE_GRANTS: Record<RoleKey, Grants> = {
     ...all("professional", "organization", ["read"]),
   },
   partner_manager: {
+    "business_fit.read": "team",
+    "business_fit.contact": "team",
+    "business_fit.manage": "team",
+    "business_fit.convert": "team",
     ...all("assessment", "team", ["read", "create", "update"]),
     ...all("solution", "team", ["read", "create", "update"]),
     ...all("proposal", "team", ["read", "create", "update", "share"]),
