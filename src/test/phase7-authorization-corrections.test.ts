@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { proposalStudio as P } from "@/data/proposal-studio";
 import { engagementService as E } from "@/data/delivery";
 import { STORAGE_KEY, memoryBackend, store, type PersistenceBackend } from "@/data/store";
+import { proposalShareAdapter } from "@/integrations/adapters/proposal-share";
 import { pricingStudio } from "@/integrations/adapters/pricing-studio";
 import { proposalScopeTerms } from "@/domain/delivery";
 import type { User } from "@/domain/types";
@@ -144,6 +145,36 @@ describe("P7-P1-A canonical actor at the issuance commitment", () => {
     await expect(pending).rejects.toThrow();
     expect(store.table("proposals").find((p) => p.id === r.p.id)!.status).toBe("in_review");
     expect(store.table("proposalVersions").find((v) => v.id === ver.id)!.review).toBeUndefined();
+  });
+});
+
+describe("P7-P1-A adjacent: simulated sharing", () => {
+  it("roles removed while the share adapter is pending → no share record", async () => {
+    const b = memoryBackend();
+    const { pid, vid } = await approved(b);
+    await P.issue(MGR, pid, vid);
+    const real = proposalShareAdapter.share;
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    proposalShareAdapter.share = async (a) => {
+      await gate;
+      return real(a);
+    };
+    try {
+      const pending = P.share(MGR, pid, {
+        versionId: vid,
+        recipient: { name: "B", email: "b@example.com" },
+      });
+      await new Promise((r) => setTimeout(r, 5));
+      editCanonical(MGR.user.id, (u) => ({ ...u, roles: [] }));
+      release();
+      await expect(pending).rejects.toThrow();
+    } finally {
+      proposalShareAdapter.share = real;
+    }
+    expect(store.table("proposalShares").filter((x) => x.proposalId === pid)).toHaveLength(0);
+    store.attach(b);
+    expect(store.table("proposalShares").filter((x) => x.proposalId === pid)).toHaveLength(0);
   });
 });
 

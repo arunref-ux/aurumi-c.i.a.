@@ -1534,6 +1534,7 @@ export const proposalStudio: ProposalStudioService = {
     const r = await proposalShareAdapter.share({ versionId: v.id, recipientEmail: email });
     if (!r.ok) return reject(ctx, `sharing unavailable: ${r.error}`, id);
     unchanged(ctx, id, before, "the share was being prepared");
+    ctx = actorNow(ctx, "proposal.share", id);
     parent(ctx, id, "proposal.share");
     const rec: ProposalShareRecord = {
       id: newId("psh"),

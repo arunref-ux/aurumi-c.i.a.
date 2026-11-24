@@ -30,4 +30,4 @@ All identities, persistence, integrations/pricing, sharing/acceptance and author
 - Proposal issuance (and approval/submit/price refresh/line edits) re-check the actor's current canonical record after pricing waits; revoked authority is denied with nothing committed.
 - Partially saved proposal issuances can no longer source new engagements or commencement authority; they remain viewable.
 - Report rendering code unchanged (no diff under `src/components`, `src/routes`, `src/styles.css`); `qa-evidence/phase7-print/` untouched.
-- Tests: 684 passing (674 retained + 10 new). TypeScript 0 errors; ESLint 0 errors/31 warnings.
+- Tests: 685 passing (674 retained + 11 new). TypeScript 0 errors; ESLint 0 errors/31 warnings.
