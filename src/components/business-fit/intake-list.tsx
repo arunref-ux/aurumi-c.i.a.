@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { INTAKE_STATUSES } from "@/domain/business-fit";
 import { ManagementTabs } from "./management";
 import { FitError, fitInput } from "./shared";
+import { useSession } from "@/lib/session";
+import { can } from "@/domain/permissions";
+import { loadDemoBusinessFit } from "@/data/demo-business-fit";
 export function IntakeList({ consultations = false }: { consultations?: boolean }) {
   const q = useFitList(),
     [search, setSearch] = useState(""),
@@ -58,6 +61,7 @@ export function IntakeList({ consultations = false }: { consultations?: boolean 
             Only consultation requests submitted with consent appear here, within your authorized
             scope.
           </p>
+          {(q.data ?? []).length === 0 && <SampleButton />}
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -117,5 +121,36 @@ export function IntakeList({ consultations = false }: { consultations?: boolean 
         </div>
       )}
     </>
+  );
+}
+
+function SampleButton() {
+  const { user } = useSession();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  if (!can(user, "business_fit.manage") || !can(user, "business_fit.assign")) return null;
+  return (
+    <div className="mt-5">
+      <Button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            await loadDemoBusinessFit();
+          } catch (e) {
+            setError(e);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? "Loading sample submissions…" : "Load sample submissions"}
+      </Button>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Adds four fictional consultation requests (new, under review, qualified, closed).
+      </p>
+      <FitError error={error} />
+    </div>
   );
 }
