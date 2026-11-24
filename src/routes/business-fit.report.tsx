@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   FitError,
@@ -28,6 +28,7 @@ export const Route = createFileRoute("/business-fit/report")({
   component: Report,
 });
 function Report() {
+  const consultationHeading = useRef<HTMLHeadingElement>(null);
   const s = useBusinessFitSession(),
     [request, setRequest] = useState(false),
     [pending, setPending] = useState(false),
@@ -69,7 +70,16 @@ function Report() {
           Print / Save as PDF
         </Button>
         <OfficialLink />
-        <Button onClick={() => setRequest(true)}>Request a C.I.A. consultation</Button>
+        <Button
+          aria-expanded={request}
+          aria-controls="fit-consultation"
+          onClick={() => {
+            setRequest(true);
+            requestAnimationFrame(() => consultationHeading.current?.focus());
+          }}
+        >
+          Request a C.I.A. consultation
+        </Button>
         <Button variant="ghost" asChild>
           <Link
             to="/business-fit/start"
@@ -83,8 +93,10 @@ function Report() {
       </div>
       <FitReport report={report} questionnaire={session.questionnaire} />
       {request && (
-        <section className="fit-no-print mt-10 border-t pt-8">
-          <h2 className="text-3xl">Request a C.I.A. consultation</h2>
+        <section id="fit-consultation" className="fit-no-print mt-10 border-t pt-8">
+          <h2 ref={consultationHeading} tabIndex={-1} className="text-3xl">
+            Request a C.I.A. consultation
+          </h2>
           <p className="mt-3 max-w-3xl text-sm text-muted-foreground">
             Only if you submit, your contact details, responses and this report will be shared with
             the C.I.A. team. The ShopTalk lead is simulated; no email, message or booking will be

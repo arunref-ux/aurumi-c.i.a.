@@ -15,6 +15,7 @@ import type { RoleKey } from "@/domain/types";
 import { adapterRegistry, mockControls } from "@/integrations/adapters/mock";
 import type { AdapterDescriptor, AdapterResult } from "@/integrations/adapters/types";
 import { useSession, useStoreVersion } from "@/lib/session";
+import { displayInstant } from "@/lib/display-format";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -322,7 +323,7 @@ function Audit() {
             <code className="font-mono text-xs">{e.action}</code>
             <span className="flex-1">{e.summary}</span>
             <span className="text-xs text-muted-foreground">
-              {name(e.actorId)} · {new Date(e.at).toLocaleString()}
+              {name(e.actorId)} · {displayInstant(e.at)}
             </span>
           </li>
         ))}

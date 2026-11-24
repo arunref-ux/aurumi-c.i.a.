@@ -15,9 +15,7 @@ import { useStudioMutation } from "@/lib/assessment-queries";
 import { CollectionEditor } from "./collection-editor";
 import { btnGhost, btnPrimary, ErrorNote, MultiField, SelectField, TextField } from "./fields";
 import { FormSection } from "./form-section";
-
-const fmt = (iso: string) =>
-  new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+import { displayInstant as fmt } from "@/lib/display-format";
 const TYPE_LABEL = { tenant: "Tenant / Business", partner: "Partner / Opportunity" } as const;
 
 export function OverviewSection({ view }: { view: WorkspaceView }) {

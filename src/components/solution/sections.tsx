@@ -32,6 +32,7 @@ import {
   type ValueItem,
 } from "@/domain/solution";
 import { useSolutionMutation } from "@/lib/solution-queries";
+import { displayNumber } from "@/lib/display-format";
 
 const AVAIL_TONE: Record<Availability, Tone> = {
   available: "success",
@@ -919,8 +920,7 @@ export function ValueSection({ view }: { view: SolutionView }) {
             {v.estimate && (
               <p className="text-xs">
                 <StatusPill tone="warning">Estimate</StatusPill> {v.estimate.currency}{" "}
-                {v.estimate.amount.toLocaleString()} — {v.estimate.assumptions} ({v.estimate.source}
-                )
+                {displayNumber(v.estimate.amount)} — {v.estimate.assumptions} ({v.estimate.source})
               </p>
             )}
           </div>

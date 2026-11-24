@@ -14,6 +14,7 @@ import {
   type ProposalDocument,
 } from "@/domain/proposal";
 import { btnGhost } from "@/components/assessment/fields";
+import { Button } from "@/components/ui/button";
 
 const BASIS: Record<string, string> = {
   published: "Price-book list price",
@@ -53,9 +54,9 @@ export function ProposalPreview({
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <button className={btnGhost} onClick={printProposal}>
+        <Button variant="outline" className={btnGhost} onClick={printProposal}>
           Print / save as PDF
-        </button>
+        </Button>
       </div>
       <article
         id="proposal-print"
@@ -66,6 +67,9 @@ export function ProposalPreview({
             Aurumi · C.I.A.
           </p>
           <h1 className="mt-1 font-serif text-3xl">{doc.proposal.title}</h1>
+          <p className="mt-2 break-words text-xs text-muted-foreground">
+            Proposal {doc.proposal.id} · {label}
+          </p>
           <p className="mt-1 text-muted-foreground">
             Prepared for {doc.recipient.name}
             {doc.recipient.organization && doc.recipient.organization !== doc.recipient.name
@@ -224,14 +228,18 @@ function Commercials({ doc }: { doc: ProposalDocument }) {
           key={t.currency}
           className="grid grid-cols-2 gap-x-4 rounded-md bg-muted px-3 py-2 text-xs sm:grid-cols-4"
         >
-          <dt>One-time ({t.currency})</dt>
+          <dt>One-time, before tax ({t.currency})</dt>
           <dd>{fmtMoney(t.oneTime, t.currency)}</dd>
-          <dt>Monthly run rate</dt>
+          <dt>Monthly run rate, before tax</dt>
           <dd>{fmtMoney(t.monthly, t.currency)}</dd>
-          <dt>Annual run rate</dt>
+          <dt>Annual run rate, before tax</dt>
           <dd>{fmtMoney(t.annual, t.currency)}</dd>
-          <dt>Tax (configured only)</dt>
-          <dd>{fmtMoney(t.tax.one_time + t.tax.monthly + t.tax.annual, t.currency)}</dd>
+          <dt>One-time tax</dt>
+          <dd>{fmtMoney(t.tax.one_time, t.currency)}</dd>
+          <dt>Monthly tax</dt>
+          <dd>{fmtMoney(t.tax.monthly, t.currency)}</dd>
+          <dt>Annual tax</dt>
+          <dd>{fmtMoney(t.tax.annual, t.currency)}</dd>
           <dt className="font-semibold">Estimated initial cost</dt>
           <dd className="font-semibold">
             {fmtMoney(t.initialCost, t.currency)}
@@ -239,6 +247,20 @@ function Commercials({ doc }: { doc: ProposalDocument }) {
           </dd>
         </dl>
       ))}
+      {c.taxes.length > 0 ? (
+        <ul className="list-disc pl-5 text-xs">
+          {c.taxes.map((tax) => (
+            <li key={tax.id}>
+              {tax.label}: {tax.ratePercent}% · {tax.currency} · applies to{" "}
+              {tax.appliesTo.replace("_", " ")} · source: {tax.source}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          No tax configured; this is not a tax determination.
+        </p>
+      )}
       {c.summary.warnings.map((w) => (
         <p key={w} className="text-xs text-muted-foreground">
           {w}

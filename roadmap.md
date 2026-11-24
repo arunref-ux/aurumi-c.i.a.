@@ -1,12 +1,23 @@
-# Phase 6 — F01–F07 targeted corrections
+# Phase 7 — validation and release readiness
+Phases 1–6 are formally closed per user authorization: baseline `47ec5dfbc69003781e338c514a1d991f4127cd7a`, successful Actions `45339261324`. Phase 7 is validation/stabilization only; no production infrastructure or publishing.
+- [ ] Inventory scenarios, handoffs, roles, integrations and deferred defects before functional corrections.
+- [ ] Execute clean cross-studio journeys, authorization, version pinning, historical reload and durable recovery regressions.
+- [ ] Execute desktop/public mobile/internal browser flows, responsive and practical accessibility checks.
+- [ ] Generate and inspect Business Fit, proposal and completion A4 PDFs.
+- [ ] Correct demonstrated defects and retest; preserve all 643 baseline tests and integrity contracts.
+- [ ] Complete validation/defect registers, architecture, demo guide, readiness matrix, release notes and report.
+- [ ] Run full tests/lint and inspect automatic types/build; record standalone execution limitation honestly.
+- [ ] Commit and verify exact-SHA Actions if available after synchronization; independent Codex exit review remains required.
+
+# Phase 6 — F01–F07 targeted corrections (closed)
 - [x] F01: source-derived obligations, validated delivery mapping and authorized amendments.
 - [x] F02/F07: fresh material-state completion review and bound commencement authorization.
 - [x] F03/F04: recursive commercial projection and operational outcome ownership.
 - [x] F05/F06: measurement domains, strict instants and immutable content-bound evidence.
 - [x] Genuine released Phase 6 fixtures; earlier-phase repeated restoration assertion correction.
 - [x] Regression/durability tests, full suite, lint and automatic toolchain validation; completion report and commit.
-- [ ] Exact-commit successful Actions evidence (requires repository synchronization/access).
-- [ ] Independent Codex review required; Phase 6 remains open and Phase 7 excluded.
+- [x] Exact-commit successful Actions evidence: `45339261324` for `47ec5df` supplied in Phase 7 authorization.
+- [x] Independent Codex review approved; Phase 6 formally closed in Phase 7 authorization.
 
 # Phase 6 — Engagements & C.I.A. Network
 Phases 1–5 closed by independent review; baseline `9e19f209b70827e59851c19818a85697af4e8b39`, approved Actions run `45325310876`. Implement Phase 6 only; Phase 7 excluded.
@@ -17,8 +28,7 @@ Phases 1–5 closed by independent review; baseline `9e19f209b70827e59851c19818a
 - [x] Durable idempotent operations, integrity/restoration, fictional scenarios and simulated adapters.
 - [x] Operational pages and scoped dashboard; automated regressions and real browser journeys.
 - [x] Completion report prepared; 528 tests pass, lint 0 errors/31 warnings, automatic types/build OK; browser creation/recovery/completion/isolation and both viewport sizes verified.
-- [ ] Successful exact-completion-commit Actions evidence waits for repository synchronization after the turn. Standalone typecheck/production commands prohibited; automatic validation used.
-- [ ] Independent Codex verification: reviewer required; do not declare Phase 6 closed.
+- [x] Successful reviewed corrective baseline CI and independent verification supplied in Phase 7 authorization.
 
 # Phase 5 — F01–F06 corrective implementation (closed)
 - [x] Scoped flow sweep: public session/read/review, report/print, intake lists/detail, configuration, conversion/Assessment Studio commitment, catalog/evaluation, persistence/recovery and historical interpretation read; sibling gaps corrected without changing settled history or earlier phases.

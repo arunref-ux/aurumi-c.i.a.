@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { ClientOnly, createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "@/components/app/icons";
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel, StatusPill, type Tone } from "@/components/app/ui-bits";
@@ -7,6 +7,9 @@ import { computeMetrics, type DashboardFilters } from "@/domain/metrics";
 import type { AssessmentStatus } from "@/domain/types";
 import { useSession, useStoreVersion } from "@/lib/session";
 import { DeliveryDashboard } from "@/components/delivery/dashboard";
+import { Button } from "@/components/ui/button";
+import { can } from "@/domain/permissions";
+import { displayDate } from "@/lib/display-format";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -49,6 +52,14 @@ const select =
   "rounded-md border bg-card px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
 
 function Overview() {
+  return (
+    <ClientOnly fallback={<p role="status">Opening workspace…</p>}>
+      <OverviewContent />
+    </ClientOnly>
+  );
+}
+
+function OverviewContent() {
   const { user } = useSession();
   useStoreVersion();
   const [f, setF] = useState<Omit<DashboardFilters, "now">>({
@@ -87,16 +98,20 @@ function Overview() {
         eyebrow="Overview"
         title={`Welcome back, ${user.name.split(" ")[0]}`}
         description="Everything below reflects only the records your role and scope allow you to see."
-        actions={["New Tenant Assessment", "New Partner Assessment", "Create Proposal"].map((a) => (
-          <button
-            key={a}
-            disabled
-            title="Available in a later phase"
-            className="rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground disabled:cursor-not-allowed"
-          >
-            {a}
-          </button>
-        ))}
+        actions={
+          <>
+            {can(user, "assessment.create") && (
+              <Button variant="outline" asChild>
+                <Link to="/assessments">New assessment</Link>
+              </Button>
+            )}
+            {can(user, "proposal.create") && (
+              <Button variant="outline" asChild>
+                <Link to="/proposals">Create proposal</Link>
+              </Button>
+            )}
+          </>
+        }
       />
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -259,7 +274,7 @@ function Overview() {
                 <div className="flex-1">
                   <p>{e.summary}</p>
                   <p className="text-xs text-muted-foreground">
-                    {userName(e.actorId)} · {new Date(e.at).toLocaleDateString()}
+                    {userName(e.actorId)} · {displayDate(e.at)}
                   </p>
                 </div>
               </li>

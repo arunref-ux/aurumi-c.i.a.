@@ -131,6 +131,7 @@ function Systems({ value, onChange }: { value: FitSystem[]; onChange: (v: FitSys
         <label className="text-xs">
           Business function
           <select
+            aria-label="Business function"
             className={`${fitInput} mt-1`}
             value={functionName}
             onChange={(e) => setFunction(e.target.value)}
@@ -143,6 +144,7 @@ function Systems({ value, onChange }: { value: FitSystem[]; onChange: (v: FitSys
         <label className="text-xs">
           System type
           <select
+            aria-label="System type"
             className={`${fitInput} mt-1`}
             value={kind}
             onChange={(e) => setKind(e.target.value as FitSystem["kind"])}

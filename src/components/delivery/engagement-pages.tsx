@@ -1848,6 +1848,9 @@ export function CompletionReport({ id }: { id: string }) {
         <p className="mt-2 text-sm text-muted-foreground">
           {c.initiation.customer.name} · {c.decision.at}
         </p>
+        <p className="mt-2 break-words text-xs text-muted-foreground">
+          Completion {c.id} · {c.schema} · Engagement {c.engagementId}
+        </p>
         {q.data.assurance === "historical_only" && (
           <p className="mt-3 text-sm text-muted-foreground">
             Historical completion — preserved as originally recorded, not certified under
@@ -1879,6 +1882,11 @@ export function CompletionReport({ id }: { id: string }) {
                 <p className="mt-1 text-xs text-muted-foreground">
                   {o.sourceReference} ·{" "}
                   {o.amendmentId ? `Amendment ${o.amendmentId}` : "Original source"}
+                </p>
+                <p className="mt-1 text-sm">
+                  {words(
+                    q.data.obligations.find((state) => state.id === o.id)?.status ?? "historical",
+                  )}
                 </p>
               </div>
             ))}
@@ -1923,6 +1931,28 @@ export function CompletionReport({ id }: { id: string }) {
             </div>
           ))}
         </Section>
+        <Section title="Concerns and dispositions">
+          {c.concerns.length === 0 ? (
+            <p className="text-sm">No recorded concerns.</p>
+          ) : (
+            c.concerns.map((concern) => (
+              <div key={concern.id} className="border-b py-3">
+                <h3 className="font-medium">{concern.description}</h3>
+                <p className="mt-1 text-sm">
+                  {words(concern.kind)} · {words(concern.status)} · owner{" "}
+                  {concern.ownerProfessionalId || "Unassigned"}
+                </p>
+                <p className="mt-1 text-sm">{concern.response}</p>
+                {concern.acknowledgement && (
+                  <p className="mt-1 break-words text-xs text-muted-foreground">
+                    Acknowledged by {concern.acknowledgement.by} · {concern.acknowledgement.at} ·{" "}
+                    {concern.acknowledgement.evidence}
+                  </p>
+                )}
+              </div>
+            ))
+          )}
+        </Section>
         <Section title="Customer feedback & outstanding responsibilities">
           <p className="text-sm">{c.customerFeedback}</p>
           <p className="mt-3 text-sm">{c.outstandingResponsibilities}</p>
@@ -1941,6 +1971,12 @@ export function CompletionReport({ id }: { id: string }) {
               ["Completion content value", c.integrityValue],
               ["Initiation content value", c.initiation.integrityValue],
               ["Approval evidence", c.decision.evidence],
+              ["Completion authorized by", c.decision.by],
+              ["Approval comment", c.decision.comment],
+              [
+                "Authorization status",
+                c.decision.simulated ? "Simulated — not a legal signature" : "Recorded",
+              ],
             ]}
           />
         </Section>

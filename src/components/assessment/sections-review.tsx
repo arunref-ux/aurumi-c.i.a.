@@ -5,6 +5,7 @@ import type { WorkspaceView } from "@/data/assessment-studio";
 import { unverifiedCriticalClaims } from "@/domain/assessment";
 import { useStudioMutation } from "@/lib/assessment-queries";
 import { btnGhost, btnPrimary, btnDanger, ErrorNote, inputCls, SelectField } from "./fields";
+import { displayInstant } from "@/lib/display-format";
 
 const READINESS = {
   incomplete: ["Incomplete", "warning"],
@@ -195,8 +196,7 @@ export function ReviewSection({ view }: { view: WorkspaceView }) {
             {[...ws.reviewComments].reverse().map((c) => (
               <li key={c.id} className="border-l-2 pl-3">
                 <p className="text-xs text-muted-foreground">
-                  {names[c.createdBy] ?? "Colleague"} · {c.kind} ·{" "}
-                  {new Date(c.createdAt).toLocaleString()}
+                  {names[c.createdBy] ?? "Colleague"} · {c.kind} · {displayInstant(c.createdAt)}
                 </p>
                 <p>{c.body}</p>
               </li>
@@ -219,7 +219,7 @@ export function ReviewSection({ view }: { view: WorkspaceView }) {
                   <strong>Version {s.version}</strong>
                   <span className="text-xs text-muted-foreground">
                     approved by {names[s.approval.approvedBy] ?? "Colleague"} ·{" "}
-                    {new Date(s.approval.approvedAt).toLocaleString()}
+                    {displayInstant(s.approval.approvedAt)}
                   </span>
                   <button
                     className={btnGhost + " ml-auto"}

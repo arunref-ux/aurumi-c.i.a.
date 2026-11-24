@@ -15,6 +15,7 @@ import { can } from "@/domain/permissions";
 import { useAssessmentList, useStudioMutation } from "@/lib/assessment-queries";
 import { useSession } from "@/lib/session";
 import { PersistenceNote, STATUS_TONE } from "@/components/assessment/shared";
+import { displayDate } from "@/lib/display-format";
 
 const TITLE = "Assessment Studio — C.I.A. Workspace";
 const DESC =
@@ -163,7 +164,7 @@ function StudioList() {
                     </td>
                     <td className="pr-3">{[r.ownerName, ...r.assigneeNames].join(", ")}</td>
                     <td className="pr-3 text-xs text-muted-foreground">
-                      {new Date(r.assessment.updatedAt).toLocaleDateString()}
+                      {displayDate(r.assessment.updatedAt)}
                     </td>
                     <td className="pr-3">
                       <Progress

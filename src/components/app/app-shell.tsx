@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "./icons";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import { seedUsers } from "@/data/seed";
 import { ROLE_LABELS } from "@/domain/permissions";
 import { useSession } from "@/lib/session";
@@ -78,6 +79,37 @@ function IdentitySwitcher() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const navigation = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const panel = navigation.current;
+    if (!panel) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusable = () => Array.from(panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled]):not([tabindex="-1"])'));
+    focusable()[0]?.focus();
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+      }
+      if (event.key === "Tab") {
+        const controls = focusable(), first = controls[0], last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault(); last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first?.focus();
+        }
+      }
+    };
+    panel.addEventListener("keydown", keyboard);
+    return () => {
+      panel.removeEventListener("keydown", keyboard);
+      document.body.style.overflow = previousOverflow;
+      trigger.current?.focus();
+    };
+  }, [open]);
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar lg:flex">
@@ -89,6 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       {open && (
         <div
+          ref={navigation}
           className="fixed inset-0 z-50 lg:hidden"
           role="dialog"
           aria-modal="true"
@@ -97,16 +130,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             className="absolute inset-0 bg-foreground/40"
             aria-label="Close navigation"
+            tabIndex={-1}
             onClick={() => setOpen(false)}
           />
           <aside className="relative h-full w-72 bg-sidebar">
-            <button
+            <Button variant="ghost" size="icon"
               className="absolute right-3 top-3 rounded-md p-1.5 text-sidebar-foreground hover:bg-sidebar-accent"
               aria-label="Close navigation"
               onClick={() => setOpen(false)}
             >
               <X className="size-4" />
-            </button>
+            </Button>
             <Brand />
             <NavList onNavigate={() => setOpen(false)} />
           </aside>
@@ -114,13 +148,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/90 px-4 py-3 backdrop-blur md:px-8">
-          <button
+          <Button ref={trigger} variant="ghost" size="icon"
             className="rounded-md p-1.5 hover:bg-muted lg:hidden"
             onClick={() => setOpen(true)}
             aria-label="Open navigation"
           >
             <Menu className="size-5" />
-          </button>
+          </Button>
           <span className="rounded-full bg-warning-soft px-2.5 py-1 text-[11px] font-medium">
             Mock integrations
           </span>

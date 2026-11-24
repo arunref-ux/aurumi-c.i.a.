@@ -22,6 +22,7 @@ import {
   priceRefProblem,
   priceUseProblems,
   proposalClock,
+  validityEnd,
   requiredPermits,
   shareExpiry,
   versionIntegrityProblems,
@@ -1497,10 +1498,10 @@ export const proposalStudio: ProposalStudioService = {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) reject(ctx, "enter a valid recipient email", id);
     if (!input.recipient.name.trim()) reject(ctx, "name the recipient", id);
     const expiresAt = input.expiresAt ?? v.issue.expiresAt;
-    const exp = Date.parse(expiresAt);
+    const exp = validityEnd(expiresAt);
     if (
       typeof expiresAt !== "string" ||
-      !Number.isFinite(exp) ||
+      exp === null ||
       !/^\d{4}-\d{2}-\d{2}T/.test(expiresAt)
     )
       reject(ctx, "enter a valid expiry date and time", id);
