@@ -540,8 +540,7 @@ describe("F04 semantic definitions and active pairs", () => {
     expect(P.get(P.begin()).questionnaire.id).toBe(q.id);
   });
   it("invalid restored published rule is quarantined while valid siblings remain active", () => {
-    const r = structuredClone(R);
-    r.id = "bad";
+    const r = { ...structuredClone(R), id: "bad" };
     one(r.rules).conditions = [{ questionId: "missing", operator: "answered" }];
     historical({ tables: { fitQuestionnaires: [Q], fitRules: [R, r] } });
     expect(store.table("fitRules")).toEqual([R]);
