@@ -188,6 +188,7 @@ function EngagementCreate() {
     ctx = { user },
     nav = useNavigate(),
     [origin, setOrigin] = useState<EngagementCreation["origin"]>("direct"),
+    [selectedProposalId, setSelectedProposalId] = useState(""),
     [key] = useState(() => crypto.randomUUID());
   const candidates = useDeliveryQuery("creation-candidates", "", (c) => E.candidates(c)),
     proposals = useDeliveryQuery("issued-proposals", "", E.proposals),
@@ -206,8 +207,26 @@ function EngagementCreate() {
           </Button>
         ))}
       </div>
+      {origin === "proposal" && (
+        <label className="mb-4 block text-sm">
+          Exact issued proposal version
+          <select
+            aria-label="Exact issued proposal version"
+            className={inputClass}
+            value={selectedProposalId}
+            onChange={(event) => setSelectedProposalId(event.target.value)}
+          >
+            <option value="">Select…</option>
+            {proposals.data?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title} · v{p.number} · {p.customerName}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <RecordForm
-        key={origin}
+        key={`${origin}:${selectedProposalId}`}
         title="Create engagement"
         submit="Create draft"
         fields={[
@@ -231,17 +250,7 @@ function EngagementCreate() {
             })) ?? [],
           ),
           ...(origin === "proposal"
-            ? [
-                selectField(
-                  "proposalVersionId",
-                  "Exact issued proposal version",
-                  proposals.data?.map((p) => ({
-                    value: p.id,
-                    label: `${p.title} · v${p.number} · ${p.customerName}`,
-                  })) ?? [],
-                ),
-                field("allocationId", "Separately authorized service allocation identity"),
-              ]
+            ? [field("allocationId", "Separately authorized service allocation identity")]
             : []),
           ...(origin === "follow_on"
             ? [
@@ -255,8 +264,15 @@ function EngagementCreate() {
                 ),
               ]
             : []),
-          ...termsFields(),
+          ...termsFields(
+            origin === "proposal"
+              ? (proposals.data?.find((p) => p.id === selectedProposalId)?.terms ?? undefined)
+              : undefined,
+          ),
           field("authorizationEvidence", "Separate service authorization evidence"),
+          ...(origin !== "proposal"
+            ? [field("completionCriteria", "Authorized service completion criteria", "", "area")]
+            : []),
         ]}
         run={async (v) => {
           const result = await E.create(ctx, {
@@ -271,9 +287,12 @@ function EngagementCreate() {
             leadProfessionalId: val(v, "leadProfessionalId"),
             terms: termsFrom(v),
             authorizationEvidence: val(v, "authorizationEvidence"),
-            proposalVersionId: val(v, "proposalVersionId"),
+            proposalVersionId: selectedProposalId,
             allocationId: val(v, "allocationId"),
             previousEngagementId: val(v, "previousEngagementId"),
+            ...(val(v, "completionCriteria")
+              ? { completionCriteria: val(v, "completionCriteria") }
+              : {}),
           });
           await nav({
             to: "/engagements/$engagementId",
@@ -381,7 +400,12 @@ function EngagementBody({ v }: { v: DeliveryView }) {
         ))}
       </div>
       <DeliveryRecovery id={id} />
-      {v.assurance === "historical_only" && <p role="status" className="my-4 text-sm text-muted-foreground">Historical Phase 6 record — original evidence preserved; new commitments require authorized revalidation.</p>}
+      {v.assurance === "historical_only" && (
+        <p role="status" className="my-4 text-sm text-muted-foreground">
+          Historical Phase 6 record — original evidence preserved; new commitments require
+          authorized revalidation.
+        </p>
+      )}
       {tab === "Overview" && (
         <>
           <Section title="Authorized service">
@@ -1023,21 +1047,85 @@ function EngagementBody({ v }: { v: DeliveryView }) {
       )}
       {tab === "Scope & changes" && (
         <Section title="Scope baseline & authorized amendments">
-          {alive && v.assurance==="historical_only" && permitted("authorize") && permitted("commercial") && <Disclosure title="Revalidate historical source">
-            <RecordForm title="Historical source review" fields={decisionFields} run={(values) => E.revalidateHistorical(ctx,id,val(values,"evidence"),val(values,"comment"))} />
-          </Disclosure>}
+          {alive &&
+            v.assurance === "historical_only" &&
+            permitted("authorize") &&
+            permitted("commercial") && (
+              <Disclosure title="Revalidate historical source">
+                <RecordForm
+                  title="Historical source review"
+                  fields={decisionFields}
+                  run={(values) =>
+                    E.revalidateHistorical(ctx, id, val(values, "evidence"), val(values, "comment"))
+                  }
+                />
+              </Disclosure>
+            )}
           <h3 className="mb-4 text-lg font-medium">Obligations & commitments</h3>
-          {v.obligations.map((o) => <div key={o.id} className="border-b py-4">
-            <h4 className="font-medium">{o.description}</h4>
-            <Facts items={[["Acceptance criteria",o.criteria],["Source obligation",o.sourceReference],["Fulfillment",words(o.status)],["Delivery mapping",o.mapping?.deliverableIds.map((id) => w.deliverables.find((d) => d.id===id)?.title ?? id).join(", ") || o.mapping?.reviewIds.join(", ") || "Unmapped"],["Applicable amendment",o.amendmentId || "None"]]} />
-            {alive && permitted("scope") && !o.status.includes("by_amendment") && <Disclosure title={`Map delivery: ${o.description}`}>
-              <RecordForm title="Obligation delivery mapping" fields={[
-                {...selectField("deliverableIds","Deliverables",w.deliverables.map((d) => ({value:d.id,label:d.title})),"",false),kind:"multi" as const},
-                selectField("reviewIds","Service acceptance review",w.reviews.filter((r) => r.kind!=="completion").map((r) => ({value:r.id,label:r.summary})),"",false),
-                field("coverage","Acceptance criteria covered",o.criteria,"area"), field("evidence","Coverage evidence references"), field("comment","Mapping rationale","","area")
-              ]} run={(values) => E.mapObligation(ctx,id,{obligationId:o.id,deliverableIds:refs(val(values,"deliverableIds")),reviewIds:refs(val(values,"reviewIds")),milestoneIds:[],workstreamIds:[],coverage:val(values,"coverage"),evidence:refs(val(values,"evidence")),comment:val(values,"comment")})} />
-            </Disclosure>}
-          </div>)}
+          {v.obligations.map((o) => (
+            <div key={o.id} className="border-b py-4">
+              <h4 className="font-medium">{o.description}</h4>
+              <Facts
+                items={[
+                  ["Acceptance criteria", o.criteria],
+                  ["Source obligation", o.sourceReference],
+                  ["Fulfillment", words(o.status)],
+                  [
+                    "Delivery mapping",
+                    o.mapping?.deliverableIds
+                      .map((id) => w.deliverables.find((d) => d.id === id)?.title ?? id)
+                      .join(", ") ||
+                      o.mapping?.reviewIds.join(", ") ||
+                      "Unmapped",
+                  ],
+                  ["Applicable amendment", o.amendmentId || "None"],
+                ]}
+              />
+              {alive && permitted("scope") && !o.status.includes("by_amendment") && (
+                <Disclosure title={`Map delivery: ${o.description}`}>
+                  <RecordForm
+                    title="Obligation delivery mapping"
+                    fields={[
+                      {
+                        ...selectField(
+                          "deliverableIds",
+                          "Deliverables",
+                          w.deliverables.map((d) => ({ value: d.id, label: d.title })),
+                          "",
+                          false,
+                        ),
+                        kind: "multi" as const,
+                      },
+                      selectField(
+                        "reviewIds",
+                        "Service acceptance review",
+                        w.reviews
+                          .filter((r) => r.kind !== "completion")
+                          .map((r) => ({ value: r.id, label: r.summary })),
+                        "",
+                        false,
+                      ),
+                      field("coverage", "Acceptance criteria covered", o.criteria, "area"),
+                      field("evidence", "Coverage evidence references"),
+                      field("comment", "Mapping rationale", "", "area"),
+                    ]}
+                    run={(values) =>
+                      E.mapObligation(ctx, id, {
+                        obligationId: o.id,
+                        deliverableIds: refs(val(values, "deliverableIds")),
+                        reviewIds: refs(val(values, "reviewIds")),
+                        milestoneIds: [],
+                        workstreamIds: [],
+                        coverage: val(values, "coverage"),
+                        evidence: refs(val(values, "evidence")),
+                        comment: val(values, "comment"),
+                      })
+                    }
+                  />
+                </Disclosure>
+              )}
+            </div>
+          ))}
           {v.scopes.map((s) => (
             <div key={s.id} className="border-b py-4">
               <h3 className="font-medium">
@@ -1104,10 +1192,24 @@ function EngagementBody({ v }: { v: DeliveryView }) {
                   field("impact", "Delivery impact", "", "area"),
                   field("scheduleImpact", "Schedule impact", "", "area", false),
                   field("commercialImpact", "Commercial impact", "", "area", false),
-                  selectField("obligationId","Affected obligation",v.obligations.filter((o) => !o.status.includes("by_amendment")).map((o) => ({value:o.id,label:o.description})),"",false),
-                  selectField("obligationAction","Obligation amendment",options(["remove","supersede"]),"",false),
-                  field("obligationDescription","Replacement commitment","","area",false),
-                  field("obligationCriteria","Replacement acceptance criteria","","area",false),
+                  selectField(
+                    "obligationId",
+                    "Affected obligation",
+                    v.obligations
+                      .filter((o) => !o.status.includes("by_amendment"))
+                      .map((o) => ({ value: o.id, label: o.description })),
+                    "",
+                    false,
+                  ),
+                  selectField(
+                    "obligationAction",
+                    "Obligation amendment",
+                    options(["remove", "supersede"]),
+                    "",
+                    false,
+                  ),
+                  field("obligationDescription", "Replacement commitment", "", "area", false),
+                  field("obligationCriteria", "Replacement acceptance criteria", "", "area", false),
                   ...termsFields(currentTerms),
                   field(
                     "revisedProposalVersionId",
@@ -1126,7 +1228,19 @@ function EngagementBody({ v }: { v: DeliveryView }) {
                     commercialImpact: val(values, "commercialImpact"),
                     terms: termsFrom(values),
                     revisedProposalVersionId: val(values, "revisedProposalVersionId"),
-                    ...(val(values,"obligationId") ? { obligationAmendments:[{ obligationId:val(values,"obligationId"), action:val(values,"obligationAction") as "remove" | "supersede", description:val(values,"obligationDescription"), criteria:val(values,"obligationCriteria"), reason:val(values,"reason") }] } : {}),
+                    ...(val(values, "obligationId")
+                      ? {
+                          obligationAmendments: [
+                            {
+                              obligationId: val(values, "obligationId"),
+                              action: val(values, "obligationAction") as "remove" | "supersede",
+                              description: val(values, "obligationDescription"),
+                              criteria: val(values, "obligationCriteria"),
+                              reason: val(values, "reason"),
+                            },
+                          ],
+                        }
+                      : {}),
                   })
                 }
               />
@@ -1284,10 +1398,25 @@ function EngagementBody({ v }: { v: DeliveryView }) {
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {m.observedAt} · {m.source} ·{" "}
-                    {m.verification ? (m.verificationBinding ? "Exact observation independently verified (simulated)" : "Historical verification — content binding unavailable") : "Unverified"}
+                    {m.verification
+                      ? m.verificationBinding
+                        ? "Exact observation independently verified (simulated)"
+                        : "Historical verification — content binding unavailable"
+                      : "Unverified"}
                   </p>
-                  {measurementChange(o,m) && <p className="mt-1 text-xs">{measurementChange(o,m)?.value.toFixed(1)} {measurementChange(o,m)?.unit} observed change against the pinned baseline</p>}
-                  {o.measurements.some((replacement) => replacement.binding?.supersedesId===m.id) && <p className="mt-1 text-xs text-muted-foreground">Superseded observation — original evidence preserved</p>}
+                  {measurementChange(o, m) && (
+                    <p className="mt-1 text-xs">
+                      {measurementChange(o, m)?.value.toFixed(1)} {measurementChange(o, m)?.unit}{" "}
+                      observed change against the pinned baseline
+                    </p>
+                  )}
+                  {o.measurements.some(
+                    (replacement) => replacement.binding?.supersedesId === m.id,
+                  ) && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Superseded observation — original evidence preserved
+                    </p>
+                  )}
                   {alive && permitted("verify") && !m.verification && (
                     <Disclosure title="Verify observed measurement">
                       <RecordForm
@@ -1308,9 +1437,29 @@ function EngagementBody({ v }: { v: DeliveryView }) {
                   )}
                 </div>
               ))}
-              {alive && permitted("verify") && <Disclosure title={`Correct baseline: ${o.objective}`}>
-                <RecordForm title="Baseline correction" fields={[field("value","Corrected baseline value","","number",false),field("description","Corrected baseline description","","area"),field("evidence","Baseline evidence references"),field("reason","Correction reason","","area"),field("approvalEvidence","Correction approval evidence")]} run={(values) => E.correctBaseline(ctx,id,o.id,{value:val(values,"value")?Number(val(values,"value")):null,description:val(values,"description"),evidence:refs(val(values,"evidence")),reason:val(values,"reason"),approvalEvidence:val(values,"approvalEvidence")})} />
-              </Disclosure>}
+              {alive && permitted("verify") && (
+                <Disclosure title={`Correct baseline: ${o.objective}`}>
+                  <RecordForm
+                    title="Baseline correction"
+                    fields={[
+                      field("value", "Corrected baseline value", "", "number", false),
+                      field("description", "Corrected baseline description", "", "area"),
+                      field("evidence", "Baseline evidence references"),
+                      field("reason", "Correction reason", "", "area"),
+                      field("approvalEvidence", "Correction approval evidence"),
+                    ]}
+                    run={(values) =>
+                      E.correctBaseline(ctx, id, o.id, {
+                        value: val(values, "value") ? Number(val(values, "value")) : null,
+                        description: val(values, "description"),
+                        evidence: refs(val(values, "evidence")),
+                        reason: val(values, "reason"),
+                        approvalEvidence: val(values, "approvalEvidence"),
+                      })
+                    }
+                  />
+                </Disclosure>
+              )}
               {alive && permitted("measure") && (
                 <Disclosure title={`Record result: ${o.objective}`}>
                   <RecordForm
@@ -1320,8 +1469,17 @@ function EngagementBody({ v }: { v: DeliveryView }) {
                       field("value", "Observed value", "", "number", false),
                       field("qualitative", "Qualitative observation", "", "area", false),
                       field("source", "Source description"),
-                      selectField("supersedesId","Original observation being corrected",o.measurements.map((m) => ({value:m.id,label:`${m.observedAt} · ${m.value ?? m.qualitative}`})),"",false),
-                      field("correctionReason","Correction reason","","area",false),
+                      selectField(
+                        "supersedesId",
+                        "Original observation being corrected",
+                        o.measurements.map((m) => ({
+                          value: m.id,
+                          label: `${m.observedAt} · ${m.value ?? m.qualitative}`,
+                        })),
+                        "",
+                        false,
+                      ),
+                      field("correctionReason", "Correction reason", "", "area", false),
                       selectField(
                         "provenance",
                         "Provenance",
@@ -1366,7 +1524,12 @@ function EngagementBody({ v }: { v: DeliveryView }) {
                         },
                         val(values, "status") as DeliveryOutcome["status"],
                         val(values, "feedback"),
-                        val(values,"supersedesId") ? {supersedesId:val(values,"supersedesId"),reason:val(values,"correctionReason")} : undefined,
+                        val(values, "supersedesId")
+                          ? {
+                              supersedesId: val(values, "supersedesId"),
+                              reason: val(values, "correctionReason"),
+                            }
+                          : undefined,
                       )
                     }
                   />
@@ -1378,7 +1541,34 @@ function EngagementBody({ v }: { v: DeliveryView }) {
             <Disclosure title="Define outcome">
               <RecordForm
                 title="Outcome definition"
-                fields={[...outcomeFields(people),selectField("workstreamId","Outcome workstream",streams,"",false),selectField("metricKind","Measurement domain",options(["duration","count","percentage","ratio","currency","signed","bounded","qualitative"]),"duration"),selectField("comparison","Comparison",options(["relative","absolute","percentage_points","qualitative"]),"relative"),field("minimum","Minimum permitted value","0","number",false),field("maximum","Maximum permitted value","","number",false),selectField("integer","Whole numbers only",options(["yes","no"]),"no")]}
+                fields={[
+                  ...outcomeFields(people),
+                  selectField("workstreamId", "Outcome workstream", streams, "", false),
+                  selectField(
+                    "metricKind",
+                    "Measurement domain",
+                    options([
+                      "duration",
+                      "count",
+                      "percentage",
+                      "ratio",
+                      "currency",
+                      "signed",
+                      "bounded",
+                      "qualitative",
+                    ]),
+                    "duration",
+                  ),
+                  selectField(
+                    "comparison",
+                    "Comparison",
+                    options(["relative", "absolute", "percentage_points", "qualitative"]),
+                    "relative",
+                  ),
+                  field("minimum", "Minimum permitted value", "0", "number", false),
+                  field("maximum", "Maximum permitted value", "", "number", false),
+                  selectField("integer", "Whole numbers only", options(["yes", "no"]), "no"),
+                ]}
                 run={(values) =>
                   E.outcome(ctx, id, {
                     objective: val(values, "objective"),
@@ -1393,8 +1583,16 @@ function EngagementBody({ v }: { v: DeliveryView }) {
                     direction: val(values, "direction") as DeliveryOutcome["direction"],
                     frequency: val(values, "frequency"),
                     ownerProfessionalId: val(values, "ownerProfessionalId"),
-                    workstreamId:val(values,"workstreamId"),
-                    measurementDefinition:{kind:val(values,"metricKind") as MeasurementDefinition["kind"],unit:val(values,"unit"),direction:val(values,"direction") as MeasurementDefinition["direction"],minimum:val(values,"minimum") ? Number(val(values,"minimum")) : null,maximum:val(values,"maximum") ? Number(val(values,"maximum")) : null,integer:val(values,"integer")==="yes",comparison:val(values,"comparison") as MeasurementDefinition["comparison"]},
+                    workstreamId: val(values, "workstreamId"),
+                    measurementDefinition: {
+                      kind: val(values, "metricKind") as MeasurementDefinition["kind"],
+                      unit: val(values, "unit"),
+                      direction: val(values, "direction") as MeasurementDefinition["direction"],
+                      minimum: val(values, "minimum") ? Number(val(values, "minimum")) : null,
+                      maximum: val(values, "maximum") ? Number(val(values, "maximum")) : null,
+                      integer: val(values, "integer") === "yes",
+                      comparison: val(values, "comparison") as MeasurementDefinition["comparison"],
+                    },
                   })
                 }
               />
@@ -1410,7 +1608,11 @@ function EngagementBody({ v }: { v: DeliveryView }) {
                 {words(r.kind)} review · {r.scheduledAt}
               </h3>
               <p className="mt-2 text-sm">{r.summary}</p>
-              {v.staleReviewIds.includes(r.id) && <p className="mt-2 text-sm text-destructive">Stale completion review — current material results require a fresh review.</p>}
+              {v.staleReviewIds.includes(r.id) && (
+                <p className="mt-2 text-sm text-destructive">
+                  Stale completion review — current material results require a fresh review.
+                </p>
+              )}
               <Facts
                 items={[
                   ["Customer feedback", r.customerFeedback],
@@ -1443,7 +1645,13 @@ function EngagementBody({ v }: { v: DeliveryView }) {
                   field("summary", "Review summary", "", "area"),
                   field("customerFeedback", "Customer feedback", "", "area", false),
                   field("nextActions", "Next actions", "", "area", false),
-                  field("outstandingResponsibilities","Completion responsibilities, or explicit none","","area",false),
+                  field(
+                    "outstandingResponsibilities",
+                    "Completion responsibilities, or explicit none",
+                    "",
+                    "area",
+                    false,
+                  ),
                   field("participants", "Participants (comma-separated)"),
                   ...decisionFields,
                 ]}
@@ -1455,7 +1663,9 @@ function EngagementBody({ v }: { v: DeliveryView }) {
                     summary: val(values, "summary"),
                     customerFeedback: val(values, "customerFeedback"),
                     nextActions: val(values, "nextActions"),
-                    ...(val(values,"outstandingResponsibilities") ? {outstandingResponsibilities:val(values,"outstandingResponsibilities")} : {}),
+                    ...(val(values, "outstandingResponsibilities")
+                      ? { outstandingResponsibilities: val(values, "outstandingResponsibilities") }
+                      : {}),
                     participants: refs(val(values, "participants")),
                     evidence: val(values, "evidence"),
                     comment: val(values, "comment"),
@@ -1464,14 +1674,26 @@ function EngagementBody({ v }: { v: DeliveryView }) {
               />
             </Disclosure>
           )}
-          {v.engagement.status === "completion_review" && v.completionBlockers.length>0 && <ul className="my-4 list-disc space-y-2 pl-5 text-sm text-destructive">{v.completionBlockers.map((problem) => <li key={problem}>{problem}</li>)}</ul>}
+          {v.engagement.status === "completion_review" && v.completionBlockers.length > 0 && (
+            <ul className="my-4 list-disc space-y-2 pl-5 text-sm text-destructive">
+              {v.completionBlockers.map((problem) => (
+                <li key={problem}>{problem}</li>
+              ))}
+            </ul>
+          )}
           {v.engagement.status === "completion_review" && permitted("complete") && (
             <Disclosure title="Authorize engagement completion">
               <RecordForm
                 title="Engagement completion"
                 fields={[
                   field("summary", "Executive completion summary", "", "area"),
-                  field("customerFeedback", "Customer feedback", w.completionRequirements?.customerFeedback ?? "", "area", false),
+                  field(
+                    "customerFeedback",
+                    "Customer feedback",
+                    w.completionRequirements?.customerFeedback ?? "",
+                    "area",
+                    false,
+                  ),
                   field(
                     "outstandingResponsibilities",
                     "Outstanding responsibilities, or explicit none",
@@ -1626,6 +1848,19 @@ export function CompletionReport({ id }: { id: string }) {
         <p className="mt-2 text-sm text-muted-foreground">
           {c.initiation.customer.name} · {c.decision.at}
         </p>
+        {q.data.assurance === "historical_only" && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Historical completion — preserved as originally recorded, not certified under
+            strengthened completion rules.
+          </p>
+        )}
+        {q.data.assurance === "historical_only" && q.data.completionBlockers.length > 0 && (
+          <ul className="mt-3 list-disc pl-5 text-sm text-destructive">
+            {q.data.completionBlockers.map((problem) => (
+              <li key={problem}>{problem}</li>
+            ))}
+          </ul>
+        )}
         <Section title="Executive summary">
           <p className="whitespace-pre-wrap text-sm">{c.executiveSummary}</p>
         </Section>
@@ -1635,6 +1870,27 @@ export function CompletionReport({ id }: { id: string }) {
             Customer responsibilities: {c.initiation.terms.customerResponsibilities}
           </p>
         </Section>
+        {c.obligations && (
+          <Section title="Authorized commitments & amendments">
+            {c.obligations.map((o) => (
+              <div key={o.id} className="border-b py-3">
+                <h3 className="font-medium">{o.description}</h3>
+                <p className="mt-1 text-sm">{o.criteria}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {o.sourceReference} ·{" "}
+                  {o.amendmentId ? `Amendment ${o.amendmentId}` : "Original source"}
+                </p>
+              </div>
+            ))}
+            {c.changes
+              ?.filter((change) => change.status === "applied")
+              .map((change) => (
+                <p key={change.id} className="mt-3 text-sm">
+                  Applied amendment: {change.requested} — {change.reason}
+                </p>
+              ))}
+          </Section>
+        )}
         <Section title="Delivered & accepted">
           {c.deliverables.map((d) => (
             <div key={d.id} className="border-b py-3">

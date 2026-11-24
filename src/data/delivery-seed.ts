@@ -1,7 +1,14 @@
 /** Six explicitly fictional operational journeys, added without modifying earlier seed records. */
 import { seedProfessionals, seedUsers, ORG } from "./seed";
 import {
-  seal, strongSeal, STRONG_CONTRACT, sourceObligations, establishOutcomeEvidence, measurementContent, completionState, contentValue,
+  seal,
+  strongSeal,
+  STRONG_CONTRACT,
+  sourceObligations,
+  establishOutcomeEvidence,
+  measurementContent,
+  completionState,
+  contentValue,
   SERVICES,
   type ProfessionalProfile,
   type DeliveryWorkspace,
@@ -441,25 +448,119 @@ export const deliveryWorkspaces: DeliveryWorkspace[] = scenarios.map((s) => {
     });
   }
   // Fresh demonstration data uses /2; restored /1 records are never rewritten.
-  w.integrityContract=STRONG_CONTRACT;
-  const obligations=sourceObligations(w.initiation);
-  w.initiation=strongSeal({ ...w.initiation, schema:"aurumi.cia.engagement-initiation/2" as const, obligations });
-  w.obligations=obligations;
-  w.obligationMappings=obligations.map((o) => strongSeal({ obligationId:o.id, deliverableIds:[`deliverable_${s.id}`], milestoneIds:[`milestone_${s.id}`], workstreamIds:[streamId], reviewIds:[], coverage:o.criteria, evidence:[approval.evidence], approval }));
-  w.scopes=w.scopes.map((scope) => strongSeal({ ...scope, schema:"aurumi.cia.engagement-scope/2" as const, obligationIds:obligations.map((o) => o.id) }));
-  const original=w.scopes[0]; if(!original) throw Error("Missing seeded scope");
-  w.authorization=strongSeal({ ...approval, engagementId:w.engagementId, organizationId:w.organizationId, initiationId:w.initiation.id, initiationValue:w.initiation.integrityValue, scopeId:original.id, scopeValue:original.integrityValue, commercialValue:contentValue(original.terms), authorizationType:w.initiation.source.kind });
-  const lifecycle=["pending_authorization","authorized",...(s.status!=="authorized"?["mobilizing","active"]:[]),...(s.status==="completed"?["completion_review","completed"]:[])];
-  w.lifecycleHistory=lifecycle.map((to,n) => strongSeal({id:`lifecycle_${s.id}_${n}`,engagementId:s.id,organizationId:w.organizationId,from:lifecycle[n-1] ?? "draft",to,authorizationValue:n===0?"":AuthorizationSchema.parse(w.authorization).integrityValue,approval}));
-  for(const outcome of w.outcomes) {
-    outcome.workstreamId=streamId; establishOutcomeEvidence(outcome,approval);
-    const definition=outcome.evidenceHistory?.definitions[0], baseline=outcome.evidenceHistory?.baselines[0];
-    if(!definition) throw Error("Missing seeded definition");
-    outcome.measurements=outcome.measurements.map((m) => ({ ...m, binding:strongSeal({ measurementId:m.id, organizationId:w.organizationId, engagementId:w.engagementId, outcomeId:outcome.id, definitionId:definition.id, definitionValue:definition.integrityValue, baselineId:baseline?.id ?? "", baselineValue:baseline?.integrityValue ?? "", content:measurementContent(m), supersedesId:"", reason:"" }) }));
+  w.integrityContract = STRONG_CONTRACT;
+  const obligations = sourceObligations(w.initiation);
+  w.initiation = strongSeal({
+    ...w.initiation,
+    schema: "aurumi.cia.engagement-initiation/2" as const,
+    obligations,
+  });
+  w.obligations = obligations;
+  w.obligationMappings = obligations.map((o) =>
+    strongSeal({
+      obligationId: o.id,
+      deliverableIds: [`deliverable_${s.id}`],
+      milestoneIds: [`milestone_${s.id}`],
+      workstreamIds: [streamId],
+      reviewIds: [],
+      coverage: o.criteria,
+      evidence: [approval.evidence],
+      approval,
+    }),
+  );
+  w.scopes = w.scopes.map((scope) =>
+    strongSeal({
+      ...scope,
+      schema: "aurumi.cia.engagement-scope/2" as const,
+      obligationIds: obligations.map((o) => o.id),
+    }),
+  );
+  const original = w.scopes[0];
+  if (!original) throw Error("Missing seeded scope");
+  w.authorization = strongSeal({
+    ...approval,
+    engagementId: w.engagementId,
+    organizationId: w.organizationId,
+    initiationId: w.initiation.id,
+    initiationValue: w.initiation.integrityValue,
+    scopeId: original.id,
+    scopeValue: original.integrityValue,
+    commercialValue: contentValue(original.terms),
+    authorizationType: w.initiation.source.kind,
+  });
+  const lifecycle = [
+    "pending_authorization",
+    "authorized",
+    ...(s.status !== "authorized" ? ["mobilizing", "active"] : []),
+    ...(s.status === "completed" ? ["completion_review", "completed"] : []),
+  ];
+  w.lifecycleHistory = lifecycle.map((to, n) =>
+    strongSeal({
+      id: `lifecycle_${s.id}_${n}`,
+      engagementId: s.id,
+      organizationId: w.organizationId,
+      from: lifecycle[n - 1] ?? "draft",
+      to,
+      authorizationValue: n === 0 ? "" : AuthorizationSchema.parse(w.authorization).integrityValue,
+      approval,
+    }),
+  );
+  for (const outcome of w.outcomes) {
+    outcome.workstreamId = streamId;
+    establishOutcomeEvidence(outcome, approval);
+    const definition = outcome.evidenceHistory?.definitions[0],
+      baseline = outcome.evidenceHistory?.baselines[0];
+    if (!definition) throw Error("Missing seeded definition");
+    outcome.measurements = outcome.measurements.map((m) => ({
+      ...m,
+      binding: strongSeal({
+        measurementId: m.id,
+        organizationId: w.organizationId,
+        engagementId: w.engagementId,
+        outcomeId: outcome.id,
+        definitionId: definition.id,
+        definitionValue: definition.integrityValue,
+        baselineId: baseline?.id ?? "",
+        baselineValue: baseline?.integrityValue ?? "",
+        content: measurementContent(m),
+        supersedesId: "",
+        reason: "",
+      }),
+    }));
   }
-  if(w.completion) w.completionRequirements={ customerFeedback:w.completion.customerFeedback, outstandingResponsibilities:w.completion.outstandingResponsibilities };
-  w.reviews=w.reviews.map((r) => strongSeal({ ...r, schema:"aurumi.cia.engagement-review/2" as const, outcomeEvidence:structuredClone(w.outcomes), binding:strongSeal({ engagementId:w.engagementId, organizationId:w.organizationId, state:completionState(w), stateValue:contentValue(completionState(w)) }) }));
-  if(w.completion) w.completion=strongSeal({ ...w.completion, schema:"aurumi.cia.engagement-completion/2" as const, initiation:w.initiation, scopes:w.scopes, authorization:AuthorizationSchema.parse(w.authorization), lifecycleHistory:w.lifecycleHistory, obligations:w.obligations, obligationMappings:w.obligationMappings, changes:w.changes, outcomes:w.outcomes, reviews:w.reviews, ...(w.completionRequirements ? { completionRequirements:w.completionRequirements } : {}) });
+  if (w.completion)
+    w.completionRequirements = {
+      customerFeedback: w.completion.customerFeedback,
+      outstandingResponsibilities: w.completion.outstandingResponsibilities,
+    };
+  w.reviews = w.reviews.map((r) =>
+    strongSeal({
+      ...r,
+      schema: "aurumi.cia.engagement-review/2" as const,
+      outcomeEvidence: structuredClone(w.outcomes),
+      binding: strongSeal({
+        engagementId: w.engagementId,
+        organizationId: w.organizationId,
+        state: completionState(w),
+        stateValue: contentValue(completionState(w)),
+      }),
+    }),
+  );
+  if (w.completion)
+    w.completion = strongSeal({
+      ...w.completion,
+      schema: "aurumi.cia.engagement-completion/2" as const,
+      initiation: w.initiation,
+      scopes: w.scopes,
+      authorization: AuthorizationSchema.parse(w.authorization),
+      lifecycleHistory: w.lifecycleHistory,
+      obligations: w.obligations,
+      obligationMappings: w.obligationMappings,
+      changes: w.changes,
+      outcomes: w.outcomes,
+      reviews: w.reviews,
+      ...(w.completionRequirements ? { completionRequirements: w.completionRequirements } : {}),
+    });
   deliveryEngagements.push({
     ...demoBase(s.id),
     ownerId: s.id === "delivery_reseller" ? "u_pm" : "u_manager",

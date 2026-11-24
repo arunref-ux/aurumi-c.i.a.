@@ -4,7 +4,12 @@ import { networkService as N, deliveryControls } from "@/data/network";
 import { store } from "@/data/store";
 import { repos } from "@/data/repositories";
 import { deliveryAdapters } from "@/integrations/adapters/delivery";
-import { acceptedVersion, improvement, workspaceProblems, proposalScopeTerms } from "@/domain/delivery";
+import {
+  acceptedVersion,
+  improvement,
+  workspaceProblems,
+  proposalScopeTerms,
+} from "@/domain/delivery";
 import { issuedProposal, readyProposal } from "./proposal-fixtures";
 import {
   reset,
@@ -62,7 +67,12 @@ describe("Phase 6 authorized origins and lifecycle", () => {
       customerName: version.document.recipient.organization || version.document.recipient.name,
       proposalVersionId: version.id,
       allocationId: "authorized-implementation-portion",
-      terms: { ...creation().terms, ...proposalScopeTerms(version), currency: total.currency, amount: total.initialCost },
+      terms: {
+        ...creation().terms,
+        ...proposalScopeTerms(version),
+        currency: total.currency,
+        amount: total.initialCost,
+      },
     });
     const v = await E.create(M, input);
     expect(v.initiation?.source.kind).toBe("proposal");
@@ -111,7 +121,12 @@ describe("Phase 6 authorized origins and lifecycle", () => {
       proposalVersionId: v.id,
       customerName: v.document.recipient.organization || v.document.recipient.name,
       allocationId: "allocation",
-      terms: { ...creation().terms, ...proposalScopeTerms(v), currency: total.currency, amount: total.initialCost },
+      terms: {
+        ...creation().terms,
+        ...proposalScopeTerms(v),
+        currency: total.currency,
+        amount: total.initialCost,
+      },
     });
     await expect(E.create(M, { ...input, allocationId: "" })).rejects.toThrow("allocation");
     await E.create(M, input);

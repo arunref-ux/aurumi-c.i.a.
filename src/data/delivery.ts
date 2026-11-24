@@ -28,12 +28,24 @@ import {
   completionProblems,
   today,
   currentAffiliation,
-  STRONG_CONTRACT, strongSeal, sourceObligations, obligationStates, proposalScopeTerms,
-  validateAuthorization, lifecycleAuthorizationProblems, completionState, measurementContent,
+  STRONG_CONTRACT,
+  strongSeal,
+  sourceObligations,
+  obligationStates,
+  proposalScopeTerms,
+  validateAuthorization,
+  lifecycleAuthorizationProblems,
+  completionState,
+  measurementContent,
   establishOutcomeEvidence,
-  historicalSourceValue, historicalObligationProblems,
-  metricFor, validateMetric, timestampInstant,
-  type DeliveryOutcome, type ScopeChange, type DeliveryReview,
+  historicalSourceValue,
+  historicalObligationProblems,
+  metricFor,
+  validateMetric,
+  timestampInstant,
+  type DeliveryOutcome,
+  type ScopeChange,
+  type DeliveryReview,
   type DeliveryWorkspace,
   type Initiation,
   type ScopeVersion,
@@ -45,7 +57,12 @@ import {
   type DeliveryOperation,
   type ServiceTerms,
 } from "@/domain/delivery";
-import { AuthorizationSchema, ObligationMappingSchema, ObligationAmendmentSchema } from "@/domain/delivery-evidence";
+import {
+  AuthorizationSchema,
+  ObligationMappingSchema,
+  ObligationAmendmentSchema,
+  type MeasurementDefinition,
+} from "@/domain/delivery-evidence";
 import { deliveryAdapters, type DeliveryAdapterKind } from "@/integrations/adapters/delivery";
 import type { Engagement } from "@/domain/types";
 import type { Ctx } from "./repositories";
@@ -73,12 +90,36 @@ const creationSchema = z.strictObject({
   proposalVersionId: z.string(),
   allocationId: z.string(),
   previousEngagementId: z.string(),
+  completionCriteria: z.string().trim().min(1).optional(),
 });
 export type EngagementCreation = z.infer<typeof creationSchema>;
-type OperationalTerms = Pick<ServiceTerms, "included" | "excluded" | "assumptions" | "customerResponsibilities" | "professionalResponsibilities" | "start" | "end" | "cadence"> & Partial<ServiceTerms>;
-type ChangeView = Omit<ScopeChange, "terms" | "commercialImpact" | "revisedProposal" | "approval" | "approvedValue"> & { terms: OperationalTerms; commercialImpact?: string; revisedProposal?: unknown; approval?: ScopeChange["approval"]; approvedValue?: string };
+type OperationalTerms = Pick<
+  ServiceTerms,
+  | "included"
+  | "excluded"
+  | "assumptions"
+  | "customerResponsibilities"
+  | "professionalResponsibilities"
+  | "start"
+  | "end"
+  | "cadence"
+> &
+  Partial<ServiceTerms>;
+type ChangeView = Omit<
+  ScopeChange,
+  "terms" | "commercialImpact" | "revisedProposal" | "approval" | "approvedValue"
+> & {
+  terms: OperationalTerms;
+  commercialImpact?: string;
+  revisedProposal?: unknown;
+  approval?: ScopeChange["approval"];
+  approvedValue?: string;
+};
 type ReviewView = DeliveryReview;
-type PublicWorkspace = Omit<DeliveryWorkspace, "initiation" | "scopes" | "completion" | "changes" | "reviews"> & { changes: ChangeView[]; reviews: ReviewView[] };
+type PublicWorkspace = Omit<
+  DeliveryWorkspace,
+  "initiation" | "scopes" | "completion" | "changes" | "reviews"
+> & { changes: ChangeView[]; reviews: ReviewView[] };
 export interface DeliveryView {
   engagement: Engagement;
   workspace: PublicWorkspace;
@@ -276,7 +317,10 @@ async function mutate(
   states: readonly string[] = editable,
 ) {
   const initial = load(ctx, id, action, targetWorkstream);
-  if (initial.w.integrityContract !== STRONG_CONTRACT) throw Error("Historical Phase 6 record: authorized source-bound revalidation is required before new governed operations");
+  if (initial.w.integrityContract !== STRONG_CONTRACT)
+    throw Error(
+      "Historical Phase 6 record: authorized source-bound revalidation is required before new governed operations",
+    );
   if (!states.includes(initial.e.status))
     throw Error("This engagement state does not permit the requested operation");
   const value = fingerprint(initial.e, initial.w);
@@ -326,7 +370,11 @@ function getView(ctx: Ctx, id: string): DeliveryView {
       deliverables: w.deliverables.filter((d) => includes(d.workstreamId)),
       changes: [],
       concerns: w.concerns.filter((r) => includes(r.workstreamId) || r.createdBy === c.user.id),
-      outcomes: w.outcomes.filter((o) => all || (includes(o.workstreamId ?? "") && o.ownerProfessionalId === profile(c.user.id)?.id)),
+      outcomes: w.outcomes.filter(
+        (o) =>
+          all ||
+          (includes(o.workstreamId ?? "") && o.ownerProfessionalId === profile(c.user.id)?.id),
+      ),
       reviews: all ? w.reviews : [],
       continuations: all ? w.continuations : [],
       authorization: null,
@@ -334,20 +382,38 @@ function getView(ctx: Ctx, id: string): DeliveryView {
     };
   }
   if (!commercial) {
-    const { lifecycleHistory:_life,historicalRevalidation:_historical,...safeWorkspace }=workspace;
+    const {
+      lifecycleHistory: _life,
+      historicalRevalidation: _historical,
+      ...safeWorkspace
+    } = workspace;
     workspace = {
-    ...safeWorkspace,
-    authorization: null, cancellation: null,
-    changes: workspace.changes.map((change) => ({
-      id: change.id, organizationId: change.organizationId, engagementId: change.engagementId,
-      createdAt: change.createdAt, createdBy: change.createdBy, updatedAt: change.updatedAt, updatedBy: change.updatedBy,
-      sourceScopeId: change.sourceScopeId, requested: change.requested, reason: change.reason, impact: change.impact,
-      scheduleImpact: change.scheduleImpact, status: change.status, scopeVersionId: change.scopeVersionId,
-      revisedProposalVersionId: "", terms: operationalTerms(change.terms),
-      ...(change.obligationAmendments ? { obligationAmendments: change.obligationAmendments } : {}),
-    })),
-    reviews: workspace.reviews.map(({ binding: _binding, ...review }) => review),
-  };
+      ...safeWorkspace,
+      authorization: null,
+      cancellation: null,
+      changes: workspace.changes.map((change) => ({
+        id: change.id,
+        organizationId: change.organizationId,
+        engagementId: change.engagementId,
+        createdAt: change.createdAt,
+        createdBy: change.createdBy,
+        updatedAt: change.updatedAt,
+        updatedBy: change.updatedBy,
+        sourceScopeId: change.sourceScopeId,
+        requested: change.requested,
+        reason: change.reason,
+        impact: change.impact,
+        scheduleImpact: change.scheduleImpact,
+        status: change.status,
+        scopeVersionId: change.scopeVersionId,
+        revisedProposalVersionId: "",
+        terms: operationalTerms(change.terms),
+        ...(change.obligationAmendments
+          ? { obligationAmendments: change.obligationAmendments }
+          : {}),
+      })),
+      reviews: workspace.reviews.map(({ binding: _binding, ...review }) => review),
+    };
   }
   return {
     engagement: e,
@@ -373,20 +439,71 @@ function getView(ctx: Ctx, id: string): DeliveryView {
     restricted: isRestricted,
     assurance: w.integrityContract === STRONG_CONTRACT ? "strengthened" : "historical_only",
     obligations: isRestricted ? [] : obligationStates(w),
-    completionBlockers: isRestricted ? [] : completionProblems(w),
-    staleReviewIds: w.reviews.filter((r) => r.kind === "completion" && (!r.binding || r.binding.stateValue !== contentValue(completionState(w)))).map((r) => r.id),
+    completionBlockers: isRestricted
+      ? []
+      : [
+          ...completionProblems(w),
+          ...(w.integrityContract !== STRONG_CONTRACT && e.status === "completed"
+            ? historicalObligationProblems(w)
+            : []),
+        ],
+    staleReviewIds: w.reviews
+      .filter(
+        (r) =>
+          r.kind === "completion" &&
+          (!r.binding || r.binding.stateValue !== contentValue(completionState(w))),
+      )
+      .map((r) => r.id),
   };
 }
 function operationalTerms(t: OperationalTerms): OperationalTerms {
-  return { included: t.included, excluded: t.excluded, assumptions: t.assumptions, customerResponsibilities: t.customerResponsibilities, professionalResponsibilities: t.professionalResponsibilities, start: t.start, end: t.end, cadence: t.cadence };
+  return {
+    included: t.included,
+    excluded: t.excluded,
+    assumptions: t.assumptions,
+    customerResponsibilities: t.customerResponsibilities,
+    professionalResponsibilities: t.professionalResponsibilities,
+    start: t.start,
+    end: t.end,
+    cadence: t.cadence,
+  };
 }
-function outcomeOwner(ctx: Ctx, e: Engagement, w: DeliveryWorkspace, ownerId: string, ws: string, action: "measure" | "verify" | "assign" = "measure") {
+function outcomeOwner(
+  ctx: Ctx,
+  e: Engagement,
+  w: DeliveryWorkspace,
+  ownerId: string,
+  ws: string,
+  action: "measure" | "verify" | "assign" | "plan" | "risk" = "measure",
+) {
   authorize(ctx, action, e, w, ws || undefined);
-  if (restricted(ctx) && !ws && !activeAssignments(ctx,w).some((a) => !a.workstreamId && ["lead","support","reviewer"].includes(a.responsibility))) throw new AccessDeniedError(`delivery.${action}`,e.id);
-  if (restricted(ctx) && action !== "verify" && ownerId !== profile(ctx.user.id)?.id && !can(ctx.user,"delivery.assign",e)) throw new AccessDeniedError("delivery.measure",e.id);
-  const assignments=w.assignments.filter((a) => a.professionalId===ownerId && a.status==="active" && a.start<=today() && (!a.end||a.end>=today()) && (a.workstreamId===ws || (!a.workstreamId && ["lead","support","reviewer"].includes(a.responsibility))));
-  if (!assignments.length) throw Error("Outcome owner is not part of the current authorized operational scope");
-  for(const a of assignments) eligibleProfile(ctx,e,ownerId,a.service,a.qualificationIds);
+  if (
+    restricted(ctx) &&
+    !ws &&
+    !activeAssignments(ctx, w).some(
+      (a) => !a.workstreamId && ["lead", "support", "reviewer"].includes(a.responsibility),
+    )
+  )
+    throw new AccessDeniedError(`delivery.${action}`, e.id);
+  if (
+    restricted(ctx) &&
+    action !== "verify" &&
+    ownerId !== profile(ctx.user.id)?.id &&
+    !can(ctx.user, "delivery.assign", e)
+  )
+    throw new AccessDeniedError("delivery.measure", e.id);
+  const assignments = w.assignments.filter(
+    (a) =>
+      a.professionalId === ownerId &&
+      a.status === "active" &&
+      a.start <= today() &&
+      (!a.end || a.end >= today()) &&
+      (a.workstreamId === ws ||
+        (!a.workstreamId && ["lead", "support", "reviewer"].includes(a.responsibility))),
+  );
+  if (!assignments.length)
+    throw Error("Outcome owner is not part of the current authorized operational scope");
+  for (const a of assignments) eligibleProfile(ctx, e, ownerId, a.service, a.qualificationIds);
 }
 function eligibleProfile(
   ctx: Ctx,
@@ -453,7 +570,10 @@ function pinProposalTerms(
       "Engagement commercials must preserve the issued proposal currency, billing period and authorized amount",
     );
   const authorized = proposalScopeTerms(v);
-  if (Object.entries(authorized).some(([key, value]) => t[key as keyof ServiceTerms] !== value)) throw Error("Engagement scope must preserve the exact issued proposal obligations; use an authorized amendment for material changes");
+  if (Object.entries(authorized).some(([key, value]) => t[key as keyof ServiceTerms] !== value))
+    throw Error(
+      "Engagement scope must preserve the exact issued proposal obligations; use an authorized amendment for material changes",
+    );
   return {
     ...t,
     commercialBasis: `Issued proposal v${v.versionNumber}; separately authorized allocation ${allocation}`,
@@ -481,7 +601,15 @@ function creationSource(ctx: Ctx, input: EngagementCreation): Initiation["source
   }
   if (input.origin === "follow_on") {
     const { e, w } = load(ctx, input.previousEngagementId);
-    if (w.integrityContract !== STRONG_CONTRACT && (!w.historicalRevalidation || w.historicalRevalidation.sourceValue!==historicalSourceValue(w) || (e.status==="completed" && historicalObligationProblems(w).length))) throw Error("Historical completion cannot authorize a follow-on without source-bound revalidation");
+    if (
+      w.integrityContract !== STRONG_CONTRACT &&
+      (!w.historicalRevalidation ||
+        w.historicalRevalidation.sourceValue !== historicalSourceValue(w) ||
+        (e.status === "completed" && historicalObligationProblems(w).length))
+    )
+      throw Error(
+        "Historical completion cannot authorize a follow-on without source-bound revalidation",
+      );
     if (!["active", "on_hold", "completion_review", "completed"].includes(e.status))
       throw Error("Follow-on source is not eligible");
     if (
@@ -494,7 +622,12 @@ function creationSource(ctx: Ctx, input: EngagementCreation): Initiation["source
       previousEngagementId: e.id,
       previousInitiationValue: w.initiation.integrityValue,
       customerReference: input.customerReference,
-      ...(w.integrityContract!==STRONG_CONTRACT && w.historicalRevalidation ? {historicalReview:structuredClone(w.historicalRevalidation),historicalSource:structuredClone(w)} : {}),
+      ...(w.integrityContract !== STRONG_CONTRACT && w.historicalRevalidation
+        ? {
+            historicalReview: structuredClone(w.historicalRevalidation),
+            historicalSource: structuredClone(w),
+          }
+        : {}),
     };
   }
   return { kind: "direct", customerReference: input.customerReference };
@@ -533,7 +666,13 @@ async function external(
   if (op && (op.sourceValue !== sourceValue || op.actorId !== c.user.id || op.engagementId !== id))
     throw Error("Retry operation is bound to another source or actor");
   if (op?.state === "complete") return getView(c, id);
-  if (initial.w.integrityContract !== STRONG_CONTRACT && (!op || !initial.w.historicalRevalidation || initial.w.historicalRevalidation.sourceValue!==historicalSourceValue(initial.w))) throw Error("Historical handoff recovery requires authorized source-bound revalidation");
+  if (
+    initial.w.integrityContract !== STRONG_CONTRACT &&
+    (!op ||
+      !initial.w.historicalRevalidation ||
+      initial.w.historicalRevalidation.sourceValue !== historicalSourceValue(initial.w))
+  )
+    throw Error("Historical handoff recovery requires authorized source-bound revalidation");
   if (!op) {
     op = {
       ...phase6Base(opId, c),
@@ -603,42 +742,143 @@ async function external(
   return getView(c, id);
 }
 export const engagementService = {
-  async revalidateHistorical(ctx: Ctx,id:string,evidence:string,comment:string) {
-    const initial=load(ctx,id,"authorize");
-    if(initial.w.integrityContract===STRONG_CONTRACT) throw Error("Current records already use strengthened governance");
+  async revalidateHistorical(ctx: Ctx, id: string, evidence: string, comment: string) {
+    const initial = load(ctx, id, "authorize");
+    if (initial.w.integrityContract === STRONG_CONTRACT)
+      throw Error("Current records already use strengthened governance");
     validateAuthorization(initial.w);
-    if(initial.e.status==="completed" && historicalObligationProblems(initial.w).length) throw Error(historicalObligationProblems(initial.w).join("; "));
-    const value=historicalSourceValue(initial.w); await deliveryTick();
-    const c=canonicalContext(ctx), {e,w}=load(c,id,"authorize");
-    authorize(c,"commercial",e,w); validateAuthorization(w);
-    if(historicalSourceValue(w)!==value || (e.status==="completed" && historicalObligationProblems(w).length)) throw Error("Historical source changed during revalidation");
-    w.historicalRevalidation=strongSeal({ engagementId:id,organizationId:w.organizationId,initiationValue:w.initiation.integrityValue,sourceValue:value,decision:"revalidated_for_follow_on" as const,approval:phase6Approval(c,evidence,comment) });
-    store.durable(()=>commit(c,e,w,"delivery.historical.revalidation")); return getView(c,id);
+    if (initial.e.status === "completed" && historicalObligationProblems(initial.w).length)
+      throw Error(historicalObligationProblems(initial.w).join("; "));
+    const value = historicalSourceValue(initial.w);
+    await deliveryTick();
+    const c = canonicalContext(ctx),
+      { e, w } = load(c, id, "authorize");
+    authorize(c, "commercial", e, w);
+    validateAuthorization(w);
+    if (
+      historicalSourceValue(w) !== value ||
+      (e.status === "completed" && historicalObligationProblems(w).length)
+    )
+      throw Error("Historical source changed during revalidation");
+    w.historicalRevalidation = strongSeal({
+      engagementId: id,
+      organizationId: w.organizationId,
+      initiationValue: w.initiation.integrityValue,
+      sourceValue: value,
+      decision: "revalidated_for_follow_on" as const,
+      approval: phase6Approval(c, evidence, comment),
+    });
+    store.durable(() => commit(c, e, w, "delivery.historical.revalidation"));
+    return getView(c, id);
   },
-  async mapObligation(ctx: Ctx, id: string, input: { obligationId: string; deliverableIds: string[]; milestoneIds: string[]; workstreamIds: string[]; reviewIds: string[]; coverage: string; evidence: string[]; comment: string }) {
-    return mutate(ctx,id,"scope",(_e,w,c) => {
-      const obligation=w.obligations?.find((o) => o.id===input.obligationId);
-      if(!obligation || obligationStates(w).find((o) => o.id===obligation.id)?.status.includes("by_amendment")) throw Error("Applicable source obligation required");
-      const {comment,...body}=input;
-      const mapping=ObligationMappingSchema.parse(strongSeal({ ...body, approval:phase6Approval(c,input.evidence[0] ?? "",comment) }));
-      w.obligationMappings=[...(w.obligationMappings ?? []).filter((m) => m.obligationId!==input.obligationId),mapping];
+  async mapObligation(
+    ctx: Ctx,
+    id: string,
+    input: {
+      obligationId: string;
+      deliverableIds: string[];
+      milestoneIds: string[];
+      workstreamIds: string[];
+      reviewIds: string[];
+      coverage: string;
+      evidence: string[];
+      comment: string;
+    },
+  ) {
+    return mutate(ctx, id, "scope", (_e, w, c) => {
+      const obligation = w.obligations?.find((o) => o.id === input.obligationId);
+      if (
+        !obligation ||
+        obligationStates(w)
+          .find((o) => o.id === obligation.id)
+          ?.status.includes("by_amendment")
+      )
+        throw Error("Applicable source obligation required");
+      const { comment, ...body } = input;
+      const mapping = ObligationMappingSchema.parse(
+        strongSeal({ ...body, approval: phase6Approval(c, input.evidence[0] ?? "", comment) }),
+      );
+      w.obligationMappings = [
+        ...(w.obligationMappings ?? []).filter((m) => m.obligationId !== input.obligationId),
+        mapping,
+      ];
     });
   },
-  async correctBaseline(ctx: Ctx, id: string, outcomeId: string, input: { value: number | null; description: string; evidence: string[]; reason: string; approvalEvidence: string }) {
-    return mutate(ctx,id,"verify",(e,w,c) => {
-      const o=w.outcomes.find((o) => o.id===outcomeId); if(!o) throw Error("Outcome unavailable");
-      outcomeOwner(c,e,w,o.ownerProfessionalId,o.workstreamId ?? "","verify");
-      if(!input.reason.trim() || !input.evidence.length) throw Error("Baseline correction requires reason and evidence");
-      o.baseline=input.value; o.baselineDescription=input.description; o.baselineEvidence=input.evidence;
-      establishOutcomeEvidence(o,phase6Approval(c,input.approvalEvidence,input.reason),input.reason);
-      o.status="in_progress";
+  async correctBaseline(
+    ctx: Ctx,
+    id: string,
+    outcomeId: string,
+    input: {
+      value: number | null;
+      description: string;
+      evidence: string[];
+      reason: string;
+      approvalEvidence: string;
+    },
+  ) {
+    return mutate(ctx, id, "verify", (e, w, c) => {
+      const o = w.outcomes.find((o) => o.id === outcomeId);
+      if (!o) throw Error("Outcome unavailable");
+      outcomeOwner(c, e, w, o.ownerProfessionalId, o.workstreamId ?? "", "verify");
+      if (!input.reason.trim() || !input.evidence.length)
+        throw Error("Baseline correction requires reason and evidence");
+      o.baseline = input.value;
+      o.baselineDescription = input.description;
+      o.baselineEvidence = input.evidence;
+      establishOutcomeEvidence(
+        o,
+        phase6Approval(c, input.approvalEvidence, input.reason),
+        input.reason,
+      );
+      o.status = "in_progress";
     });
   },
-  async reassignOutcome(ctx: Ctx, id: string, outcomeId: string, ownerProfessionalId: string, workstreamId: string, evidence: string, comment: string) {
-    return mutate(ctx,id,"assign",(e,w,c) => {
-      const o=w.outcomes.find((o) => o.id===outcomeId); if(!o) throw Error("Outcome unavailable");
-      phase6Approval(c,evidence,comment); outcomeOwner(c,e,w,ownerProfessionalId,workstreamId,"assign");
-      o.ownerProfessionalId=ownerProfessionalId; o.workstreamId=workstreamId;
+  async reassignOutcome(
+    ctx: Ctx,
+    id: string,
+    outcomeId: string,
+    ownerProfessionalId: string,
+    workstreamId: string,
+    evidence: string,
+    comment: string,
+  ) {
+    return mutate(ctx, id, "assign", (e, w, c) => {
+      const o = w.outcomes.find((o) => o.id === outcomeId);
+      if (!o) throw Error("Outcome unavailable");
+      phase6Approval(c, evidence, comment);
+      outcomeOwner(c, e, w, ownerProfessionalId, workstreamId, "assign");
+      o.ownerProfessionalId = ownerProfessionalId;
+      o.workstreamId = workstreamId;
+    });
+  },
+  async reviseOutcomeDefinition(
+    ctx: Ctx,
+    id: string,
+    outcomeId: string,
+    input: Pick<
+      DeliveryOutcome,
+      | "objective"
+      | "definition"
+      | "unit"
+      | "type"
+      | "target"
+      | "targetDescription"
+      | "direction"
+      | "frequency"
+    > & { measurementDefinition: MeasurementDefinition; reason: string; evidence: string },
+  ) {
+    return mutate(ctx, id, "measure", (e, w, c) => {
+      const o = w.outcomes.find((o) => o.id === outcomeId);
+      if (!o) throw Error("Outcome unavailable");
+      outcomeOwner(c, e, w, o.ownerProfessionalId, o.workstreamId ?? "");
+      const { reason, evidence, ...definition } = input;
+      const metric = metricFor(definition, definition.measurementDefinition);
+      validateMetric(metric, definition.target);
+      if (o.unit !== definition.unit || o.type !== definition.type)
+        throw Error("Define a separate outcome for incompatible units or measurement types");
+      Object.assign(o, definition);
+      establishOutcomeEvidence(o, phase6Approval(c, evidence, reason), reason);
+      o.status = "in_progress";
     });
   },
   async pendingOperations(ctx: Ctx, id = "") {
@@ -763,6 +1003,19 @@ export const engagementService = {
         number: v.versionNumber,
         title: v.document.proposal.title,
         customerName: v.document.recipient.organization || v.document.recipient.name,
+        terms: can(c.user, "delivery.commercial")
+          ? {
+              ...proposalScopeTerms(v),
+              commercialBasis: "Pinned issued proposal authorization",
+              currency: v.document.commercials.summary.totals[0]?.currency ?? "INR",
+              amount: v.document.commercials.summary.totals[0]?.initialCost ?? null,
+              period: "one_time" as const,
+              pricingReference: `proposal-version://${v.id}/one_time`,
+              start: today(),
+              end: v.issue?.expiresAt.slice(0, 10) ?? today(),
+              cadence: "",
+            }
+          : null,
       }));
   },
   async create(ctx: Ctx, input: EngagementCreation) {
@@ -865,6 +1118,7 @@ export const engagementService = {
           criteria: d.acceptanceCriterion || "Acceptance criteria to be agreed",
         })) ?? [],
       authorizingEvidence: data.authorizationEvidence,
+      ...(data.completionCriteria ? { completionCriteria: data.completionCriteria } : {}),
     };
     const obligations = sourceObligations(initiationBody);
     const initiation = strongSeal({ ...initiationBody, obligations });
@@ -975,8 +1229,19 @@ export const engagementService = {
         if (!w.authorization && next !== "authorized")
           throw Error("Explicit commencement authorization is required");
         if (next === "authorized") {
-          const original=w.scopes[0]; if(!original) throw Error("Original scope unavailable");
-          w.authorization = strongSeal({ ...decision, engagementId:id, organizationId:w.organizationId, initiationId:w.initiation.id, initiationValue:w.initiation.integrityValue, scopeId:original.id, scopeValue:original.integrityValue, commercialValue:contentValue(original.terms), authorizationType:w.initiation.source.kind });
+          const original = w.scopes[0];
+          if (!original) throw Error("Original scope unavailable");
+          w.authorization = strongSeal({
+            ...decision,
+            engagementId: id,
+            organizationId: w.organizationId,
+            initiationId: w.initiation.id,
+            initiationValue: w.initiation.integrityValue,
+            scopeId: original.id,
+            scopeValue: original.integrityValue,
+            commercialValue: contentValue(original.terms),
+            authorizationType: w.initiation.source.kind,
+          });
         } else validateAuthorization(w);
       }
       if (next === "on_hold") {
@@ -984,7 +1249,20 @@ export const engagementService = {
         w.holdBy = c.user.id;
       }
       if (next === "cancelled") w.cancellation = decision;
-      w.lifecycleHistory?.push(strongSeal({ id:newId("lifecycle"),engagementId:id,organizationId:w.organizationId,from:e.status,to:next,authorizationValue:w.authorization && "integrityValue" in w.authorization ? w.authorization.integrityValue : "",approval:decision }));
+      w.lifecycleHistory?.push(
+        strongSeal({
+          id: newId("lifecycle"),
+          engagementId: id,
+          organizationId: w.organizationId,
+          from: e.status,
+          to: next,
+          authorizationValue:
+            w.authorization && "integrityValue" in w.authorization
+              ? w.authorization.integrityValue
+              : "",
+          approval: decision,
+        }),
+      );
       e.status = next as Engagement["status"];
     });
   },
@@ -1086,6 +1364,7 @@ export const engagementService = {
     }).parse(input);
     return mutate(ctx, id, "plan", (_e, w, c) => {
       if (restricted(c)) throw new AccessDeniedError("delivery.plan", id);
+      outcomeOwner(c, _e, w, data.ownerProfessionalId, "", "plan");
       if (
         !w.assignments.some(
           (a) => a.professionalId === data.ownerProfessionalId && a.status === "active",
@@ -1132,6 +1411,7 @@ export const engagementService = {
       id,
       "plan",
       (_e, w, c) => {
+        outcomeOwner(c, _e, w, data.ownerProfessionalId, data.workstreamId, "plan");
         w.milestones.push({
           ...phase6Base(newId("milestone"), c),
           ...data,
@@ -1213,6 +1493,7 @@ export const engagementService = {
       id,
       "plan",
       (_e, w, c) => {
+        outcomeOwner(c, _e, w, data.ownerProfessionalId, data.workstreamId, "plan");
         w.deliverables.push({
           ...phase6Base(newId("deliverable"), c),
           ...data,
@@ -1418,6 +1699,7 @@ export const engagementService = {
       id,
       "risk",
       (_e, w, c) => {
+        outcomeOwner(c, _e, w, data.ownerProfessionalId, data.workstreamId, "risk");
         if (data.verification === "verified") authorize(c, "verify", _e, w);
         w.concerns.push({
           ...phase6Base(newId("concern"), c),
@@ -1455,13 +1737,24 @@ export const engagementService = {
       r.workstreamId || undefined,
     );
   },
-  async reopenConcern(ctx:Ctx,id:string,concernId:string,evidence:string,comment:string) {
-    const original=load(ctx,id).w.concerns.find((r) => r.id===concernId); if(!original) throw Error("Concern unavailable");
-    return mutate(ctx,id,"risk",(e,w,c) => {
-      const item=w.concerns.find((r) => r.id===concernId); if(!item || item.kind==="decision") throw Error("A material concern is required");
-      authorize(c,"authorize",e,w,item.workstreamId || undefined); phase6Approval(c,evidence,comment);
-      item.status="open"; item.acknowledgement=null; item.response=comment;
-    },original.workstreamId || undefined);
+  async reopenConcern(ctx: Ctx, id: string, concernId: string, evidence: string, comment: string) {
+    const original = load(ctx, id).w.concerns.find((r) => r.id === concernId);
+    if (!original) throw Error("Concern unavailable");
+    return mutate(
+      ctx,
+      id,
+      "risk",
+      (e, w, c) => {
+        const item = w.concerns.find((r) => r.id === concernId);
+        if (!item || item.kind === "decision") throw Error("A material concern is required");
+        authorize(c, "authorize", e, w, item.workstreamId || undefined);
+        phase6Approval(c, evidence, comment);
+        item.status = "open";
+        item.acknowledgement = null;
+        item.response = comment;
+      },
+      original.workstreamId || undefined,
+    );
   },
   async outcome(
     ctx: Ctx,
@@ -1495,10 +1788,17 @@ export const engagementService = {
       evidenceHistory: true,
     }).parse(input);
     return mutate(ctx, id, "measure", (_e, w, c) => {
-      const ws = data.workstreamId ?? (restricted(c) ? activeAssignments(c,w).find((a) => a.workstreamId)?.workstreamId ?? "" : "");
-      if (ws && !w.workstreams.some((s) => s.id===ws)) throw Error("Outcome workstream unavailable");
-      outcomeOwner(c,_e,w,data.ownerProfessionalId,ws);
-      const metric = metricFor(data, data.measurementDefinition); validateMetric(metric,data.baseline); validateMetric(metric,data.target);
+      const ws =
+        data.workstreamId ??
+        (restricted(c)
+          ? (activeAssignments(c, w).find((a) => a.workstreamId)?.workstreamId ?? "")
+          : "");
+      if (ws && !w.workstreams.some((s) => s.id === ws))
+        throw Error("Outcome workstream unavailable");
+      outcomeOwner(c, _e, w, data.ownerProfessionalId, ws);
+      const metric = metricFor(data, data.measurementDefinition);
+      validateMetric(metric, data.baseline);
+      validateMetric(metric, data.target);
       if (data.type === "quantitative" && (data.direction === "qualitative" || !data.unit))
         throw Error("A quantitative measurement needs a unit and direction");
       if (data.baseline !== null && !data.baselineEvidence.length)
@@ -1513,9 +1813,17 @@ export const engagementService = {
             : "baseline_established",
         feedback: "",
         measurements: [],
-        workstreamId: ws, measurementDefinition: metric,
+        workstreamId: ws,
+        measurementDefinition: metric,
       };
-      establishOutcomeEvidence(outcome, phase6Approval(c, data.baselineEvidence[0] ?? "mock://outcome-definition", "Outcome definition and baseline established"));
+      establishOutcomeEvidence(
+        outcome,
+        phase6Approval(
+          c,
+          data.baselineEvidence[0] ?? "mock://outcome-definition",
+          "Outcome definition and baseline established",
+        ),
+      );
       w.outcomes.push(outcome);
     });
   },
@@ -1557,9 +1865,14 @@ export const engagementService = {
     return mutate(ctx, id, "measure", (_e, w, c) => {
       const o = w.outcomes.find((o) => o.id === outcomeId);
       if (!o) throw Error("Outcome unavailable");
-      outcomeOwner(c,_e,w,o.ownerProfessionalId,o.workstreamId ?? "");
-      const metric=metricFor(o,o.measurementDefinition); validateMetric(metric,data.value,metric.unit,o.type==="quantitative");
-      if (correction && (!correction.reason.trim() || !o.measurements.some((m) => m.id===correction.supersedesId))) throw Error("Observation correction requires its original observation and reason");
+      outcomeOwner(c, _e, w, o.ownerProfessionalId, o.workstreamId ?? "");
+      const metric = metricFor(o, o.measurementDefinition);
+      validateMetric(metric, data.value, metric.unit, o.type === "quantitative");
+      if (
+        correction &&
+        (!correction.reason.trim() || !o.measurements.some((m) => m.id === correction.supersedesId))
+      )
+        throw Error("Observation correction requires its original observation and reason");
       if (timestampInstant(data.observedAt) > Date.now())
         throw Error("A future target is not an observed measurement");
       if (o.type === "qualitative" && !data.qualitative)
@@ -1587,9 +1900,29 @@ export const engagementService = {
         outcomeId,
         verification: null,
       };
-      const definition=o.evidenceHistory?.definitions.find((d) => d.id===o.evidenceHistory?.currentDefinitionId), baseline=o.evidenceHistory?.baselines.find((b) => b.id===o.evidenceHistory?.currentBaselineId);
-      if(!definition) throw Error("Versioned outcome definition required");
-      o.measurements.push({ ...measurement, binding:strongSeal({ measurementId:measurement.id, organizationId:w.organizationId, engagementId:id, outcomeId, definitionId:definition.id, definitionValue:definition.integrityValue, baselineId:baseline?.id ?? "", baselineValue:baseline?.integrityValue ?? "", content:measurementContent(measurement), supersedesId:correction?.supersedesId ?? "", reason:correction?.reason ?? "" }) });
+      const definition = o.evidenceHistory?.definitions.find(
+          (d) => d.id === o.evidenceHistory?.currentDefinitionId,
+        ),
+        baseline = o.evidenceHistory?.baselines.find(
+          (b) => b.id === o.evidenceHistory?.currentBaselineId,
+        );
+      if (!definition) throw Error("Versioned outcome definition required");
+      o.measurements.push({
+        ...measurement,
+        binding: strongSeal({
+          measurementId: measurement.id,
+          organizationId: w.organizationId,
+          engagementId: id,
+          outcomeId,
+          definitionId: definition.id,
+          definitionValue: definition.integrityValue,
+          baselineId: baseline?.id ?? "",
+          baselineValue: baseline?.integrityValue ?? "",
+          content: measurementContent(measurement),
+          supersedesId: correction?.supersedesId ?? "",
+          reason: correction?.reason ?? "",
+        }),
+      });
       o.status = status;
       o.feedback = feedback;
     });
@@ -1603,15 +1936,24 @@ export const engagementService = {
     comment: string,
   ) {
     return mutate(ctx, id, "verify", (_e, w, c) => {
-      const outcome=w.outcomes.find((o) => o.id===outcomeId);
-      if(!outcome) throw Error("Outcome unavailable");
-      outcomeOwner(c,_e,w,outcome.ownerProfessionalId,outcome.workstreamId ?? "","verify");
-      const m = outcome.measurements.find((m) => m.id===measurementId);
+      const outcome = w.outcomes.find((o) => o.id === outcomeId);
+      if (!outcome) throw Error("Outcome unavailable");
+      outcomeOwner(c, _e, w, outcome.ownerProfessionalId, outcome.workstreamId ?? "", "verify");
+      const m = outcome.measurements.find((m) => m.id === measurementId);
       if (!m || !m.evidence.length || m.provenance === "estimate" || m.createdBy === c.user.id)
         throw Error("Independent observed evidence is required");
-      if (!m.binding || m.verification) throw Error("An unverified immutable observation is required");
+      if (!m.binding || m.verification)
+        throw Error("An unverified immutable observation is required");
       m.verification = phase6Approval(c, evidence, comment);
-      m.verificationBinding=strongSeal({ measurementId:m.id, measurementValue:m.binding.integrityValue, baselineId:m.binding.baselineId, baselineValue:m.binding.baselineValue, definitionId:m.binding.definitionId, approval:m.verification, decision:"verified" as const });
+      m.verificationBinding = strongSeal({
+        measurementId: m.id,
+        measurementValue: m.binding.integrityValue,
+        baselineId: m.binding.baselineId,
+        baselineValue: m.binding.baselineValue,
+        definitionId: m.binding.definitionId,
+        approval: m.verification,
+        decision: "verified" as const,
+      });
     });
   },
   async change(
@@ -1712,8 +2054,24 @@ export const engagementService = {
         change.sourceScopeId !== w.scopes.at(-1)?.id
       )
         throw Error("A current authorized amendment is required");
-      const previous=currentTerms(w);
-      if(canonical([previous.currency,previous.amount,previous.period,previous.commercialBasis,previous.pricingReference]) !== canonical([change.terms.currency,change.terms.amount,change.terms.period,change.terms.commercialBasis,change.terms.pricingReference])) authorize(c,"commercial",_e,w);
+      const previous = currentTerms(w);
+      if (
+        canonical([
+          previous.currency,
+          previous.amount,
+          previous.period,
+          previous.commercialBasis,
+          previous.pricingReference,
+        ]) !==
+        canonical([
+          change.terms.currency,
+          change.terms.amount,
+          change.terms.period,
+          change.terms.commercialBasis,
+          change.terms.pricingReference,
+        ])
+      )
+        authorize(c, "commercial", _e, w);
       if (change.approvedValue !== changeValue(change))
         throw Error("Approved amendment content changed");
       if (change.revisedProposal) {
@@ -1722,9 +2080,25 @@ export const engagementService = {
           throw Error("Revised issued source changed");
       }
       for (const amendment of change.obligationAmendments ?? []) {
-        const prior=w.obligations?.find((o) => o.id===amendment.obligationId);
-        if(!prior || obligationStates(w).find((o) => o.id===prior.id)?.status.includes("amendment")) throw Error("Obligation is no longer amendable");
-        if(amendment.action==="supersede") w.obligations?.push(strongSeal({ ...prior, id:`obligation_${change.id}_${contentValue(prior.id)}`, description:amendment.description, criteria:amendment.criteria, amendmentId:change.id, replacesId:prior.id }));
+        const prior = w.obligations?.find((o) => o.id === amendment.obligationId);
+        if (
+          !prior ||
+          obligationStates(w)
+            .find((o) => o.id === prior.id)
+            ?.status.includes("amendment")
+        )
+          throw Error("Obligation is no longer amendable");
+        if (amendment.action === "supersede")
+          w.obligations?.push(
+            strongSeal({
+              ...prior,
+              id: `obligation_${change.id}_${contentValue(prior.id)}`,
+              description: amendment.description,
+              criteria: amendment.criteria,
+              amendmentId: change.id,
+              replacesId: prior.id,
+            }),
+          );
       }
       change.status = "applied";
       const s = strongSeal({
@@ -1732,7 +2106,9 @@ export const engagementService = {
         schema: "aurumi.cia.engagement-scope/2" as const,
         engagementId: id,
         number: w.scopes.length + 1,
-        obligationIds: obligationStates(w).filter((o) => !o.status.includes("by_amendment")).map((o) => o.id),
+        obligationIds: obligationStates(w)
+          .filter((o) => !o.status.includes("by_amendment"))
+          .map((o) => o.id),
         terms: change.terms,
         changeId: change.id,
         approval: change.approval,
@@ -1800,10 +2176,14 @@ export const engagementService = {
       "conduct_review",
       (_e, w, c) => {
         validateAuthorization(w);
-        if(input.kind==="completion") {
-          const responsibilities=input.outstandingResponsibilities ?? input.nextActions;
-          if(!responsibilities.trim()) throw Error("Completion review requires outstanding responsibilities or explicit none");
-          w.completionRequirements={ customerFeedback:input.customerFeedback, outstandingResponsibilities:responsibilities };
+        if (input.kind === "completion") {
+          const responsibilities = input.outstandingResponsibilities ?? input.nextActions;
+          if (!responsibilities.trim())
+            throw Error("Completion review requires outstanding responsibilities or explicit none");
+          w.completionRequirements = {
+            customerFeedback: input.customerFeedback,
+            outstandingResponsibilities: responsibilities,
+          };
         }
         w.reviews.push(
           strongSeal({
@@ -1826,7 +2206,12 @@ export const engagementService = {
             measurementIds: w.outcomes.flatMap((o) => o.measurements.map((m) => m.id)),
             concernIds: w.concerns.map((r) => r.id),
             outcomeEvidence: structuredClone(w.outcomes),
-            binding: strongSeal({ engagementId:id, organizationId:w.organizationId, state:completionState(w), stateValue:contentValue(completionState(w)) }),
+            binding: strongSeal({
+              engagementId: id,
+              organizationId: w.organizationId,
+              state: completionState(w),
+              stateValue: contentValue(completionState(w)),
+            }),
             approval: phase6Approval(c, input.evidence, input.comment),
           }),
         );
@@ -1855,23 +2240,42 @@ export const engagementService = {
       (e, w, c) => {
         validateAuthorization(w);
         const problems = completionProblems(w);
-        if (input.customerFeedback !== w.completionRequirements?.customerFeedback || input.outstandingResponsibilities !== w.completionRequirements?.outstandingResponsibilities) problems.push("Completion responsibilities or customer acceptance differ from the reviewed state");
+        if (
+          input.customerFeedback !== w.completionRequirements?.customerFeedback ||
+          input.outstandingResponsibilities !==
+            w.completionRequirements?.outstandingResponsibilities
+        )
+          problems.push(
+            "Completion responsibilities or customer acceptance differ from the reviewed state",
+          );
         if (problems.length) throw Error(problems.join("; "));
         if (!input.outstandingResponsibilities.trim() || !input.summary.trim())
           throw Error(
             "Completion summary and outstanding responsibilities (or explicit none) are required",
           );
-        const finalDecision=phase6Approval(c,input.evidence,input.comment);
-        w.lifecycleHistory?.push(strongSeal({ id:`lifecycle_completion_${id}`,engagementId:id,organizationId:w.organizationId,from:e.status,to:"completed",authorizationValue:AuthorizationSchema.parse(w.authorization).integrityValue,approval:finalDecision }));
+        const finalDecision = phase6Approval(c, input.evidence, input.comment);
+        w.lifecycleHistory?.push(
+          strongSeal({
+            id: `lifecycle_completion_${id}`,
+            engagementId: id,
+            organizationId: w.organizationId,
+            from: e.status,
+            to: "completed",
+            authorizationValue: AuthorizationSchema.parse(w.authorization).integrityValue,
+            approval: finalDecision,
+          }),
+        );
         w.completion = strongSeal({
           ...phase6Base(`completion_${id}`, c),
           schema: "aurumi.cia.engagement-completion/2" as const,
           engagementId: id,
           initiation: w.initiation,
           authorization: AuthorizationSchema.parse(w.authorization),
-          lifecycleHistory:w.lifecycleHistory ?? [],
-          obligations: w.obligations ?? [], obligationMappings:w.obligationMappings ?? [], changes:w.changes,
-          ...(w.completionRequirements ? { completionRequirements:w.completionRequirements } : {}),
+          lifecycleHistory: w.lifecycleHistory ?? [],
+          obligations: w.obligations ?? [],
+          obligationMappings: w.obligationMappings ?? [],
+          changes: w.changes,
+          ...(w.completionRequirements ? { completionRequirements: w.completionRequirements } : {}),
           scopes: w.scopes,
           assignments: w.assignments,
           workstreams: w.workstreams,

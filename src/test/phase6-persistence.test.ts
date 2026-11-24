@@ -427,7 +427,12 @@ describe("Phase 6 strict restoration and independent sibling preservation", () =
           next.issued.document.recipient.organization || next.issued.document.recipient.name,
         proposalVersionId: next.issued.id,
         allocationId: "exact-source",
-        terms: { ...creation().terms, ...proposalScopeTerms(next.issued), currency: nextTotal.currency, amount: nextTotal.initialCost },
+        terms: {
+          ...creation().terms,
+          ...proposalScopeTerms(next.issued),
+          currency: nextTotal.currency,
+          amount: nextTotal.initialCost,
+        },
       }),
     );
     const encoded = liveBackend.read(STORAGE_KEY);
@@ -545,13 +550,19 @@ describe("Phase 6 strict restoration and independent sibling preservation", () =
       const b = memoryBackend();
       const envelope = "envelope" in fixture ? fixture.envelope : fixture;
       b.write(STORAGE_KEY, JSON.stringify(envelope));
-      for(let reload=0; reload<3; reload++) {
+      for (let reload = 0; reload < 3; reload++) {
         store.attach(b);
         expect(store.table("deliveryWorkspaces")).toHaveLength(6);
         if (_name === "Phase 5 converted intake") {
-          for(const key of ["fitSnapshots", "fitIntakes", "fitConversions", "fitConsultations"] as const) {
-            const expected=fitHistory.tables[key];
-            for(const row of expected) expect(store.table(key).find((r) => r.id === row.id)).toEqual(row);
+          for (const key of [
+            "fitSnapshots",
+            "fitIntakes",
+            "fitConversions",
+            "fitConsultations",
+          ] as const) {
+            const expected = fitHistory.tables[key];
+            for (const row of expected)
+              expect(store.table(key).find((r) => r.id === row.id)).toEqual(row);
           }
         }
       }

@@ -65,8 +65,8 @@ export function sanitizeDeliveryRelationships(t: Tables): QuarantineEntry[] {
       const e = t.engagements.find((e) => e.id === w.engagementId);
       if (!e) throw Error("Missing engagement");
       EngagementSchema.parse(e);
-      const authorizationProblems=lifecycleAuthorizationProblems(e.status,w);
-      if(authorizationProblems.length) throw Error(authorizationProblems.join("; "));
+      const authorizationProblems = lifecycleAuthorizationProblems(e.status, w);
+      if (authorizationProblems.length) throw Error(authorizationProblems.join("; "));
       if (
         e.organizationId !== w.organizationId ||
         e.initiationId !== w.initiation.id ||

@@ -1,10 +1,10 @@
 # Phase 6 — F01–F07 targeted corrections
-- [ ] F01: source-derived obligations, validated delivery mapping and authorized amendments.
-- [ ] F02/F07: fresh material-state completion review and bound commencement authorization.
-- [ ] F03/F04: recursive commercial projection and operational outcome ownership.
-- [ ] F05/F06: measurement domains, strict instants and immutable content-bound evidence.
-- [ ] Genuine released Phase 6 fixtures; earlier-phase repeated restoration assertion correction.
-- [ ] Regression/durability tests, full suite, lint and automatic toolchain validation; completion report and commit.
+- [x] F01: source-derived obligations, validated delivery mapping and authorized amendments.
+- [x] F02/F07: fresh material-state completion review and bound commencement authorization.
+- [x] F03/F04: recursive commercial projection and operational outcome ownership.
+- [x] F05/F06: measurement domains, strict instants and immutable content-bound evidence.
+- [x] Genuine released Phase 6 fixtures; earlier-phase repeated restoration assertion correction.
+- [x] Regression/durability tests, full suite, lint and automatic toolchain validation; completion report and commit.
 - [ ] Exact-commit successful Actions evidence (requires repository synchronization/access).
 - [ ] Independent Codex review required; Phase 6 remains open and Phase 7 excluded.
 
