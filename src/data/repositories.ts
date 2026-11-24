@@ -244,6 +244,8 @@ function createScopedRepository<R extends ScopedRecord, CIn, UIn>(spec: Spec) {
       // Proposal Studio records change only through its workflow service (Phase 4).
       if (table === "proposals" && (current as { source?: unknown }).source)
         reject(ctx, "this proposal is managed by Proposal Studio; use its workflow", id);
+      if (table === "engagements" && current["deliverySchema"])
+        reject(ctx, "this engagement is managed by the delivery workflow", id);
       const data = checkFields(ctx, patch, spec.updateFields, id);
       const next = {
         ...current,

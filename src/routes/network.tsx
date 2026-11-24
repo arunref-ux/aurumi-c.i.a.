@@ -1,5 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ModulePlaceholder } from "@/components/app/module-placeholder";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/network")({
   head: () => ({
@@ -22,17 +21,5 @@ export const Route = createFileRoute("/network")({
 });
 
 function Page() {
-  return (
-    <ModulePlaceholder
-      title="C.I.A. Network"
-      phase={6}
-      purpose="Professional profiles, certification, affiliations and assignments."
-      planned={[
-        "Professional profiles",
-        "Certification levels",
-        "Affiliations",
-        "Assignments & access",
-      ]}
-    />
-  );
+  return <Outlet />;
 }

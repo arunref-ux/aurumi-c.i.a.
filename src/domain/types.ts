@@ -266,12 +266,15 @@ export interface ProposalShare extends BaseRecord {
 }
 
 // ---------- Engagements ----------
-export type EngagementStatus = "planned" | "active" | "on_hold" | "completed";
+export type EngagementStatus = "planned" | "draft" | "pending_authorization" | "authorized" | "mobilizing" | "active" | "on_hold" | "completion_review" | "completed" | "cancelled";
 export interface Engagement extends ScopedRecord {
   proposalId: ID;
   title: string;
   status: EngagementStatus;
   tenantSuccessReferenceId?: ID;
+  /** Phase 6 rows are governed exclusively by the delivery service. Legacy seed rows remain unchanged. */
+  deliverySchema?: "aurumi.cia.engagement/1";
+  initiationId?: ID;
 }
 export interface EngagementMilestone extends BaseRecord {
   engagementId: ID;

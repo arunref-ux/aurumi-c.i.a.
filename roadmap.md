@@ -1,4 +1,15 @@
-# Phase 5 — F01–F06 corrective implementation
+# Phase 6 — Engagements & C.I.A. Network
+Phases 1–5 closed by independent review; baseline `9e19f209b70827e59851c19818a85697af4e8b39`, approved Actions run `45325310876`. Implement Phase 6 only; Phase 7 excluded.
+- [ ] Reuse identities and permissions; professional profiles, qualifications, affiliations, availability and assignment history.
+- [ ] Authorized proposal/direct/follow-on creation; pinned initiation, lifecycle and explicit assignment eligibility.
+- [ ] Delivery workstreams, milestones, tasks, interactions, versioned deliverables, scope amendments, risks/issues/decisions.
+- [ ] Outcomes, immutable reviews, continuation, completion snapshot and print report.
+- [ ] Durable idempotent operations, integrity/restoration, fictional scenarios and simulated adapters.
+- [ ] Operational pages and scoped dashboard; automated regressions and real browser journeys.
+- [ ] Completion report and exact commit; successful Actions evidence depends on repository synchronization.
+- [ ] Independent Codex verification: reviewer required; do not declare Phase 6 closed.
+
+# Phase 5 — F01–F06 corrective implementation (closed)
 - [x] Scoped flow sweep: public session/read/review, report/print, intake lists/detail, configuration, conversion/Assessment Studio commitment, catalog/evaluation, persistence/recovery and historical interpretation read; sibling gaps corrected without changing settled history or earlier phases.
 - [x] Genuine reviewed historical fixtures before schema changes.
 - [x] A: acknowledged durable consultation/conversion operations and guarded lifecycle commitments (F01–F02).
@@ -6,11 +17,11 @@
 - [x] C: versioned immutable integrity, associated relationships and historical-only assurance (F06).
 - [x] Dedicated regressions, full suite, lint, automatic validation and failed-save/reload customer-flow verification.
 - [x] Completion matrix and commit prepared; standalone typecheck/build are prohibited in this environment.
-- [ ] Successful Actions run for the corrective commit: waits for automatic repository synchronization after this turn.
-- [ ] Independent Codex review of F01–F06: waits for reviewer; Phase 5 remains open and Phase 6 excluded.
+- [x] Successful Actions run: `45325310876` for approved baseline.
+- [x] Independent Codex review of F01–F06 approved per Phase 6 authorization.
 
 # Phase 5 — Public Business Fit
-Phases 1–4 closed by independent verification per Phase 5 authorization. Phase 6 is excluded.
+Phases 1–5 closed by independent verification per Phase 6 authorization.
 - [x] Official Aurumi actions point to the user-confirmed https://www.aurumi.ai/cia.
 - [x] Versioned domain, explainable evaluation, public-safe catalog and five fictional scenarios.
 - [x] Isolated anonymous sessions, report, consent-based duplicate-safe simulated consultation.

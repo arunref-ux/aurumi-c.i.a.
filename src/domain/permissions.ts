@@ -18,7 +18,13 @@ export type FitAction =
   | "rules"
   | "publish_rules";
 export type Permission =
-  `${ResourceType}.${Action}` | `business_fit.${FitAction}` | "settings.manage" | "audit.read";
+  `${ResourceType}.${Action}` | `business_fit.${FitAction}` | `delivery.${DeliveryAction}` | `network.${NetworkAction}` | "settings.manage" | "audit.read";
+
+export type DeliveryAction = "read" | "create" | "authorize" | "scope" | "assign" | "plan" | "interact" | "submit" | "review" | "accept" | "change" | "approve_change" | "risk" | "measure" | "verify" | "conduct_review" | "complete" | "cancel" | "continue" | "commercial";
+export type NetworkAction = "read" | "manage" | "affiliation" | "qualification" | "verify" | "activate" | "suspend" | "expertise";
+const DELIVERY_ACTIONS: DeliveryAction[] = ["read", "create", "authorize", "scope", "assign", "plan", "interact", "submit", "review", "accept", "change", "approve_change", "risk", "measure", "verify", "conduct_review", "complete", "cancel", "continue", "commercial"];
+const NETWORK_ACTIONS: NetworkAction[] = ["read", "manage", "affiliation", "qualification", "verify", "activate", "suspend", "expertise"];
+const featureGrants = (prefix: "delivery" | "network", actions: readonly string[], scope: Scope): Grants => Object.fromEntries(actions.map(a => [`${prefix}.${a}`, scope]));
 
 export const ROLE_LABELS: Record<RoleKey, string> = {
   cia_admin: "C.I.A. Administrator",
@@ -35,6 +41,8 @@ const all = (r: ResourceType, s: Scope, actions: Action[]): Grants =>
 
 export const ROLE_GRANTS: Record<RoleKey, Grants> = {
   cia_admin: {
+    ...featureGrants("delivery", DELIVERY_ACTIONS, "organization"),
+    ...featureGrants("network", NETWORK_ACTIONS, "organization"),
     "business_fit.read": "organization",
     "business_fit.contact": "organization",
     "business_fit.manage": "organization",
@@ -60,6 +68,8 @@ export const ROLE_GRANTS: Record<RoleKey, Grants> = {
     "audit.read": "organization",
   },
   cia_manager: {
+    ...featureGrants("delivery", DELIVERY_ACTIONS, "team"),
+    ...featureGrants("network", ["read", "manage", "affiliation", "qualification", "verify", "activate", "suspend"], "team"),
     "business_fit.read": "team",
     "business_fit.contact": "team",
     "business_fit.manage": "team",
@@ -75,6 +85,8 @@ export const ROLE_GRANTS: Record<RoleKey, Grants> = {
     "audit.read": "team",
   },
   cia_professional: {
+    ...featureGrants("delivery", ["read", "plan", "interact", "submit", "change", "risk", "measure", "conduct_review", "continue"], "self"),
+    ...featureGrants("network", ["read", "manage", "qualification"], "self"),
     "business_fit.read": "self",
     "business_fit.contact": "self",
     "business_fit.manage": "self",
@@ -86,6 +98,8 @@ export const ROLE_GRANTS: Record<RoleKey, Grants> = {
     ...all("professional", "organization", ["read"]),
   },
   partner_manager: {
+    ...featureGrants("delivery", ["read", "create", "assign", "plan", "interact", "submit", "change", "risk", "measure", "conduct_review", "continue"], "self"),
+    ...featureGrants("network", ["read"], "self"),
     "business_fit.read": "team",
     "business_fit.contact": "team",
     "business_fit.manage": "team",
@@ -96,6 +110,8 @@ export const ROLE_GRANTS: Record<RoleKey, Grants> = {
     ...all("professional", "organization", ["read"]),
   },
   proposal_reviewer: {
+    ...featureGrants("delivery", ["read", "review", "accept", "verify", "conduct_review"], "organization"),
+    ...featureGrants("network", ["read"], "organization"),
     ...all("proposal", "organization", ["read", "approve"]),
     ...all("assessment", "organization", ["read"]),
     ...all("solution", "organization", ["read"]),

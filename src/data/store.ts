@@ -18,6 +18,9 @@ import type { AuditEvent, BaseRecord } from "@/domain/types";
 import { sanitizeTable, type QuarantineEntry } from "./persisted-schema";
 import * as seed from "./seed";
 import { sanitizeFitRelationships } from "./business-fit-recovery";
+import { sanitizeDeliveryRelationships } from "./delivery-recovery";
+import { deliveryEngagements, deliveryWorkspaces, deliveryProfiles, deliveryExpertise } from "./delivery-seed";
+import type { DeliveryWorkspace, ProfessionalProfile, ExpertiseCategory, DeliveryOperation } from "@/domain/delivery";
 import { FIT_QUESTIONNAIRE, FIT_RULES } from "./business-fit-seed";
 import type {
   BusinessFitSession,
@@ -54,6 +57,10 @@ export interface Tables {
   fitIntakes: BusinessFitIntakeRecord[];
   fitConversions: BusinessFitAssessmentConversion[];
   fitOperations: BusinessFitOperation[];
+  deliveryWorkspaces: DeliveryWorkspace[];
+  networkProfiles: ProfessionalProfile[];
+  expertiseCategories: ExpertiseCategory[];
+  deliveryOperations: DeliveryOperation[];
 }
 
 /** Tables that represent user work and survive reloads; directory tables always come from seed. */
@@ -77,6 +84,10 @@ const PERSISTED = [
   "fitIntakes",
   "fitConversions",
   "fitOperations",
+  "deliveryWorkspaces",
+  "networkProfiles",
+  "expertiseCategories",
+  "deliveryOperations",
 ] as const;
 export const STORAGE_KEY = "aurumi.cia.simulated-store.v1";
 /** Saved entries that failed validation are kept here for recovery, never deleted. */
@@ -108,7 +119,7 @@ function fresh(): { tables: Tables; audit: AuditEvent[] } {
     tables: clone({
       assessments: seed.seedAssessments,
       proposals: seed.seedProposals,
-      engagements: seed.seedEngagements,
+      engagements: [...seed.seedEngagements, ...deliveryEngagements],
       professionals: seed.seedProfessionals,
       affiliations: seed.seedAffiliations,
       teams: seed.seedTeams,
@@ -129,6 +140,10 @@ function fresh(): { tables: Tables; audit: AuditEvent[] } {
       fitIntakes: [],
       fitConversions: [],
       fitOperations: [],
+      deliveryWorkspaces,
+      networkProfiles: deliveryProfiles,
+      expertiseCategories: deliveryExpertise,
+      deliveryOperations: [],
     }),
     audit: clone(seed.seedAudit),
   };
@@ -316,6 +331,12 @@ function load() {
     (db.tables as unknown as Record<string, unknown>)[k] = r.rows;
   }
   setAside.push(...sanitizeFitRelationships(db.tables, parsed.tables ?? {}));
+  // Earlier saved formats have no Phase 6 workspace table. Add only new fictional
+  // Phase 6 identities; never replace an earlier saved row or rewrite historical content.
+  if (parsed.tables?.["deliveryWorkspaces"] === undefined) {
+    for (const e of deliveryEngagements) if (!db.tables.engagements.some(row => row.id === e.id)) db.tables.engagements.push(clone(e));
+  }
+  setAside.push(...sanitizeDeliveryRelationships(db.tables));
   if (Array.isArray(parsed.audit)) db.audit = parsed.audit as AuditEvent[];
   persistState = { ...persistState, lastSavedAt: parsed.savedAt ?? null, error: null };
   if (setAside.length)

@@ -25,10 +25,16 @@ import { Route as BusinessFitManagementRulesRouteImport } from './routes/busines
 import { Route as BusinessFitIndexRouteImport } from './routes/business-fit.index'
 import { Route as BusinessFitReportRouteImport } from './routes/business-fit.report'
 import { Route as BusinessFitStartRouteImport } from './routes/business-fit.start'
+import { Route as EngagementsIndexRouteImport } from './routes/engagements.index'
+import { Route as EngagementsEngagementIdRouteImport } from './routes/engagements.$engagementId'
+import { Route as NetworkIndexRouteImport } from './routes/network.index'
+import { Route as NetworkProfessionalIdRouteImport } from './routes/network.$professionalId'
 import { Route as ProposalsIndexRouteImport } from './routes/proposals.index'
 import { Route as ProposalsProposalIdRouteImport } from './routes/proposals.$proposalId'
 import { Route as SolutionsIndexRouteImport } from './routes/solutions.index'
 import { Route as SolutionsSolutionIdRouteImport } from './routes/solutions.$solutionId'
+import { Route as EngagementsEngagementIdIndexRouteImport } from './routes/engagements.$engagementId.index'
+import { Route as EngagementsEngagementIdReportRouteImport } from './routes/engagements.$engagementId.report'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -115,6 +121,26 @@ const BusinessFitStartRoute = BusinessFitStartRouteImport.update({
   path: '/start',
   getParentRoute: () => BusinessFitRoute,
 } as any)
+const EngagementsIndexRoute = EngagementsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EngagementsRoute,
+} as any)
+const EngagementsEngagementIdRoute = EngagementsEngagementIdRouteImport.update({
+  id: '/$engagementId',
+  path: '/$engagementId',
+  getParentRoute: () => EngagementsRoute,
+} as any)
+const NetworkIndexRoute = NetworkIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NetworkRoute,
+} as any)
+const NetworkProfessionalIdRoute = NetworkProfessionalIdRouteImport.update({
+  id: '/$professionalId',
+  path: '/$professionalId',
+  getParentRoute: () => NetworkRoute,
+} as any)
 const ProposalsIndexRoute = ProposalsIndexRouteImport.update({
   id: '/proposals/',
   path: '/proposals/',
@@ -135,13 +161,25 @@ const SolutionsSolutionIdRoute = SolutionsSolutionIdRouteImport.update({
   path: '/solutions/$solutionId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EngagementsEngagementIdIndexRoute =
+  EngagementsEngagementIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => EngagementsEngagementIdRoute,
+  } as any)
+const EngagementsEngagementIdReportRoute =
+  EngagementsEngagementIdReportRouteImport.update({
+    id: '/report',
+    path: '/report',
+    getParentRoute: () => EngagementsEngagementIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/business-fit': typeof BusinessFitRouteWithChildren
   '/business-fit-management': typeof BusinessFitManagementRouteWithChildren
-  '/engagements': typeof EngagementsRoute
-  '/network': typeof NetworkRoute
+  '/engagements': typeof EngagementsRouteWithChildren
+  '/network': typeof NetworkRouteWithChildren
   '/settings': typeof SettingsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
   '/business-fit-management/$intakeId': typeof BusinessFitManagementIntakeIdRoute
@@ -150,18 +188,22 @@ export interface FileRoutesByFullPath {
   '/business-fit-management/rules': typeof BusinessFitManagementRulesRoute
   '/business-fit/report': typeof BusinessFitReportRoute
   '/business-fit/start': typeof BusinessFitStartRoute
+  '/engagements/$engagementId': typeof EngagementsEngagementIdRouteWithChildren
+  '/network/$professionalId': typeof NetworkProfessionalIdRoute
   '/proposals/$proposalId': typeof ProposalsProposalIdRoute
   '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments/': typeof AssessmentsIndexRoute
   '/business-fit-management/': typeof BusinessFitManagementIndexRoute
   '/business-fit/': typeof BusinessFitIndexRoute
+  '/engagements/': typeof EngagementsIndexRoute
+  '/network/': typeof NetworkIndexRoute
   '/proposals/': typeof ProposalsIndexRoute
   '/solutions/': typeof SolutionsIndexRoute
+  '/engagements/$engagementId/report': typeof EngagementsEngagementIdReportRoute
+  '/engagements/$engagementId/': typeof EngagementsEngagementIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/engagements': typeof EngagementsRoute
-  '/network': typeof NetworkRoute
   '/settings': typeof SettingsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
   '/business-fit-management/$intakeId': typeof BusinessFitManagementIntakeIdRoute
@@ -170,21 +212,26 @@ export interface FileRoutesByTo {
   '/business-fit-management/rules': typeof BusinessFitManagementRulesRoute
   '/business-fit/report': typeof BusinessFitReportRoute
   '/business-fit/start': typeof BusinessFitStartRoute
+  '/network/$professionalId': typeof NetworkProfessionalIdRoute
   '/proposals/$proposalId': typeof ProposalsProposalIdRoute
   '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments': typeof AssessmentsIndexRoute
   '/business-fit-management': typeof BusinessFitManagementIndexRoute
   '/business-fit': typeof BusinessFitIndexRoute
+  '/engagements': typeof EngagementsIndexRoute
+  '/network': typeof NetworkIndexRoute
   '/proposals': typeof ProposalsIndexRoute
   '/solutions': typeof SolutionsIndexRoute
+  '/engagements/$engagementId/report': typeof EngagementsEngagementIdReportRoute
+  '/engagements/$engagementId': typeof EngagementsEngagementIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/business-fit': typeof BusinessFitRouteWithChildren
   '/business-fit-management': typeof BusinessFitManagementRouteWithChildren
-  '/engagements': typeof EngagementsRoute
-  '/network': typeof NetworkRoute
+  '/engagements': typeof EngagementsRouteWithChildren
+  '/network': typeof NetworkRouteWithChildren
   '/settings': typeof SettingsRoute
   '/assessments/$assessmentId': typeof AssessmentsAssessmentIdRoute
   '/business-fit-management/$intakeId': typeof BusinessFitManagementIntakeIdRoute
@@ -193,13 +240,19 @@ export interface FileRoutesById {
   '/business-fit-management/rules': typeof BusinessFitManagementRulesRoute
   '/business-fit/report': typeof BusinessFitReportRoute
   '/business-fit/start': typeof BusinessFitStartRoute
+  '/engagements/$engagementId': typeof EngagementsEngagementIdRouteWithChildren
+  '/network/$professionalId': typeof NetworkProfessionalIdRoute
   '/proposals/$proposalId': typeof ProposalsProposalIdRoute
   '/solutions/$solutionId': typeof SolutionsSolutionIdRoute
   '/assessments/': typeof AssessmentsIndexRoute
   '/business-fit-management/': typeof BusinessFitManagementIndexRoute
   '/business-fit/': typeof BusinessFitIndexRoute
+  '/engagements/': typeof EngagementsIndexRoute
+  '/network/': typeof NetworkIndexRoute
   '/proposals/': typeof ProposalsIndexRoute
   '/solutions/': typeof SolutionsIndexRoute
+  '/engagements/$engagementId/report': typeof EngagementsEngagementIdReportRoute
+  '/engagements/$engagementId/': typeof EngagementsEngagementIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -217,18 +270,22 @@ export interface FileRouteTypes {
     | '/business-fit-management/rules'
     | '/business-fit/report'
     | '/business-fit/start'
+    | '/engagements/$engagementId'
+    | '/network/$professionalId'
     | '/proposals/$proposalId'
     | '/solutions/$solutionId'
     | '/assessments/'
     | '/business-fit-management/'
     | '/business-fit/'
+    | '/engagements/'
+    | '/network/'
     | '/proposals/'
     | '/solutions/'
+    | '/engagements/$engagementId/report'
+    | '/engagements/$engagementId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/engagements'
-    | '/network'
     | '/settings'
     | '/assessments/$assessmentId'
     | '/business-fit-management/$intakeId'
@@ -237,13 +294,18 @@ export interface FileRouteTypes {
     | '/business-fit-management/rules'
     | '/business-fit/report'
     | '/business-fit/start'
+    | '/network/$professionalId'
     | '/proposals/$proposalId'
     | '/solutions/$solutionId'
     | '/assessments'
     | '/business-fit-management'
     | '/business-fit'
+    | '/engagements'
+    | '/network'
     | '/proposals'
     | '/solutions'
+    | '/engagements/$engagementId/report'
+    | '/engagements/$engagementId'
   id:
     | '__root__'
     | '/'
@@ -259,21 +321,27 @@ export interface FileRouteTypes {
     | '/business-fit-management/rules'
     | '/business-fit/report'
     | '/business-fit/start'
+    | '/engagements/$engagementId'
+    | '/network/$professionalId'
     | '/proposals/$proposalId'
     | '/solutions/$solutionId'
     | '/assessments/'
     | '/business-fit-management/'
     | '/business-fit/'
+    | '/engagements/'
+    | '/network/'
     | '/proposals/'
     | '/solutions/'
+    | '/engagements/$engagementId/report'
+    | '/engagements/$engagementId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BusinessFitRoute: typeof BusinessFitRouteWithChildren
   BusinessFitManagementRoute: typeof BusinessFitManagementRouteWithChildren
-  EngagementsRoute: typeof EngagementsRoute
-  NetworkRoute: typeof NetworkRoute
+  EngagementsRoute: typeof EngagementsRouteWithChildren
+  NetworkRoute: typeof NetworkRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   AssessmentsAssessmentIdRoute: typeof AssessmentsAssessmentIdRoute
   ProposalsProposalIdRoute: typeof ProposalsProposalIdRoute
@@ -397,6 +465,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BusinessFitStartRouteImport
       parentRoute: typeof BusinessFitRoute
     }
+    '/engagements/': {
+      id: '/engagements/'
+      path: '/'
+      fullPath: '/engagements/'
+      preLoaderRoute: typeof EngagementsIndexRouteImport
+      parentRoute: typeof EngagementsRoute
+    }
+    '/engagements/$engagementId': {
+      id: '/engagements/$engagementId'
+      path: '/$engagementId'
+      fullPath: '/engagements/$engagementId'
+      preLoaderRoute: typeof EngagementsEngagementIdRouteImport
+      parentRoute: typeof EngagementsRoute
+    }
+    '/network/': {
+      id: '/network/'
+      path: '/'
+      fullPath: '/network/'
+      preLoaderRoute: typeof NetworkIndexRouteImport
+      parentRoute: typeof NetworkRoute
+    }
+    '/network/$professionalId': {
+      id: '/network/$professionalId'
+      path: '/$professionalId'
+      fullPath: '/network/$professionalId'
+      preLoaderRoute: typeof NetworkProfessionalIdRouteImport
+      parentRoute: typeof NetworkRoute
+    }
     '/proposals/': {
       id: '/proposals/'
       path: '/proposals'
@@ -424,6 +520,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/solutions/$solutionId'
       preLoaderRoute: typeof SolutionsSolutionIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/engagements/$engagementId/': {
+      id: '/engagements/$engagementId/'
+      path: '/'
+      fullPath: '/engagements/$engagementId/'
+      preLoaderRoute: typeof EngagementsEngagementIdIndexRouteImport
+      parentRoute: typeof EngagementsEngagementIdRoute
+    }
+    '/engagements/$engagementId/report': {
+      id: '/engagements/$engagementId/report'
+      path: '/report'
+      fullPath: '/engagements/$engagementId/report'
+      preLoaderRoute: typeof EngagementsEngagementIdReportRouteImport
+      parentRoute: typeof EngagementsEngagementIdRoute
     }
   }
 }
@@ -467,12 +577,55 @@ const BusinessFitManagementRouteWithChildren =
     BusinessFitManagementRouteChildren,
   )
 
+interface EngagementsEngagementIdRouteChildren {
+  EngagementsEngagementIdReportRoute: typeof EngagementsEngagementIdReportRoute
+  EngagementsEngagementIdIndexRoute: typeof EngagementsEngagementIdIndexRoute
+}
+
+const EngagementsEngagementIdRouteChildren: EngagementsEngagementIdRouteChildren =
+  {
+    EngagementsEngagementIdReportRoute: EngagementsEngagementIdReportRoute,
+    EngagementsEngagementIdIndexRoute: EngagementsEngagementIdIndexRoute,
+  }
+
+const EngagementsEngagementIdRouteWithChildren =
+  EngagementsEngagementIdRoute._addFileChildren(
+    EngagementsEngagementIdRouteChildren,
+  )
+
+interface EngagementsRouteChildren {
+  EngagementsEngagementIdRoute: typeof EngagementsEngagementIdRouteWithChildren
+  EngagementsIndexRoute: typeof EngagementsIndexRoute
+}
+
+const EngagementsRouteChildren: EngagementsRouteChildren = {
+  EngagementsEngagementIdRoute: EngagementsEngagementIdRouteWithChildren,
+  EngagementsIndexRoute: EngagementsIndexRoute,
+}
+
+const EngagementsRouteWithChildren = EngagementsRoute._addFileChildren(
+  EngagementsRouteChildren,
+)
+
+interface NetworkRouteChildren {
+  NetworkProfessionalIdRoute: typeof NetworkProfessionalIdRoute
+  NetworkIndexRoute: typeof NetworkIndexRoute
+}
+
+const NetworkRouteChildren: NetworkRouteChildren = {
+  NetworkProfessionalIdRoute: NetworkProfessionalIdRoute,
+  NetworkIndexRoute: NetworkIndexRoute,
+}
+
+const NetworkRouteWithChildren =
+  NetworkRoute._addFileChildren(NetworkRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BusinessFitRoute: BusinessFitRouteWithChildren,
   BusinessFitManagementRoute: BusinessFitManagementRouteWithChildren,
-  EngagementsRoute: EngagementsRoute,
-  NetworkRoute: NetworkRoute,
+  EngagementsRoute: EngagementsRouteWithChildren,
+  NetworkRoute: NetworkRouteWithChildren,
   SettingsRoute: SettingsRoute,
   AssessmentsAssessmentIdRoute: AssessmentsAssessmentIdRoute,
   ProposalsProposalIdRoute: ProposalsProposalIdRoute,
