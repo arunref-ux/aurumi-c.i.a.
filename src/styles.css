@@ -165,6 +165,13 @@
   #business-fit-print h2 {
     break-after: avoid;
   }
+  /* Keep amounts, billing periods and short labels intact; only the description column wraps. */
+  #proposal-print .proposal-lines td:not(:first-child),
+  #proposal-print .proposal-lines th:not(:first-child) {
+    overflow-wrap: normal;
+    white-space: nowrap;
+    padding-left: 0.75rem;
+  }
   #proposal-print tr,
   #delivery-print section > div {
     break-inside: avoid;

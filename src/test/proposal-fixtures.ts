@@ -1,3 +1,4 @@
+import { store, memoryBackend } from "@/data/store";
 /** Shared Proposal Studio test fixtures (fictional data). */
 import { proposalConfig, proposalStudio as P } from "@/data/proposal-studio";
 import { solutionStudio as S } from "@/data/solution-studio";
@@ -8,6 +9,8 @@ export const REVIEWER = u("u_reviewer");
 export const ADMIN = u("u_admin");
 export function resetProposalTestState() {
   resetSolutionTestState();
+  // Issuance is an acknowledged durable commit (P7-P1-01), so tests need an attached store.
+  store.attach(memoryBackend());
   proposalConfig.latencyMs = 0;
 }
 /** An approved solution hand-off (schema /2). */

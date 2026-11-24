@@ -186,7 +186,7 @@ function Commercials({ doc }: { doc: ProposalDocument }) {
   return (
     <div className="mt-2 flex flex-col gap-3">
       {c.lines.length > 0 && (
-        <table className="w-full text-left text-xs">
+        <table className="proposal-lines w-full text-left text-xs">
           <thead className="text-muted-foreground">
             <tr>
               <th className="py-1">Item</th>

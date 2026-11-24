@@ -21,3 +21,15 @@ Recommendation: controlled fictional prototype candidate for independent review,
 
 ## Final commit/CI status
 Final SHA will be recorded in the committed hand-off note after commit. Exact-SHA Actions cannot run until platform synchronization; do not substitute approved-baseline success. Phase 7 awaits final Actions success and independent Codex GO. Stop for review; no subsequent phase authorized.
+
+## Final corrective pass (P7-P1-01 and print acceptance)
+
+- **P7-P1-01 reproduction:** `issue()` wrote version, workspace, parent status and audit as separate best-effort saves; a failed write left memory `shared` but storage `approved` (A), or a saved issuance with an `approved` parent that could not be retried (B).
+- **Root cause:** issuance did not use the acknowledged `store.durable` commit used by Phases 5–6.
+- **Correction:** all issuance changes run inside one `store.durable` commit (one storage write plus read-back). On failure memory and audit roll back, no success is returned; unacknowledged read-back puts the store into protected recovery, and `retryRecovery()` reconciles to the stored copy. The version/parent write boundary no longer exists.
+- **Existing partial records:** a version carrying an issuance record under an `approved` parent is rejected with an explicit "only partially saved" message and left untouched; it is never silently completed. No migration.
+- **Concurrency:** validation and commit are synchronous after the price-book await, so a second request sees the issuance and is rejected; one audit entry.
+- **Tests:** `src/test/phase7-durable-issuance.test.ts` (A, B, B2, C, D, E; real services, injected write and read-back failures, persisted and in-memory assertions including audit). Historical fixtures unchanged and passing. Proposal fixtures now attach an in-memory store because issuance requires acknowledged storage.
+- **Print:** five A4 PDFs preserved in `qa-evidence/phase7-print/` with `MANIFEST.md` (checksums, browser, settings). One print defect fixed (amounts split in the line table).
+- **Validation:** Vitest 674/674 (667 retained + 7 new), `tsgo -b --noEmit` 0 errors, ESLint 0 errors/31 warnings, automatic build OK, browser issuance → reload shows `shared` with one audit entry. Exact-SHA GitHub Actions for the new commit: not yet verified.
+- **Limits:** "acknowledged" means a synchronous browser-storage write confirmed by read-back, not a production transaction.

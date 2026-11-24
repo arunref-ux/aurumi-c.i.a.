@@ -34,3 +34,16 @@ D06 (P2): malformed restored partner `hypothesis: 7` passes the loose shell and 
 - DF05: production identity/storage/privacy/legal/integrations/monitoring are explicitly excluded, remain production prerequisites.
 
 No remaining demonstrated application P0/P1 after executed retests. This does not close Phase 7: final-SHA CI and independent Codex GO are outstanding. Full clicked browser execution of every J01–J10 and amended/180-minute report printing are explicitly not claimed. A long new complete-chain test exceeded Vitest's default 5s under full parallel load; only that test gets a 30s timeout, with all assertions preserved. Fixture-input mistakes were corrected to real accepted contracts, not by relaxing application validation.
+
+
+## Final corrective pass (P7-P1-01 and print acceptance)
+
+- **P7-P1-01 reproduction:** `issue()` wrote version, workspace, parent status and audit as separate best-effort saves; a failed write left memory `shared` but storage `approved` (A), or a saved issuance with an `approved` parent that could not be retried (B).
+- **Root cause:** issuance did not use the acknowledged `store.durable` commit used by Phases 5–6.
+- **Correction:** all issuance changes run inside one `store.durable` commit (one storage write plus read-back). On failure memory and audit roll back, no success is returned; unacknowledged read-back puts the store into protected recovery, and `retryRecovery()` reconciles to the stored copy. The version/parent write boundary no longer exists.
+- **Existing partial records:** a version carrying an issuance record under an `approved` parent is rejected with an explicit "only partially saved" message and left untouched; it is never silently completed. No migration.
+- **Concurrency:** validation and commit are synchronous after the price-book await, so a second request sees the issuance and is rejected; one audit entry.
+- **Tests:** `src/test/phase7-durable-issuance.test.ts` (A, B, B2, C, D, E; real services, injected write and read-back failures, persisted and in-memory assertions including audit). Historical fixtures unchanged and passing. Proposal fixtures now attach an in-memory store because issuance requires acknowledged storage.
+- **Print:** five A4 PDFs preserved in `qa-evidence/phase7-print/` with `MANIFEST.md` (checksums, browser, settings). One print defect fixed (amounts split in the line table).
+- **Validation:** Vitest 674/674 (667 retained + 7 new), `tsgo -b --noEmit` 0 errors, ESLint 0 errors/31 warnings, automatic build OK, browser issuance → reload shows `shared` with one audit entry. Exact-SHA GitHub Actions for the new commit: not yet verified.
+- **Limits:** "acknowledged" means a synchronous browser-storage write confirmed by read-back, not a production transaction.

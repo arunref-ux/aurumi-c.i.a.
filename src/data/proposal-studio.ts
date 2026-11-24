@@ -1437,7 +1437,13 @@ export const proposalStudio: ProposalStudioService = {
         reject(ctx, `only approved proposals can be issued (is ${p.status})`, id);
       const v = currentVersion(p);
       if (!v || v.id !== versionId) return reject(ctx, "issue the current approved version", id);
-      if (v.review?.decision !== "approved" || v.supersededAt || v.issue)
+      if (v.issue)
+        reject(
+          ctx,
+          "this version already has an issuance record but the proposal is not marked issued — a previous issuance was only partially saved; it is left untouched for review",
+          id,
+        );
+      if (v.review?.decision !== "approved" || v.supersededAt)
         reject(ctx, "this exact version is not approved", id);
       if (isLegacyVersion(v)) reject(ctx, LEGACY_REMEDY, id);
       if (materialHash(p, p.source, workspaceOf(p), handoffOf(p)) !== v.contentHash)
@@ -1454,34 +1460,38 @@ export const proposalStudio: ProposalStudioService = {
     const defects = versionDefects(v, book, proposalClock.now());
     if (defects.length)
       reject(ctx, `cannot issue this version — revise and resubmit (${defects.join("; ")})`, id);
-    const at = new Date(proposalClock.now());
-    const exp = new Date(at.getTime() + v.document.validityDays * 86400000).toISOString();
-    patchVersion(v.id, {
-      issue: {
-        issuedAt: at.toISOString(),
-        issuedBy: ctx.user.id,
-        effectiveAt: at.toISOString(),
-        expiresAt: exp,
-      },
+    // P7-P1-01: version issue, workspace comment, parent status and audit commit as one
+    // acknowledged write; on failure everything rolls back and no success is reported.
+    store.durable(() => {
+      const at = new Date(proposalClock.now());
+      const exp = new Date(at.getTime() + v.document.validityDays * 86400000).toISOString();
+      patchVersion(v.id, {
+        issue: {
+          issuedAt: at.toISOString(),
+          issuedBy: ctx.user.id,
+          effectiveAt: at.toISOString(),
+          expiresAt: exp,
+        },
+      });
+      const w = clone(workspaceOf(p));
+      w.comments.push(
+        stamp(ctx, p, "pc", {
+          kind: "issued" as const,
+          body: `Issued v${v.versionNumber}; valid until ${exp.slice(0, 10)}.`,
+        }),
+      );
+      store.replace("proposalWorkspaces", [
+        ...store.table("proposalWorkspaces").filter((x) => x.proposalId !== p.id),
+        w,
+      ]);
+      persistMeta(
+        ctx,
+        p,
+        { status: "shared" },
+        "proposal.issue",
+        `Issued version ${v.versionNumber}`,
+      );
     });
-    const w = clone(workspaceOf(p));
-    w.comments.push(
-      stamp(ctx, p, "pc", {
-        kind: "issued" as const,
-        body: `Issued v${v.versionNumber}; valid until ${exp.slice(0, 10)}.`,
-      }),
-    );
-    store.replace("proposalWorkspaces", [
-      ...store.table("proposalWorkspaces").filter((x) => x.proposalId !== p.id),
-      w,
-    ]);
-    persistMeta(
-      ctx,
-      p,
-      { status: "shared" },
-      "proposal.issue",
-      `Issued version ${v.versionNumber}`,
-    );
     return deepFreeze(clone(store.table("proposalVersions").find((x) => x.id === v.id)!));
   },
 
