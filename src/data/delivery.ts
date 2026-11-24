@@ -528,6 +528,18 @@ function eligibleProfile(
     throw new AccessDeniedError("delivery.assign", e.id);
   return { p, a };
 }
+const PRE_ISSUE: readonly string[] = ["draft", "in_review", "changes_requested", "approved"];
+/**
+ * P7-P1-B: a proposal-origin engagement whose source version carries issuance metadata while
+ * its parent is still pre-issuance came from a partial save and grants no new authority.
+ * Legitimate later upstream changes (shared → accepted, removal) do not trigger this.
+ */
+function partialIssuanceSource(w: { initiation: Initiation }): boolean {
+  const s = w.initiation.source;
+  if (s.kind !== "proposal") return false;
+  const p = store.table("proposals").find((x) => x.id === s.proposalId);
+  return !!p && PRE_ISSUE.includes(p.status) && p.currentVersionId === s.versionId;
+}
 function issuedSource(ctx: Ctx, id: string): ProposalVersionRecord {
   const v = store.table("proposalVersions").find((v) => v.id === id),
     p = v ? store.table("proposals").find((p) => p.id === v.proposalId) : undefined;
@@ -539,6 +551,10 @@ function issuedSource(ctx: Ctx, id: string): ProposalVersionRecord {
     p.currentVersionId !== v.id ||
     v.supersededAt ||
     !v.issue ||
+    // P7-P1-B: issuance metadata under a parent never moved past approval is a partial save.
+    PRE_ISSUE.includes(p.status) ||
+    v.proposalId !== p.id ||
+    p.organizationId !== v.organizationId ||
     v.review?.decision !== "approved" ||
     versionIntegrityProblems(v).length
   )
@@ -1224,6 +1240,10 @@ export const engagementService = {
           (a) => a.status === "active" && a.responsibility === "lead",
         );
         if (leads.length !== 1) throw Error("Exactly one accountable engagement lead is required");
+        if (partialIssuanceSource(w))
+          throw Error(
+            "The source proposal was only partially issued; it remains available for review but cannot authorize commencement",
+          );
         for (const a of w.assignments.filter((a) => a.status === "active"))
           eligibleProfile(c, e, a.professionalId, a.service, a.qualificationIds);
         if (!w.authorization && next !== "authorized")

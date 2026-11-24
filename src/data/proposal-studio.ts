@@ -339,6 +339,15 @@ function parent(ctx: Ctx, id: ID, p: Permission): StudioProposal {
   if (!isStudio(row)) throw new LegacyProposalError();
   return row;
 }
+/**
+ * P7-P1-A: after any await, authority comes from the canonical user record (same id and
+ * organization), never from roles captured in the caller's context.
+ */
+function actorNow(ctx: Ctx, p: Permission, id?: ID): Ctx {
+  const u = store.table("users").find((x) => x.id === ctx.user.id);
+  if (!u || u.organizationId !== ctx.user.organizationId) return deny(ctx, p, id);
+  return { ...ctx, user: u };
+}
 const involved = (ctx: Ctx, p: Proposal) =>
   p.ownerId === ctx.user.id || p.assignedUserIds.includes(ctx.user.id);
 /** Reviewers may not approve their own work. */
@@ -905,6 +914,7 @@ export const proposalStudio: ProposalStudioService = {
     await tick();
     // Read the price book first so every check below runs on current records.
     const book = kind === "lines" ? await priceBookNow() : null;
+    ctx = actorNow(ctx, "proposal.update", id);
     const p = parent(ctx, id, "proposal.update");
     editable(ctx, p);
     const schema = CHILD[kind];
@@ -1191,6 +1201,7 @@ export const proposalStudio: ProposalStudioService = {
   async refreshPrices(ctx, id) {
     await tick();
     const book = await priceBookNow();
+    ctx = actorNow(ctx, "proposal.update", id);
     const p = parent(ctx, id, "proposal.update");
     editable(ctx, p);
     const ws = clone(workspaceOf(p));
@@ -1287,6 +1298,7 @@ export const proposalStudio: ProposalStudioService = {
     const book = await priceBookNow();
     // Re-read and re-authorize after the adapter call; the commit below is synchronous.
     unchanged(ctx, id, before, "pricing was being checked");
+    ctx = actorNow(ctx, "proposal.update", id);
     parent(ctx, id, "proposal.update");
     const ws = clone(workspaceOf(p));
     const h = handoffOf(p);
@@ -1346,6 +1358,7 @@ export const proposalStudio: ProposalStudioService = {
     const before = fingerprint(id);
     const book = await priceBookNow();
     unchanged(ctx, id, before, "pricing was being checked");
+    ctx = actorNow(ctx, "proposal.approve", id);
     approver(ctx, id);
     const ws = workspaceOf(p);
     if (materialHash(p, p.source, ws, handoffOf(p)) !== v.contentHash)
@@ -1456,6 +1469,8 @@ export const proposalStudio: ProposalStudioService = {
     const book = await priceBookNow();
     // Authoritative re-read after the adapter call; validation and commit are synchronous.
     unchanged(ctx, id, before, "pricing was being checked");
+    // P7-P1-A: re-resolve the canonical actor; no await separates this from the commit.
+    ctx = actorNow(ctx, "proposal.share", id);
     const { p, v } = check();
     const defects = versionDefects(v, book, proposalClock.now());
     if (defects.length)

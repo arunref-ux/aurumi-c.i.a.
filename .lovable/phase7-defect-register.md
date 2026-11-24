@@ -47,3 +47,13 @@ No remaining demonstrated application P0/P1 after executed retests. This does no
 - **Print:** five A4 PDFs preserved in `qa-evidence/phase7-print/` with `MANIFEST.md` (checksums, browser, settings). One print defect fixed (amounts split in the line table).
 - **Validation:** Vitest 674/674 (667 retained + 7 new), `tsgo -b --noEmit` 0 errors, ESLint 0 errors/31 warnings, automatic build OK, browser issuance → reload shows `shared` with one audit entry. Exact-SHA GitHub Actions for the new commit: not yet verified.
 - **Limits:** "acknowledged" means a synchronous browser-storage write confirmed by read-back, not a production transaction.
+
+## Targeted authorization corrections (Codex CONDITIONAL GO on 6efe20c)
+
+| ID | Defect | Root cause | Correction | Regression |
+|---|---|---|---|---|
+| P7-P1-A | Revoked manager could still issue after the Pricing Studio await | Post-await check reused roles captured in `ctx.user` | `actorNow()` in `src/data/proposal-studio.ts` re-resolves the canonical user (same id + organization) from the user directory immediately before the synchronous `store.durable` commit; missing/moved actor is denied | `src/test/phase7-authorization-corrections.test.ts` A1–A4 (roles removed, actor removed, org moved, role downgraded; memory + storage + reload) |
+| P7-P1-A (adjacent) | Same stale-actor pattern after pricing awaits in approve, submit, refreshPrices and line edits | Same | Same `actorNow()` applied at each post-await commitment | approval regression in same file |
+| P7-P1-B | Partial-save version (issue metadata, parent still `approved`) was listed and could create/authorize an engagement | `issuedSource()` in `src/data/delivery.ts` ignored parent lifecycle | `issuedSource()` rejects parents in draft/in_review/changes_requested/approved and checks parent/version/org identity; commencement (`transition → authorized` and later starts) rejects drafts whose pinned source parent is still pre-issuance for the same current version | B1–B4, B6 in same file |
+
+Distinction: an engagement is blocked only when the preserved source shows the parent never moved past approval for that same current version. Legitimate later upstream changes (shared → accepted, new versions, removal) never invalidate an authorized engagement. No records are rewritten or migrated. Observation (not changed): declined/expired parents remain eligible exactly as before.
