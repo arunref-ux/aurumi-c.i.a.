@@ -1,2 +1,2 @@
-import { createFileRoute,Outlet } from "@tanstack/react-router";
-export const Route=createFileRoute("/engagements/$engagementId")({component:Outlet});
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+export const Route = createFileRoute("/engagements/$engagementId")({ component: Outlet });

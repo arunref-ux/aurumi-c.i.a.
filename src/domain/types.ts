@@ -266,7 +266,17 @@ export interface ProposalShare extends BaseRecord {
 }
 
 // ---------- Engagements ----------
-export type EngagementStatus = "planned" | "draft" | "pending_authorization" | "authorized" | "mobilizing" | "active" | "on_hold" | "completion_review" | "completed" | "cancelled";
+export type EngagementStatus =
+  | "planned"
+  | "draft"
+  | "pending_authorization"
+  | "authorized"
+  | "mobilizing"
+  | "active"
+  | "on_hold"
+  | "completion_review"
+  | "completed"
+  | "cancelled";
 export interface Engagement extends ScopedRecord {
   proposalId: ID;
   title: string;

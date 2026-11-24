@@ -1,5 +1,6 @@
 /** Dashboard metrics derived from records (§4) — never independent counters. */
 import type { AcquisitionChannel, Assessment, Engagement, Proposal } from "./types";
+import type { DeliveryWorkspace, ProfessionalProfile } from "./delivery";
 
 export interface DashboardFilters {
   type: "all" | "tenant" | "partner";
@@ -7,6 +8,59 @@ export interface DashboardFilters {
   channel: "all" | AcquisitionChannel;
   sinceDays: number | null;
   now: Date;
+}
+export function computeDeliveryMetrics(
+  rows: readonly {
+    engagement: Engagement;
+    workspace: Pick<
+      DeliveryWorkspace,
+      "milestones" | "deliverables" | "concerns" | "assignments" | "reviews"
+    >;
+  }[],
+  profiles: readonly ProfessionalProfile[] = [],
+  now = new Date(),
+) {
+  const day = now.toISOString().slice(0, 10),
+    month = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 10);
+  return {
+    active: rows.filter((v) => v.engagement.status === "active").length,
+    onHold: rows.filter((v) => v.engagement.status === "on_hold").length,
+    overdueMilestones: rows
+      .flatMap((v) => v.workspace.milestones)
+      .filter((m) => m.due < day && !["completed", "cancelled"].includes(m.status)),
+    awaitingDeliverables: rows
+      .flatMap((v) => v.workspace.deliverables)
+      .filter((d) => ["submitted", "under_review"].includes(d.status)),
+    openIssues: rows
+      .flatMap((v) => v.workspace.concerns)
+      .filter((r) => r.kind === "issue" && r.status === "open"),
+    materialIssues: rows
+      .flatMap((v) => v.workspace.concerns)
+      .filter((r) => r.kind === "issue" && r.impact === "high" && r.status === "open"),
+    upcomingMilestones: rows
+      .flatMap((v) => v.workspace.milestones)
+      .filter(
+        (m) => m.due >= day && m.due <= month && !["completed", "cancelled"].includes(m.status),
+      ),
+    unassigned: rows.filter(
+      (v) =>
+        !v.workspace.assignments.some((a) => a.status === "active" && a.responsibility === "lead"),
+    ).length,
+    activeProfessionals: profiles.filter((p) => p.status === "active").length,
+    pendingProfessionals: profiles.filter((p) => p.status === "pending_review").length,
+    suspendedProfessionals: profiles.filter((p) => ["suspended", "inactive"].includes(p.status))
+      .length,
+    qualificationQueue: profiles
+      .flatMap((p) => p.qualifications)
+      .filter((q) => q.status === "pending"),
+    expiringQualifications: profiles
+      .flatMap((p) => p.qualifications)
+      .filter((q) => q.expiryDate && q.expiryDate >= day && q.expiryDate <= month),
+    estimatedHours: rows
+      .flatMap((v) => v.workspace.assignments)
+      .filter((a) => a.status === "active")
+      .reduce((sum, a) => sum + a.allocationHours, 0),
+  };
 }
 
 export function computeMetrics(

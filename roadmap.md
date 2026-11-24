@@ -1,12 +1,13 @@
 # Phase 6 — Engagements & C.I.A. Network
 Phases 1–5 closed by independent review; baseline `9e19f209b70827e59851c19818a85697af4e8b39`, approved Actions run `45325310876`. Implement Phase 6 only; Phase 7 excluded.
-- [ ] Reuse identities and permissions; professional profiles, qualifications, affiliations, availability and assignment history.
-- [ ] Authorized proposal/direct/follow-on creation; pinned initiation, lifecycle and explicit assignment eligibility.
-- [ ] Delivery workstreams, milestones, tasks, interactions, versioned deliverables, scope amendments, risks/issues/decisions.
-- [ ] Outcomes, immutable reviews, continuation, completion snapshot and print report.
-- [ ] Durable idempotent operations, integrity/restoration, fictional scenarios and simulated adapters.
-- [ ] Operational pages and scoped dashboard; automated regressions and real browser journeys.
-- [ ] Completion report and exact commit; successful Actions evidence depends on repository synchronization.
+- [x] Reuse identities and permissions; professional profiles, qualifications, affiliations, availability and assignment history.
+- [x] Authorized proposal/direct/follow-on creation; pinned initiation, lifecycle and explicit assignment eligibility.
+- [x] Delivery workstreams, milestones, tasks, interactions, versioned deliverables, scope amendments, risks/issues/decisions.
+- [x] Outcomes, immutable reviews, continuation, completion snapshot and print report.
+- [x] Durable idempotent operations, integrity/restoration, fictional scenarios and simulated adapters.
+- [x] Operational pages and scoped dashboard; automated regressions and real browser journeys.
+- [x] Completion report prepared; 528 tests pass, lint 0 errors/31 warnings, automatic types/build OK; browser creation/recovery/completion/isolation and both viewport sizes verified.
+- [ ] Successful exact-completion-commit Actions evidence waits for repository synchronization after the turn. Standalone typecheck/production commands prohibited; automatic validation used.
 - [ ] Independent Codex verification: reviewer required; do not declare Phase 6 closed.
 
 # Phase 5 — F01–F06 corrective implementation (closed)

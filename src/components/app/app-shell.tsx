@@ -57,13 +57,13 @@ function Brand() {
 function IdentitySwitcher() {
   const { user, setUserId } = useSession();
   return (
-    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+    <label className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
       <span className="hidden sm:inline">Viewing as</span>
       <select
         value={user.id}
         onChange={(e) => setUserId(e.target.value)}
         aria-label="Prototype identity"
-        className="rounded-md border bg-card px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        className="w-full min-w-0 max-w-full rounded-md border bg-card px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       >
         {seedUsers.map((u) => (
           <option key={u.id} value={u.id}>
@@ -124,7 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="rounded-full bg-warning-soft px-2.5 py-1 text-[11px] font-medium">
             Mock integrations
           </span>
-          <div className="ml-auto">
+          <div className="ml-auto min-w-0 flex-1 sm:flex-none">
             <IdentitySwitcher />
           </div>
         </header>

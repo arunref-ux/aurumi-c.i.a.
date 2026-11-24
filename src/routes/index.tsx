@@ -6,6 +6,7 @@ import { auditLog, directory, repos } from "@/data/repositories";
 import { computeMetrics, type DashboardFilters } from "@/domain/metrics";
 import type { AssessmentStatus } from "@/domain/types";
 import { useSession, useStoreVersion } from "@/lib/session";
+import { DeliveryDashboard } from "@/components/delivery/dashboard";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -158,6 +159,7 @@ function Overview() {
         ))}
       </div>
 
+      <DeliveryDashboard />
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <Panel
           title="Assessments"

@@ -25,7 +25,13 @@ import {
 } from "@/domain/business-fit";
 
 import { snapshotProblems, sessionProblems } from "@/domain/business-fit-integrity";
-import { WorkspaceSchema as DeliveryWorkspaceSchema, ProfileSchema, ExpertiseSchema, OperationSchema as DeliveryOperationSchema, EngagementSchema } from "@/domain/delivery";
+import {
+  WorkspaceSchema as DeliveryWorkspaceSchema,
+  ProfileSchema,
+  ExpertiseSchema,
+  OperationSchema as DeliveryOperationSchema,
+  EngagementSchema,
+} from "@/domain/delivery";
 
 const id = z.string().min(1);
 const str = z.string();
@@ -338,7 +344,12 @@ const ROW = {
     channelReference: str,
     simulated: z.literal(true),
   }),
-  engagements: z.looseObject({ id, organizationId: str }).superRefine((row,ctx) => { if (Object.hasOwn(row,"deliverySchema")) { const r=EngagementSchema.safeParse(row); if(!r.success) ctx.addIssue({code:"custom",message:"Invalid Phase 6 engagement"}); } }),
+  engagements: z.looseObject({ id, organizationId: str }).superRefine((row, ctx) => {
+    if (Object.hasOwn(row, "deliverySchema")) {
+      const r = EngagementSchema.safeParse(row);
+      if (!r.success) ctx.addIssue({ code: "custom", message: "Invalid Phase 6 engagement" });
+    }
+  }),
   /** Snapshots are immutable records: an invalid one is quarantined whole, never repaired. */
   snapshots: snapshot,
   solutions: z.looseObject({

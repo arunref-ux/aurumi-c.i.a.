@@ -193,12 +193,18 @@ function createScopedRepository<R extends ScopedRecord, CIn, UIn>(spec: Spec) {
   return {
     list(ctx: Ctx): R[] {
       if (!can(ctx.user, perm("read"))) return [];
-      return clone(rows().filter((r) => can(ctx.user, perm("read"), r))) as unknown as R[];
+      return clone(
+        rows().filter(
+          (r) =>
+            !(table === "engagements" && r["deliverySchema"]) && can(ctx.user, perm("read"), r),
+        ),
+      ) as unknown as R[];
     },
     get(ctx: Ctx, id: ID): R {
       const r = rows().find((x) => x.id === id);
       // Unknown and unauthorized ids are indistinguishable to the caller.
-      if (!r || !can(ctx.user, perm("read"), r)) return deny(ctx, perm("read"), id);
+      if (!r || (table === "engagements" && r["deliverySchema"]) || !can(ctx.user, perm("read"), r))
+        return deny(ctx, perm("read"), id);
       return clone(r) as unknown as R;
     },
     create(ctx: Ctx, input: CIn): R {

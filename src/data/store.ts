@@ -19,8 +19,18 @@ import { sanitizeTable, type QuarantineEntry } from "./persisted-schema";
 import * as seed from "./seed";
 import { sanitizeFitRelationships } from "./business-fit-recovery";
 import { sanitizeDeliveryRelationships } from "./delivery-recovery";
-import { deliveryEngagements, deliveryWorkspaces, deliveryProfiles, deliveryExpertise } from "./delivery-seed";
-import type { DeliveryWorkspace, ProfessionalProfile, ExpertiseCategory, DeliveryOperation } from "@/domain/delivery";
+import {
+  deliveryEngagements,
+  deliveryWorkspaces,
+  deliveryProfiles,
+  deliveryExpertise,
+} from "./delivery-seed";
+import type {
+  DeliveryWorkspace,
+  ProfessionalProfile,
+  ExpertiseCategory,
+  DeliveryOperation,
+} from "@/domain/delivery";
 import { FIT_QUESTIONNAIRE, FIT_RULES } from "./business-fit-seed";
 import type {
   BusinessFitSession,
@@ -334,7 +344,9 @@ function load() {
   // Earlier saved formats have no Phase 6 workspace table. Add only new fictional
   // Phase 6 identities; never replace an earlier saved row or rewrite historical content.
   if (parsed.tables?.["deliveryWorkspaces"] === undefined) {
-    for (const e of deliveryEngagements) if (!db.tables.engagements.some(row => row.id === e.id)) db.tables.engagements.push(clone(e));
+    for (const e of deliveryEngagements)
+      if (!db.tables.engagements.some((row) => row.id === e.id))
+        db.tables.engagements.push(clone(e));
   }
   setAside.push(...sanitizeDeliveryRelationships(db.tables));
   if (Array.isArray(parsed.audit)) db.audit = parsed.audit as AuditEvent[];
