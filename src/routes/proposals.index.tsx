@@ -10,6 +10,7 @@ import {
   TextField,
 } from "@/components/assessment/fields";
 import { PersistenceNote } from "@/components/assessment/shared";
+import { loadDemoProposals } from "@/data/demo-proposals";
 import { can } from "@/domain/permissions";
 import { PROPOSAL_STATUS_LABEL, TRACKS } from "@/domain/proposal";
 import type { ProposalStatus, ProposalTrack } from "@/domain/types";
@@ -80,6 +81,7 @@ function ProposalList() {
       />
       <PersistenceNote />
       {creating && <CreatePanel />}
+      {can(user, "proposal.create") && !rows.some((r) => !r.legacy) && <SampleButton />}
       <div className="mb-4 grid gap-3 md:grid-cols-3">
         <input
           aria-label="Search proposals"
@@ -188,6 +190,37 @@ function ProposalList() {
         </div>
       )}
     </>
+  );
+}
+
+function SampleButton() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  return (
+    <div className="mb-4 text-center">
+      <button
+        className={btnPrimary}
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            await loadDemoProposals();
+          } catch (e) {
+            setError(e);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? "Loading sample proposals…" : "Load sample proposals"}
+      </button>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Adds three fictional reference proposals (issued, in review, draft) built through the real
+        workflow, so the preview and print view can be opened.
+      </p>
+      <ErrorNote error={error} />
+    </div>
   );
 }
 

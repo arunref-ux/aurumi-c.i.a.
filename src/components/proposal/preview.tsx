@@ -100,9 +100,9 @@ export function ProposalPreview({
                 <table className="mt-2 w-full text-left text-xs">
                   <thead className="text-muted-foreground">
                     <tr>
-                      <th className="py-1">Deliverable</th>
-                      <th>Status</th>
-                      <th>Responsible</th>
+                      <th className="py-1 pr-3">Deliverable</th>
+                      <th className="pr-3">Status</th>
+                      <th className="pr-3">Responsible</th>
                       <th>Acceptance</th>
                     </tr>
                   </thead>
@@ -189,10 +189,10 @@ function Commercials({ doc }: { doc: ProposalDocument }) {
         <table className="proposal-lines w-full text-left text-xs">
           <thead className="text-muted-foreground">
             <tr>
-              <th className="py-1">Item</th>
-              <th>Qty</th>
-              <th>Billing</th>
-              <th>Basis</th>
+              <th className="py-1 pr-3">Item</th>
+              <th className="pr-3">Qty</th>
+              <th className="pr-3">Billing</th>
+              <th className="pr-3">Basis</th>
               <th className="text-right">Amount</th>
             </tr>
           </thead>
